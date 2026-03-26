@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
-COPY mplusbot ./mplusbot
+COPY niru ./niru
 COPY main.py ./
 COPY config.yaml ./
 

@@ -5,12 +5,12 @@ from __future__ import annotations
 import argparse
 import logging
 
-from mplusbot.clients.raiderio import RaiderIOClient
-from mplusbot.clients.sheets import GoogleSheetsClient
-from mplusbot.config import load_settings
-from mplusbot.logging_utils import configure_logging
-from mplusbot.service import SyncService
-from mplusbot.storage import MongoRepository
+from niru.clients.raiderio import RaiderIOClient
+from niru.clients.sheets import GoogleSheetsClient
+from niru.config import load_settings
+from niru.logging_utils import configure_logging
+from niru.service import SyncService
+from niru.storage import MongoRepository
 
 LOGGER = logging.getLogger(__name__)
 

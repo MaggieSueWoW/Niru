@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 import unittest
 
-from mplusbot.service import build_summary_header, build_summary_rows
+from niru.service import build_summary_header, build_summary_rows
 
 
 class SummaryBuilderTests(unittest.TestCase):

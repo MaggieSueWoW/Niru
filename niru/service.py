@@ -10,10 +10,10 @@ import threading
 import time
 from typing import Any
 
-from mplusbot.clients.raiderio import RaiderIOClient, RaiderIOError, RaiderIONotFoundError
-from mplusbot.clients.sheets import GoogleSheetsClient
-from mplusbot.config import Settings
-from mplusbot.models import (
+from niru.clients.raiderio import RaiderIOClient, RaiderIOError, RaiderIONotFoundError
+from niru.clients.sheets import GoogleSheetsClient
+from niru.config import Settings
+from niru.models import (
     PlayerDataStatus,
     PlayerIdentity,
     SeasonDungeon,
@@ -23,8 +23,8 @@ from mplusbot.models import (
     format_pacific_time,
     utc_now,
 )
-from mplusbot.roster import parse_roster_rows
-from mplusbot.storage import MongoRepository
+from niru.roster import parse_roster_rows
+from niru.storage import MongoRepository
 
 LOGGER = logging.getLogger(__name__)
 

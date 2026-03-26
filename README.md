@@ -1,6 +1,8 @@
-# mplusbot
+# Niru
 
-`mplusbot` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, and rewrites a raw summary table back into the sheet every 15 minutes.
+`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, and rewrites a raw summary table back into the sheet every 15 minutes.
+
+The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Datagear), the mechagnome tinkerer from Rustbolt.
 
 This bot is intentionally conservative:
 
@@ -49,7 +51,7 @@ Copy `.env.example` to `.env` and fill in the secrets:
 cp .env.example .env
 ```
 
-Edit [config.yaml](/Users/mike/dev/mplusbot/config.yaml) for non-secret settings.
+Edit [config.yaml](config.yaml) for non-secret settings.
 
 ### `.env`
 
@@ -119,8 +121,8 @@ python main.py --config /path/to/config.yaml --mode once
 Build and run:
 
 ```bash
-docker build -t mplusbot .
-docker run --rm --env-file .env -v "$(pwd)/config.yaml:/app/config.yaml:ro" mplusbot
+docker build -t niru .
+docker run --rm --env-file .env -v "$(pwd)/config.yaml:/app/config.yaml:ro" niru
 ```
 
 Make sure the container can reach MongoDB and the Google service account file path you configure.
@@ -146,6 +148,6 @@ Logs are written to stdout and include:
 
 ## Repo Docs
 
-- Public setup and usage: [README.md](/Users/mike/dev/mplusbot/README.md)
-- Product and implementation detail: [SPEC.md](/Users/mike/dev/mplusbot/SPEC.md)
-- Repo-specific agent guidance: [AGENTS.md](/Users/mike/dev/mplusbot/AGENTS.md)
+- Public setup and usage: [README.md](README.md)
+- Product and implementation detail: [SPEC.md](SPEC.md)
+- Repo-specific agent guidance: [AGENTS.md](AGENTS.md)

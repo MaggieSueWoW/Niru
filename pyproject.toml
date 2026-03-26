@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mplusbot"
+name = "niru"
 version = "0.1.0"
-description = "A Mythic+ roster bot that syncs Raider.IO data into MongoDB and Google Sheets."
+description = "Niru is a Mythic+ roster bot that syncs Raider.IO data into MongoDB and Google Sheets."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -27,10 +27,10 @@ dev = [
 ]
 
 [project.scripts]
-mplusbot = "mplusbot.app:main"
+niru = "niru.app:main"
 
 [tool.setuptools.packages.find]
-include = ["mplusbot*"]
+include = ["niru*"]
 
 [tool.black]
 line-length = 88

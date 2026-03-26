@@ -1,4 +1,4 @@
-from mplusbot.app import main
+from niru.app import main
 
 
 if __name__ == "__main__":

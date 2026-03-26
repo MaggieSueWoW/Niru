@@ -7,7 +7,7 @@ import logging
 import re
 from collections import Counter
 
-from mplusbot.models import PlayerDataStatus, PlayerIdentity, RosterEntry
+from niru.models import PlayerDataStatus, PlayerIdentity, RosterEntry
 
 LOGGER = logging.getLogger(__name__)
 

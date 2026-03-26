@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft only. This document records current learnings and a proposed design for a future backfill tool. It does not change the V1 runtime contract in [SPEC.md](/Users/mike/dev/mplusbot/SPEC.md), which remains public-API-first.
+Draft only. This document records current learnings and a proposed design for a future backfill tool. It does not change the V1 runtime contract in [SPEC.md](../SPEC.md), which remains public-API-first.
 
 ## Why This Exists
 
@@ -224,7 +224,7 @@ The first version should be CLI-driven and manual.
 Possible shape:
 
 ```text
-python -m mplusbot.backfill \
+python -m niru.backfill \
   --season season-mn-1 \
   --start 2026-03-01T00:00:00Z \
   --end 2026-03-26T00:00:00Z \

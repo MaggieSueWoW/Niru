@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 import unittest
 
-from mplusbot.clients.raiderio import RaiderIONotFoundError
-from mplusbot.models import PlayerDataStatus
-from mplusbot.service import SyncService, build_summary_header
+from niru.clients.raiderio import RaiderIONotFoundError
+from niru.models import PlayerDataStatus
+from niru.service import SyncService, build_summary_header
 
 
 class FakeRepo:

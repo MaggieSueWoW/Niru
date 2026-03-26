@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from mplusbot.config import GoogleSettings
+from niru.config import GoogleSettings
 
 
 class GoogleSheetsClient:

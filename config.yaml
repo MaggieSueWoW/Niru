@@ -20,7 +20,7 @@ raiderio:
   backoff_seconds: 2.0
 
 mongodb:
-  database: "mplusbot"
+  database: "niru"
   players_collection: "players"
   runs_collection: "runs"
   sync_cycles_collection: "sync_cycles"

@@ -1,7 +1,7 @@
 import unittest
 
-from mplusbot.models import PlayerDataStatus
-from mplusbot.roster import parse_roster_rows
+from niru.models import PlayerDataStatus
+from niru.roster import parse_roster_rows
 
 
 class RosterParsingTests(unittest.TestCase):

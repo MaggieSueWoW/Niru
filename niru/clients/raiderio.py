@@ -12,9 +12,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from mplusbot.config import RaiderIOSettings
-from mplusbot.models import PlayerIdentity
-from mplusbot.rate_limit import RateLimiter
+from niru.config import RaiderIOSettings
+from niru.models import PlayerIdentity
+from niru.rate_limit import RateLimiter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class RaiderIOClient:
 
     DEFAULT_HEADERS = {
         "Accept": "application/json, text/plain, */*",
-        "User-Agent": "Mozilla/5.0 (compatible; mplusbot/0.1; +https://raider.io)",
+        "User-Agent": "Mozilla/5.0 (compatible; niru/0.1; +https://raider.io)",
     }
     PROFILE_FIELDS = ",".join(
         [

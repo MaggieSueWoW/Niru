@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from mplusbot.config import MongoSettings
-from mplusbot.models import PlayerDataStatus, RosterEntry, SeasonDungeon
+from niru.config import MongoSettings
+from niru.models import PlayerDataStatus, RosterEntry, SeasonDungeon
 
 
 def _safe_isoformat(value: Any) -> datetime | None:

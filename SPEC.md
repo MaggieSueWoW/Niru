@@ -1,8 +1,8 @@
-# Mythic+ Roster Bot V1
+# Niru V1
 
 ## Goal
 
-Build a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets on a 15-minute cadence.
+Build Niru, a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets on a 15-minute cadence.
 
 ## Scope
 
@@ -150,7 +150,7 @@ Notes:
 - For the initial V2 rollout, the intended behavior is US Tuesday-to-Tuesday weekly windows.
 - Compute these metrics from stored MongoDB run data using `completed_at`, not by adding new per-player API fetches during summary generation.
 - Persist the resolved weekly window in sync metadata so reset-boundary behavior is easy to debug.
-- Future improvement: support region-specific weekly windows derived from each rostered player's own region instead of one configured region for the whole bot.
+- Future improvement: support region-specific weekly windows derived from each rostered player's own region instead of one configured region for the whole project.
 - Raider.IO `run-details` is not needed for these weekly counts; the normalized run fields already stored in V1 are sufficient.
 
 ### Weekly Gilded Crest Tracking
@@ -170,7 +170,7 @@ Open questions for implementation:
 
 Preferred direction:
 
-- Keep weekly run-count metrics inside the current bot.
+- Keep weekly run-count metrics inside Niru.
 - Treat crest tracking as a separate subsystem first, because it may require different Blizzard authentication, data collection, and persistence behavior.
 
 ### Optional Future Use Of Raider.IO Run Details
