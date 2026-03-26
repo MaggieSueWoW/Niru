@@ -84,12 +84,12 @@ class SummaryRow:
         return self.values
 
 
-def format_pacific_time(value: datetime | None) -> str:
-    """Format a datetime in Pacific time for sheet output."""
+def to_pacific_datetime(value: datetime | None) -> datetime | None:
+    """Convert a datetime to a naive Pacific datetime for sheet entry."""
 
     if value is None:
-        return ""
-    return ensure_utc(value).astimezone(PACIFIC_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
+        return None
+    return ensure_utc(value).astimezone(PACIFIC_TZ).replace(tzinfo=None)
 
 
 @dataclass(slots=True)

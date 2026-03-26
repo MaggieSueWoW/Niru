@@ -20,7 +20,7 @@ from niru.models import (
     SummaryRow,
     SyncStats,
     ensure_utc,
-    format_pacific_time,
+    to_pacific_datetime,
     utc_now,
 )
 from niru.roster import parse_roster_rows
@@ -151,7 +151,7 @@ def build_summary_rows(
             None
             if player.get("current_total_score") is None
             else round(float(player["current_total_score"]), 1),
-            format_pacific_time(player.get("last_successful_sync_at")),
+            to_pacific_datetime(player.get("last_successful_sync_at")),
         ]
         for dungeon in season_dungeons:
             short_name = dungeon.get("short_name", "")

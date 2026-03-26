@@ -70,6 +70,7 @@ class SummaryBuilderTests(unittest.TestCase):
             ],
         )
         self.assertEqual(row[0:4], ["us", "area-52", "Mythics", 382.1])
+        self.assertEqual(row[4], datetime(2026, 3, 26, 5, 0))
         self.assertEqual(row[5:9], [382.1, 13, 1, 2])
 
     def test_keeps_player_visible_without_runs(self) -> None:
@@ -96,7 +97,7 @@ class SummaryBuilderTests(unittest.TestCase):
         self.assertEqual(len(summary_rows), 1)
         self.assertEqual(
             summary_rows[0].to_sheet_row(),
-            ["us", "area-52", "Mythics", None, "", None, None, None, 0],
+            ["us", "area-52", "Mythics", None, None, None, None, None, 0],
         )
 
     def test_keeps_summary_rows_in_sheet_roster_order(self) -> None:

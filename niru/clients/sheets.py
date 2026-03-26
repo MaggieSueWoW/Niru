@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from datetime import datetime
 
 from niru.config import GoogleSettings
 
@@ -36,30 +37,34 @@ class GoogleSheetsClient:
         start_cell = self._settings.output_start_cell
         tab_name = self._settings.raw_tab_name
         start_column = "".join(ch for ch in start_cell if ch.isalpha())
-        end_column = _column_name(_column_number(start_column) + len(header) - 1)
-        clear_range = f"{tab_name}!{start_column}:{end_column}"
+        summary_end_column = _column_name(_column_number(start_column) + len(header) - 1)
+        metadata_label_column = _column_name(_column_number(summary_end_column) + 1)
+        metadata_value_column = _column_name(_column_number(summary_end_column) + 2)
         (
             self._service.spreadsheets()
             .values()
             .clear(
                 spreadsheetId=self._settings.sheet_id,
-                range=clear_range,
+                range=f"{tab_name}!{start_column}:{metadata_value_column}",
                 body={},
             )
             .execute()
         )
 
-        body = {
-            "values": [header, *[_normalize_sheet_row(row) for row in rows]],
-        }
+        timestamp_column = _find_timestamp_column(header=header, start_column=start_column)
+        values = [_build_header_row(header, timestamp_column)]
+        values.extend(
+            _normalize_sheet_row(row, include_metadata_columns=timestamp_column is not None)
+            for row in rows
+        )
         (
             self._service.spreadsheets()
             .values()
             .update(
                 spreadsheetId=self._settings.sheet_id,
                 range=f"{tab_name}!{start_cell}",
-                valueInputOption="RAW",
-                body=body,
+                valueInputOption="USER_ENTERED",
+                body={"values": values},
             )
             .execute()
         )
@@ -101,5 +106,38 @@ def _column_name(column_number: int) -> str:
     return "".join(reversed(chars))
 
 
-def _normalize_sheet_row(row: list[object]) -> list[object]:
-    return ["" if value is None else value for value in row]
+def _normalize_sheet_row(
+    row: list[object], *, include_metadata_columns: bool = False
+) -> list[object]:
+    normalized = [_normalize_sheet_value(value) for value in row]
+    if include_metadata_columns:
+        normalized.extend(["", ""])
+    return normalized
+
+
+def _normalize_sheet_value(value: object) -> object:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    return value
+
+
+def _timestamp_column_index(header: list[str]) -> int:
+    return header.index("last_successful_sync_time_pacific")
+
+
+def _find_timestamp_column(*, header: list[str], start_column: str) -> str | None:
+    if "last_successful_sync_time_pacific" not in header:
+        return None
+    return _column_name(_column_number(start_column) + _timestamp_column_index(header))
+
+
+def _build_last_updated_formula(timestamp_column: str) -> str:
+    return f'=IFERROR(MAX({timestamp_column}2:{timestamp_column}), "")'
+
+
+def _build_header_row(header: list[str], timestamp_column: str | None) -> list[object]:
+    if timestamp_column is None:
+        return header
+    return [*header, "last_updated_pacific", _build_last_updated_formula(timestamp_column)]
