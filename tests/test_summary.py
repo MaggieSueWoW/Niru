@@ -98,3 +98,34 @@ class SummaryBuilderTests(unittest.TestCase):
             summary_rows[0].to_sheet_row(),
             ["us", "area-52", "Mythics", None, "", None, None, None, 0],
         )
+
+    def test_keeps_summary_rows_in_sheet_roster_order(self) -> None:
+        players = [
+            {
+                "player_key": "us/area-52/second",
+                "sheet_row_number": 3,
+                "region": "us",
+                "realm": "area-52",
+                "name": "Second",
+                "is_valid": True,
+                "current_total_score": 999.9,
+                "current_dungeon_scores": {},
+            },
+            {
+                "player_key": "us/area-52/first",
+                "sheet_row_number": 2,
+                "region": "us",
+                "realm": "area-52",
+                "name": "First",
+                "is_valid": True,
+                "current_total_score": 1.0,
+                "current_dungeon_scores": {},
+            },
+        ]
+
+        summary_rows = build_summary_rows(players, [], [])
+
+        self.assertEqual(
+            [row.to_sheet_row()[2] for row in summary_rows],
+            ["First", "Second"],
+        )

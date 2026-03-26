@@ -126,16 +126,16 @@ def build_summary_rows(
         for player_key in player_keys:
             grouped_runs[player_key].append(run)
 
-    sorted_players = sorted(
-        players,
+    rows: list[SummaryRow] = []
+    players_in_roster_order = sorted(
+        enumerate(players),
         key=lambda item: (
-            -(float(item["current_total_score"]) if item.get("current_total_score") is not None else -1.0),
-            item["player_key"],
+            item[1].get("sheet_row_number") is None,
+            item[1].get("sheet_row_number", 0),
+            item[0],
         ),
     )
-
-    rows: list[SummaryRow] = []
-    for player in sorted_players:
+    for _, player in players_in_roster_order:
         runs_for_player = grouped_runs.get(player["player_key"], [])
         by_dungeon: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for run in runs_for_player:
