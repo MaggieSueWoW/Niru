@@ -1,0 +1,338 @@
+"""MongoDB persistence layer."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from mplusbot.config import MongoSettings
+from mplusbot.models import PlayerDataStatus, RosterEntry, SeasonDungeon
+
+
+def _safe_isoformat(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value:
+        normalized = value.replace("Z", "+00:00")
+        return datetime.fromisoformat(normalized)
+    return None
+
+
+class MongoRepository:
+    """Mongo-backed store for players, runs, and sync metadata."""
+
+    def __init__(self, settings: MongoSettings) -> None:
+        from pymongo import ASCENDING, MongoClient
+
+        self._client = MongoClient(settings.uri)
+        self._db = self._client[settings.database]
+        self.players = self._db[settings.players_collection]
+        self.runs = self._db[settings.runs_collection]
+        self.sync_cycles = self._db[settings.sync_cycles_collection]
+        self.season_dungeons = self._db["season_dungeons"]
+        self.players.create_index([("player_key", ASCENDING)], unique=True)
+        self.runs.create_index([("keystone_run_id", ASCENDING)], unique=True)
+        self.runs.create_index([("completed_at", ASCENDING)])
+        self.runs.create_index([("participants.player_key", ASCENDING)])
+        self.runs.create_index([("discovered_from_player_keys", ASCENDING)])
+        self.season_dungeons.create_index([("season", ASCENDING), ("slug", ASCENDING)], unique=True)
+        self.season_dungeons.create_index([("season", ASCENDING), ("short_name", ASCENDING)])
+
+    def sync_roster(self, entries: list[RosterEntry], *, seen_at: datetime) -> None:
+        """Upsert current roster entries and deactivate anything no longer listed."""
+
+        active_keys = [entry.player_key for entry in entries]
+        self.players.update_many({}, {"$set": {"is_active": False}})
+        for entry in entries:
+            base_doc: dict[str, Any] = {
+                "player_key": entry.player_key,
+                "sheet_row_number": entry.row_number,
+                "sheet_value": entry.raw_value,
+                "is_active": True,
+                "is_valid": entry.is_valid,
+                "status": entry.status.value,
+                "status_message": entry.status_message,
+                "last_seen_in_sheet_at": seen_at,
+            }
+            if entry.identity:
+                base_doc.update(
+                    {
+                        "region": entry.identity.region,
+                        "realm": entry.identity.realm,
+                        "name": entry.identity.name,
+                    }
+                )
+            else:
+                base_doc.update({"region": "", "realm": "", "name": entry.raw_value.strip()})
+            self.players.update_one(
+                {"player_key": entry.player_key},
+                {
+                    "$set": base_doc,
+                    "$setOnInsert": {
+                        "current_dungeon_scores": {},
+                        "current_total_score": None,
+                        "gap_flag": False,
+                        "gap_message": "",
+                        "requires_backfill": entry.is_valid,
+                        "created_at": seen_at,
+                    },
+                },
+                upsert=True,
+            )
+        if active_keys:
+            self.players.update_many(
+                {"player_key": {"$nin": active_keys}},
+                {"$set": {"is_active": False}},
+            )
+
+    def list_active_players(self, *, limit: int) -> list[dict[str, Any]]:
+        """Return active roster documents."""
+
+        return list(self.players.find({"is_active": True}).sort("player_key").limit(limit))
+
+    def mark_sync_started(self, player_key: str, started_at: datetime) -> None:
+        """Record sync start time."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {"$set": {"last_sync_started_at": started_at}},
+        )
+
+    def mark_invalid_player(self, player_key: str, message: str, *, when: datetime) -> None:
+        """Persist an invalid player resolution failure."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "status": PlayerDataStatus.INVALID_PLAYER.value,
+                    "status_message": message,
+                    "last_error": message,
+                    "last_sync_completed_at": when,
+                }
+            },
+        )
+
+    def mark_sync_error(self, player_key: str, message: str, *, when: datetime) -> None:
+        """Persist a sync error."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "status": PlayerDataStatus.SYNC_ERROR.value,
+                    "status_message": message,
+                    "last_error": message,
+                    "last_sync_completed_at": when,
+                }
+            },
+        )
+
+    def mark_gap_flag(self, player_key: str, message: str) -> None:
+        """Set the potential-gap flag for a player."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {"$set": {"gap_flag": True, "gap_message": message}},
+        )
+
+    def update_player_profile(
+        self,
+        player_key: str,
+        *,
+        current_dungeon_scores: dict[str, float],
+        current_total_score: float | None,
+        synced_at: datetime,
+    ) -> None:
+        """Persist successful profile sync metadata."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "status": PlayerDataStatus.OK.value,
+                    "status_message": "",
+                    "last_error": "",
+                    "current_dungeon_scores": current_dungeon_scores,
+                    "current_total_score": current_total_score,
+                    "last_sync_completed_at": synced_at,
+                    "last_successful_sync_at": synced_at,
+                    "requires_backfill": False,
+                }
+            },
+        )
+
+    def get_known_run_ids(self, run_ids: list[int]) -> set[int]:
+        """Return the run IDs already stored."""
+
+        if not run_ids:
+            return set()
+        return {
+            doc["keystone_run_id"]
+            for doc in self.runs.find(
+                {"keystone_run_id": {"$in": run_ids}},
+                {"keystone_run_id": 1},
+            )
+        }
+
+    def attach_player_to_run(self, run_id: int, player_key: str) -> None:
+        """Ensure a player's key is attached to a known run."""
+
+        self.runs.update_one(
+            {"keystone_run_id": run_id},
+            {"$addToSet": {"discovered_from_player_keys": player_key}},
+        )
+
+    def upsert_run_stub(
+        self,
+        run: dict[str, Any],
+        *,
+        player_key: str,
+        season: str,
+        synced_at: datetime,
+    ) -> None:
+        """Store a run stub discovered from a character profile."""
+
+        run_id = int(run["keystone_run_id"])
+        stub = {
+            "keystone_run_id": run_id,
+            "season": season,
+            "dungeon": run.get("dungeon", ""),
+            "short_name": run.get("short_name", ""),
+            "mythic_level": run.get("mythic_level"),
+            "completed_at": _safe_isoformat(run.get("completed_at")),
+            "clear_time_ms": run.get("clear_time_ms"),
+            "par_time_ms": run.get("par_time_ms"),
+            "num_keystone_upgrades": run.get("num_keystone_upgrades"),
+            "map_challenge_mode_id": run.get("map_challenge_mode_id"),
+            "zone_id": run.get("zone_id"),
+            "zone_expansion_id": run.get("zone_expansion_id"),
+            "icon_url": run.get("icon_url"),
+            "background_image_url": run.get("background_image_url"),
+            "score": run.get("score"),
+            "url": run.get("url"),
+            "affixes": run.get("affixes", []),
+            "spec": run.get("spec"),
+            "role": run.get("role"),
+            "detail_loaded": False,
+            "last_seen_at": synced_at,
+        }
+        self.runs.update_one(
+            {"keystone_run_id": run_id},
+            {
+                "$set": stub,
+                "$addToSet": {"discovered_from_player_keys": player_key},
+                "$setOnInsert": {"created_at": synced_at, "participants": []},
+            },
+            upsert=True,
+        )
+
+    def update_run_details(
+        self,
+        *,
+        run_id: int,
+        payload: dict[str, Any],
+        player_key: str,
+        synced_at: datetime,
+    ) -> None:
+        """Merge detailed run payload into MongoDB."""
+
+        participants = []
+        for raw_participant in payload.get("roster", []):
+            character = raw_participant.get("character", raw_participant)
+            region = (
+                (character.get("region") or {}).get("slug")
+                or character.get("region")
+                or ""
+            )
+            realm = ((character.get("realm") or {}).get("slug")) or character.get("realm") or ""
+            name = character.get("name", "")
+            participant_key = ""
+            if region and realm and name:
+                participant_key = f"{str(region).lower()}/{str(realm).lower()}/{str(name).lower()}"
+            participants.append(
+                {
+                    "player_key": participant_key,
+                    "region": str(region).lower(),
+                    "realm": str(realm).lower(),
+                    "name": name,
+                    "role": raw_participant.get("role") or character.get("role"),
+                    "class": ((character.get("class") or {}).get("name")),
+                    "spec": ((character.get("spec") or {}).get("name")),
+                    "raw": raw_participant,
+                }
+            )
+
+        self.runs.update_one(
+            {"keystone_run_id": run_id},
+            {
+                "$set": {
+                    "detail_loaded": True,
+                    "detail_payload": payload,
+                    "participants": participants,
+                    "last_seen_at": synced_at,
+                    "completed_at": _safe_isoformat(
+                        payload.get("completed_at")
+                        or payload.get("run", {}).get("completed_at")
+                    ),
+                },
+                "$addToSet": {"discovered_from_player_keys": player_key},
+            },
+        )
+
+    def get_runs_for_players(self, player_keys: list[str]) -> list[dict[str, Any]]:
+        """Fetch runs relevant to a set of players."""
+
+        if not player_keys:
+            return []
+        return list(
+            self.runs.find(
+                {
+                    "$or": [
+                        {"participants.player_key": {"$in": player_keys}},
+                        {"discovered_from_player_keys": {"$in": player_keys}},
+                    ]
+                }
+            )
+        )
+
+    def replace_season_dungeons(
+        self, *, season: str, dungeons: list[SeasonDungeon], synced_at: datetime
+    ) -> None:
+        """Replace the dungeon catalog for a season."""
+
+        self.season_dungeons.delete_many({"season": season})
+        if not dungeons:
+            return
+        self.season_dungeons.insert_many(
+            [
+                {
+                    "season": season,
+                    "slug": dungeon.slug,
+                    "name": dungeon.name,
+                    "short_name": dungeon.short_name,
+                    "challenge_mode_id": dungeon.challenge_mode_id,
+                    "keystone_timer_seconds": dungeon.keystone_timer_seconds,
+                    "icon_url": dungeon.icon_url,
+                    "background_image_url": dungeon.background_image_url,
+                    "last_synced_at": synced_at,
+                }
+                for dungeon in dungeons
+            ],
+            ordered=True,
+        )
+
+    def list_season_dungeons(self, *, season: str) -> list[dict[str, Any]]:
+        """Return season dungeon metadata in stable short-name order."""
+
+        return list(self.season_dungeons.find({"season": season}).sort("short_name"))
+
+    def store_sync_cycle(self, document: dict[str, Any]) -> None:
+        """Record a sync cycle."""
+
+        self.sync_cycles.insert_one(document)
+
+    def close(self) -> None:
+        """Close the MongoDB connection."""
+
+        self._client.close()

@@ -1,0 +1,993 @@
+{
+    "name": "Nyph",
+    "race": "Haranir",
+    "class": "Druid",
+    "active_spec_name": "Restoration",
+    "active_spec_role": "HEALING",
+    "gender": "female",
+    "faction": "alliance",
+    "achievement_points": 31395,
+    "thumbnail_url": "https://render.worldofwarcraft.com/us/character/proudmoore/130/239322498-avatar.jpg?alt=/wow/static/images/2d/avatar/86-1.jpg",
+    "region": "us",
+    "realm": "Proudmoore",
+    "last_crawled_at": "2026-03-26T06:37:20.000Z",
+    "profile_url": "https://raider.io/characters/us/proudmoore/Nyph",
+    "profile_banner": "alliancebanner16",
+    "mythic_plus_scores_by_season": [
+        {
+            "season": "season-mn-1",
+            "scores": {
+                "all": 2541.3,
+                "dps": 0,
+                "healer": 2541.3,
+                "tank": 0,
+                "spec_0": 0,
+                "spec_1": 0,
+                "spec_2": 0,
+                "spec_3": 2541.3
+            },
+            "segments": {
+                "all": {
+                    "score": 2541.3,
+                    "color": "#bc3fd1"
+                },
+                "dps": {
+                    "score": 0,
+                    "color": "#ffffff"
+                },
+                "healer": {
+                    "score": 2541.3,
+                    "color": "#bc3fd1"
+                },
+                "tank": {
+                    "score": 0,
+                    "color": "#ffffff"
+                },
+                "spec_0": {
+                    "score": 0,
+                    "color": "#ffffff"
+                },
+                "spec_1": {
+                    "score": 0,
+                    "color": "#ffffff"
+                },
+                "spec_2": {
+                    "score": 0,
+                    "color": "#ffffff"
+                },
+                "spec_3": {
+                    "score": 2541.3,
+                    "color": "#bc3fd1"
+                }
+            }
+        }
+    ],
+    "mythic_plus_recent_runs": [
+        {
+            "dungeon": "Maisara Caverns",
+            "short_name": "MC",
+            "mythic_level": 9,
+            "completed_at": "2026-03-26T06:34:48.000Z",
+            "clear_time_ms": 1701075,
+            "keystone_run_id": 843836,
+            "par_time_ms": 1980999,
+            "num_keystone_upgrades": 1,
+            "map_challenge_mode_id": 560,
+            "zone_id": 16395,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_maisarahills.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/maisara-caverns.jpg",
+            "score": 295.3,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/843836-9-maisara-caverns",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Magisters' Terrace",
+            "short_name": "MT",
+            "mythic_level": 10,
+            "completed_at": "2026-03-26T01:30:14.000Z",
+            "clear_time_ms": 2088351,
+            "keystone_run_id": 716068,
+            "par_time_ms": 2040999,
+            "num_keystone_upgrades": 0,
+            "map_challenge_mode_id": 558,
+            "zone_id": 15829,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_magistersterrace.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/magisters-terrace.jpg",
+            "score": 304.1,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/716068-10-magisters-terrace",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Seat of the Triumvirate",
+            "short_name": "SEAT",
+            "mythic_level": 10,
+            "completed_at": "2026-03-26T00:45:11.000Z",
+            "clear_time_ms": 1599413,
+            "keystone_run_id": 691754,
+            "par_time_ms": 2100999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 239,
+            "zone_id": 8910,
+            "zone_expansion_id": 6,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_triumvirate_darknaaru.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion6/base/seat-of-the-triumvirate.jpg",
+            "score": 329,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/691754-10-seat-of-the-triumvirate",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Windrunner Spire",
+            "short_name": "WS",
+            "mythic_level": 10,
+            "completed_at": "2026-03-26T00:12:43.000Z",
+            "clear_time_ms": 1439238,
+            "keystone_run_id": 673135,
+            "par_time_ms": 1980999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 557,
+            "zone_id": 15808,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_windrunnerspire.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/windrunner-spire.jpg",
+            "score": 330.3,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/673135-10-windrunner-spire",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Skyreach",
+            "short_name": "SR",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T23:40:18.000Z",
+            "clear_time_ms": 1335637,
+            "keystone_run_id": 654732,
+            "par_time_ms": 1680999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 161,
+            "zone_id": 6988,
+            "zone_expansion_id": 5,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_arakkoaspires.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion5/base/skyreach.jpg",
+            "score": 327.7,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/654732-10-skyreach",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Magisters' Terrace",
+            "short_name": "MT",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T23:10:03.000Z",
+            "clear_time_ms": 1608289,
+            "keystone_run_id": 635763,
+            "par_time_ms": 2040999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 558,
+            "zone_id": 15829,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_magistersterrace.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/magisters-terrace.jpg",
+            "score": 328,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/635763-10-magisters-terrace",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Maisara Caverns",
+            "short_name": "MC",
+            "mythic_level": 9,
+            "completed_at": "2026-03-25T22:35:24.000Z",
+            "clear_time_ms": 1367774,
+            "keystone_run_id": 614560,
+            "par_time_ms": 1980999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 560,
+            "zone_id": 16395,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_maisarahills.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/maisara-caverns.jpg",
+            "score": 301.6,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/614560-9-maisara-caverns",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Skyreach",
+            "short_name": "SR",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T21:05:56.000Z",
+            "clear_time_ms": 1350296,
+            "keystone_run_id": 561088,
+            "par_time_ms": 1680999,
+            "num_keystone_upgrades": 1,
+            "map_challenge_mode_id": 161,
+            "zone_id": 6988,
+            "zone_expansion_id": 5,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_arakkoaspires.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion5/base/skyreach.jpg",
+            "score": 327.4,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/561088-10-skyreach",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Algeth'ar Academy",
+            "short_name": "AA",
+            "mythic_level": 9,
+            "completed_at": "2026-03-25T20:31:08.000Z",
+            "clear_time_ms": 1391927,
+            "keystone_run_id": 543058,
+            "par_time_ms": 1740999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 402,
+            "zone_id": 14032,
+            "zone_expansion_id": 9,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_dragonacademy.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion9/base/algethar-academy.jpg",
+            "score": 297.5,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/543058-9-algethar-academy",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Skyreach",
+            "short_name": "SR",
+            "mythic_level": 8,
+            "completed_at": "2026-03-25T20:00:38.000Z",
+            "clear_time_ms": 1325662,
+            "keystone_run_id": 528841,
+            "par_time_ms": 1680999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 161,
+            "zone_id": 6988,
+            "zone_expansion_id": 5,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_arakkoaspires.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion5/base/skyreach.jpg",
+            "score": 282.9,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/528841-8-skyreach",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        }
+    ],
+    "mythic_plus_best_runs": [
+        {
+            "dungeon": "Windrunner Spire",
+            "short_name": "WS",
+            "mythic_level": 10,
+            "completed_at": "2026-03-26T00:12:43.000Z",
+            "clear_time_ms": 1439238,
+            "keystone_run_id": 673135,
+            "par_time_ms": 1980999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 557,
+            "zone_id": 15808,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_windrunnerspire.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/windrunner-spire.jpg",
+            "score": 330.3,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/673135-10-windrunner-spire",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Seat of the Triumvirate",
+            "short_name": "SEAT",
+            "mythic_level": 10,
+            "completed_at": "2026-03-26T00:45:11.000Z",
+            "clear_time_ms": 1599413,
+            "keystone_run_id": 691754,
+            "par_time_ms": 2100999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 239,
+            "zone_id": 8910,
+            "zone_expansion_id": 6,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_triumvirate_darknaaru.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion6/base/seat-of-the-triumvirate.jpg",
+            "score": 329,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/691754-10-seat-of-the-triumvirate",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Magisters' Terrace",
+            "short_name": "MT",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T23:10:03.000Z",
+            "clear_time_ms": 1608289,
+            "keystone_run_id": 635763,
+            "par_time_ms": 2040999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 558,
+            "zone_id": 15829,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_magistersterrace.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/magisters-terrace.jpg",
+            "score": 328,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/635763-10-magisters-terrace",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Skyreach",
+            "short_name": "SR",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T23:40:18.000Z",
+            "clear_time_ms": 1335637,
+            "keystone_run_id": 654732,
+            "par_time_ms": 1680999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 161,
+            "zone_id": 6988,
+            "zone_expansion_id": 5,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_arakkoaspires.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion5/base/skyreach.jpg",
+            "score": 327.7,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/654732-10-skyreach",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Pit of Saron",
+            "short_name": "POS",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T19:34:37.000Z",
+            "clear_time_ms": 1520617,
+            "keystone_run_id": 513143,
+            "par_time_ms": 1800999,
+            "num_keystone_upgrades": 1,
+            "map_challenge_mode_id": 556,
+            "zone_id": 4813,
+            "zone_expansion_id": 2,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_icecrown_pitofsaron.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion2/base/pit-of-saron.jpg",
+            "score": 325.8,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/513143-10-pit-of-saron",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Maisara Caverns",
+            "short_name": "MC",
+            "mythic_level": 9,
+            "completed_at": "2026-03-25T22:35:24.000Z",
+            "clear_time_ms": 1367774,
+            "keystone_run_id": 614560,
+            "par_time_ms": 1980999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 560,
+            "zone_id": 16395,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_maisarahills.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/maisara-caverns.jpg",
+            "score": 301.6,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/614560-9-maisara-caverns",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Nexus-Point Xenas",
+            "short_name": "NPX",
+            "mythic_level": 10,
+            "completed_at": "2026-03-25T17:22:01.000Z",
+            "clear_time_ms": 1970961,
+            "keystone_run_id": 441681,
+            "par_time_ms": 1800999,
+            "num_keystone_upgrades": 0,
+            "map_challenge_mode_id": 559,
+            "zone_id": 16573,
+            "zone_expansion_id": 11,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_voidscararena.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion11/base/nexuspoint-xenas.jpg",
+            "score": 301.5,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                },
+                {
+                    "id": 9,
+                    "name": "Tyrannical",
+                    "description": "Bosses have 25% more health. Bosses and their minions inflict up to 15% increased damage.",
+                    "icon": "achievement_boss_archaedas",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_boss_archaedas.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=9"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/441681-10-nexuspoint-xenas",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        },
+        {
+            "dungeon": "Algeth'ar Academy",
+            "short_name": "AA",
+            "mythic_level": 9,
+            "completed_at": "2026-03-25T20:31:08.000Z",
+            "clear_time_ms": 1391927,
+            "keystone_run_id": 543058,
+            "par_time_ms": 1740999,
+            "num_keystone_upgrades": 2,
+            "map_challenge_mode_id": 402,
+            "zone_id": 14032,
+            "zone_expansion_id": 9,
+            "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_dragonacademy.jpg",
+            "background_image_url": "https://cdn.raiderio.net/images/dungeons/expansion9/base/algethar-academy.jpg",
+            "score": 297.5,
+            "affixes": [
+                {
+                    "id": 162,
+                    "name": "Xal'atath's Bargain: Pulsar",
+                    "description": "While in combat, Xal'atath summons pulsars that orbit players.",
+                    "icon": "inv_cosmicvoid_nova",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/inv_cosmicvoid_nova.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=162"
+                },
+                {
+                    "id": 10,
+                    "name": "Fortified",
+                    "description": "Non-boss enemies have 20% more health and inflict up to 20% increased damage.",
+                    "icon": "ability_toughness",
+                    "icon_url": "https://cdn.raiderio.net/images/wow/icons/large/ability_toughness.jpg",
+                    "wowhead_url": "https://wowhead.com/affix=10"
+                }
+            ],
+            "url": "https://raider.io/mythic-plus-runs/season-mn-1/543058-9-algethar-academy",
+            "spec": {
+                "id": 105,
+                "name": "Restoration",
+                "slug": "restoration",
+                "class_id": 11,
+                "role": "healer",
+                "is_melee": false,
+                "patch": "1.0.0",
+                "ordinal": 3
+            },
+            "role": "healer"
+        }
+    ]
+}

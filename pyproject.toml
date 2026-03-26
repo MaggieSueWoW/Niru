@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mplusbot"
+version = "0.1.0"
+description = "A Mythic+ roster bot that syncs Raider.IO data into MongoDB and Google Sheets."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "certifi>=2025.1.31",
+  "google-api-python-client>=2.170.0",
+  "google-auth>=2.40.0",
+  "httplib2>=0.22.0",
+  "PyYAML>=6.0.2",
+  "pymongo>=4.11.0",
+  "python-dotenv>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black>=25.1.0",
+  "isort>=6.0.1",
+  "mypy>=1.15.0",
+  "pytest>=8.3.5",
+]
+
+[project.scripts]
+mplusbot = "mplusbot.app:main"
+
+[tool.setuptools.packages.find]
+include = ["mplusbot*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

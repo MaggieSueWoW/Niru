@@ -1,0 +1,29 @@
+google:
+  sheet_id: "1z7gzGRvDKkwHrGLxjJqE4B1Hi0QAQDWJ2DiiHmDBoNw"
+  raw_tab_name: "raw_data"
+  roster_column: "A"
+  roster_start_row: 2
+  output_start_cell: "C1"
+
+sync:
+  interval_minutes: 15
+  current_season: "season-mn-1"
+  max_players_per_cycle: 250
+  gap_detection_cycles: 2
+
+raiderio:
+  base_url: "https://raider.io/api/v1"
+  access_key_enabled: false
+  requests_per_minute_cap: 60
+  timeout_seconds: 30
+  retry_attempts: 4
+  backoff_seconds: 2.0
+
+mongodb:
+  database: "mplusbot"
+  players_collection: "players"
+  runs_collection: "runs"
+  sync_cycles_collection: "sync_cycles"
+
+logging:
+  level: "INFO"
