@@ -56,12 +56,12 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 ### `.env`
 
 - `MONGODB_URI`
+- `GOOGLE_SHEET_ID`
 - `GOOGLE_SERVICE_ACCOUNT_FILE` or `GOOGLE_SERVICE_ACCOUNT_JSON`
 - `RAIDERIO_ACCESS_KEY` optional
 
 ### `config.yaml`
 
-- `google.sheet_id`
 - `google.raw_tab_name`
 - `google.roster_column`
 - `google.roster_start_row`

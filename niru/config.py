@@ -106,7 +106,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
 
     return Settings(
         google=GoogleSettings(
-            sheet_id=_require_text(google_raw.get("sheet_id"), name="google.sheet_id"),
+            sheet_id=_require_text(os.getenv("GOOGLE_SHEET_ID"), name="GOOGLE_SHEET_ID"),
             raw_tab_name=_require_text(
                 google_raw.get("raw_tab_name"), name="google.raw_tab_name"
             ),
