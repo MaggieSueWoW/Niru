@@ -118,14 +118,48 @@ python main.py --config /path/to/config.yaml --mode once
 
 ## Docker
 
-Build and run:
+Build and run directly:
 
 ```bash
 docker build -t niru .
 docker run --rm --env-file .env -v "$(pwd)/config.yaml:/app/config.yaml:ro" niru
 ```
 
-Make sure the container can reach MongoDB and the Google service account file path you configure.
+Or use the helper script:
+
+```bash
+./scripts/docker.sh once
+./scripts/docker.sh loop
+```
+
+`./scripts/docker.sh loop` now starts the container detached by default and uses Docker's `unless-stopped` restart policy so it stays up across failures and restarts until you stop it explicitly.
+
+The helper script does three important things for local runs:
+
+- builds the image first
+- mounts `config.yaml` into `/app/config.yaml`
+- remaps `service-account.json` into the container and overrides `GOOGLE_SERVICE_ACCOUNT_FILE`
+
+When the active Docker context is remote, the helper script switches behavior automatically:
+
+- it uses the `config.yaml` baked into the image instead of bind-mounting your local file
+- it reads your local `service-account.json` and sends it as `GOOGLE_SERVICE_ACCOUNT_JSON`
+- it still passes your local `.env` with `--env-file`
+
+Useful flags:
+
+- `./scripts/docker.sh build`
+- `./scripts/docker.sh once --no-build`
+- `./scripts/docker.sh loop --detach`
+- `./scripts/docker.sh loop --attach`
+- `./scripts/docker.sh loop --restart on-failure`
+- `./scripts/docker.sh once -- --add-host host.docker.internal:host-gateway`
+- `./scripts/docker.sh once --service-account-json`
+
+Notes:
+
+- If MongoDB is running on your laptop, `localhost` from inside the container will not reach it. Use a host that the container can resolve, such as `host.docker.internal` on Docker Desktop.
+- If you switch Docker context to a remote daemon such as Synology, bind mounts refer to paths on that remote host, not your laptop. The helper script avoids that by default, but config changes now require a rebuild because the remote container uses the config baked into the image.
 
 ## Testing
 

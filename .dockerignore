@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+.gitignore
+.idea
+.mypy_cache
+.pytest_cache
+.venv
+__pycache__
+*.pyc
+docs
+tests
+mplusbot.egg-info
