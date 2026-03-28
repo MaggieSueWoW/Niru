@@ -74,6 +74,16 @@ run_docker() {
   return "$status"
 }
 
+remove_existing_container() {
+  local existing_container
+
+  existing_container="$(docker ps -aq --filter "name=^${CONTAINER_NAME}$" 2>/dev/null || true)"
+  if [[ -n "$existing_container" ]]; then
+    echo "Removing existing container: $CONTAINER_NAME" >&2
+    run_docker rm -f "$CONTAINER_NAME" >/dev/null
+  fi
+}
+
 command="${1:-run}"
 if [[ $# -gt 0 ]]; then
   shift
@@ -192,6 +202,7 @@ if [[ "$mode" != "once" && "$mode" != "loop" ]]; then
 fi
 
 require_file "$ENV_FILE" "env file"
+remove_existing_container
 
 is_remote_context=0
 case "$DOCKER_CONTEXT" in
