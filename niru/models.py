@@ -66,6 +66,7 @@ class SeasonDungeon:
     slug: str
     name: str
     short_name: str
+    dungeon_id: int | None = None
     challenge_mode_id: int | None = None
     keystone_timer_seconds: int | None = None
     icon_url: str = ""

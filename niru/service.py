@@ -422,6 +422,7 @@ class SyncService:
         season_dungeons = [
             SeasonDungeon(
                 season=season,
+                dungeon_id=dungeon.get("id"),
                 slug=str(dungeon.get("slug", "")),
                 name=str(dungeon.get("name", "")),
                 short_name=str(dungeon.get("short_name", "")),

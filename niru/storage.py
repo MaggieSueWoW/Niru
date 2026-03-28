@@ -90,6 +90,11 @@ class MongoRepository:
 
         return list(self.players.find({"is_active": True}).sort("player_key").limit(limit))
 
+    def list_all_active_players(self) -> list[dict[str, Any]]:
+        """Return all active roster documents for manual backfill operations."""
+
+        return list(self.players.find({"is_active": True}).sort("player_key"))
+
     def mark_sync_started(self, player_key: str, started_at: datetime) -> None:
         """Record sync start time."""
 
@@ -263,10 +268,26 @@ class MongoRepository:
                 }
             )
 
+        dungeon = payload.get("dungeon") or payload.get("run", {}).get("dungeon") or {}
+        season = payload.get("season") or payload.get("run", {}).get("season") or ""
+
         self.runs.update_one(
             {"keystone_run_id": run_id},
             {
                 "$set": {
+                    "keystone_run_id": run_id,
+                    "season": season,
+                    "dungeon": dungeon.get("name", ""),
+                    "short_name": dungeon.get("short_name", ""),
+                    "mythic_level": payload.get("mythic_level"),
+                    "score": payload.get("score"),
+                    "clear_time_ms": payload.get("clear_time_ms"),
+                    "par_time_ms": payload.get("keystone_time_ms"),
+                    "num_keystone_upgrades": payload.get("num_chests"),
+                    "map_challenge_mode_id": dungeon.get("map_challenge_mode_id"),
+                    "zone_id": dungeon.get("id"),
+                    "zone_expansion_id": dungeon.get("expansion_id"),
+                    "icon_url": dungeon.get("icon_url"),
                     "detail_loaded": True,
                     "detail_payload": payload,
                     "participants": participants,
@@ -277,7 +298,9 @@ class MongoRepository:
                     ),
                 },
                 "$addToSet": {"discovered_from_player_keys": player_key},
+                "$setOnInsert": {"created_at": synced_at},
             },
+            upsert=True,
         )
 
     def get_runs_for_players(self, player_keys: list[str]) -> list[dict[str, Any]]:
@@ -308,6 +331,7 @@ class MongoRepository:
             [
                 {
                     "season": season,
+                    "dungeon_id": dungeon.dungeon_id,
                     "slug": dungeon.slug,
                     "name": dungeon.name,
                     "short_name": dungeon.short_name,
@@ -326,6 +350,42 @@ class MongoRepository:
         """Return season dungeon metadata in stable short-name order."""
 
         return list(self.season_dungeons.find({"season": season}).sort("short_name"))
+
+    def get_player_character_id(self, *, player_key: str) -> int | None:
+        """Return a cached Raider.IO website character ID when available."""
+
+        document = self.players.find_one(
+            {"player_key": player_key},
+            {"raiderio_character_id": 1},
+        )
+        if not document:
+            return None
+        value = document.get("raiderio_character_id")
+        return int(value) if value is not None else None
+
+    def cache_player_character_id(
+        self,
+        *,
+        player_key: str,
+        identity: PlayerIdentity,
+        character_id: int,
+        resolved_at: datetime,
+    ) -> None:
+        """Persist a Raider.IO website character ID for later backfills."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "region": identity.region,
+                    "realm": identity.realm,
+                    "name": identity.name,
+                    "raiderio_character_id": int(character_id),
+                    "raiderio_character_id_resolved_at": resolved_at,
+                }
+            },
+            upsert=True,
+        )
 
     def store_sync_cycle(self, document: dict[str, Any]) -> None:
         """Record a sync cycle."""
