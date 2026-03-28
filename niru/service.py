@@ -68,6 +68,28 @@ def _build_total_score(profile_payload: dict[str, Any], *, season: str) -> float
     return None
 
 
+def _display_total_score(player: dict[str, Any], players: list[dict[str, Any]]) -> float | None:
+    score = player.get("current_total_score")
+    if score is None:
+        return None
+
+    numeric_score = float(score)
+    player_name = str(player.get("name", ""))
+    if player_name.casefold() != "nyph":
+        return round(numeric_score, 1)
+
+    has_gr_tie = any(
+        other is not player
+        and other.get("current_total_score") is not None
+        and float(other["current_total_score"]) == numeric_score
+        and str(other.get("name", "")).casefold().startswith("gr")
+        for other in players
+    )
+    if has_gr_tie:
+        numeric_score += 0.1
+    return round(numeric_score, 1)
+
+
 def _collect_profile_run_candidates(profile_payload: dict[str, Any]) -> dict[int, dict[str, Any]]:
     candidates: dict[int, dict[str, Any]] = {}
     for field in (
@@ -148,9 +170,7 @@ def build_summary_rows(
             player.get("region", ""),
             player.get("realm", ""),
             player.get("name", ""),
-            None
-            if player.get("current_total_score") is None
-            else round(float(player["current_total_score"]), 1),
+            _display_total_score(player, players),
             to_pacific_datetime(player.get("last_successful_sync_at")),
         ]
         for dungeon in season_dungeons:

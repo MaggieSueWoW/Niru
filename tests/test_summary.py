@@ -130,3 +130,32 @@ class SummaryBuilderTests(unittest.TestCase):
             [row.to_sheet_row()[2] for row in summary_rows],
             ["First", "Second"],
         )
+
+    def test_adds_tiebreak_bonus_for_nyph_when_tied_with_gr_name(self) -> None:
+        players = [
+            {
+                "player_key": "us/proudmoore/nyph",
+                "sheet_row_number": 2,
+                "region": "us",
+                "realm": "proudmoore",
+                "name": "Nyph",
+                "is_valid": True,
+                "current_total_score": 3210.4,
+                "current_dungeon_scores": {},
+            },
+            {
+                "player_key": "us/proudmoore/gryph",
+                "sheet_row_number": 3,
+                "region": "us",
+                "realm": "proudmoore",
+                "name": "Gryph",
+                "is_valid": True,
+                "current_total_score": 3210.4,
+                "current_dungeon_scores": {},
+            },
+        ]
+
+        summary_rows = build_summary_rows(players, [], [])
+
+        self.assertEqual(summary_rows[0].to_sheet_row()[3], 3210.5)
+        self.assertEqual(summary_rows[1].to_sheet_row()[3], 3210.4)
