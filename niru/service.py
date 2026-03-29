@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import timedelta
 import logging
+import random
 import signal
 import threading
 import time
@@ -258,16 +259,32 @@ class SyncService:
 
         self.install_signal_handlers()
         interval_seconds = self._settings.sync.interval_minutes * 60
+        consecutive_failures = 0
         while not self._stop_requested:
             cycle_started = time.monotonic()
-            self.run_cycle()
+            try:
+                self.run_cycle()
+                consecutive_failures = 0
+            except Exception:
+                consecutive_failures += 1
+                retry_delay = self._failure_backoff_seconds(consecutive_failures)
+                LOGGER.warning(
+                    "Sync loop will retry after a failed cycle",
+                    extra={
+                        "consecutive_failures": consecutive_failures,
+                        "retry_delay_seconds": round(retry_delay, 1),
+                    },
+                )
+                if self._stop_requested or self._wait_for_stop(retry_delay):
+                    break
+                continue
             if self._stop_requested:
                 break
             elapsed = time.monotonic() - cycle_started
             remaining = max(interval_seconds - elapsed, 0)
             if remaining > 0 and not self._stop_requested:
                 LOGGER.info("Sleeping before next cycle", extra={"sleep_seconds": round(remaining, 1)})
-                if self._stop_event.wait(timeout=remaining):
+                if self._wait_for_stop(remaining):
                     break
 
     def run_cycle(self) -> None:
@@ -294,19 +311,23 @@ class SyncService:
             )
             stats.active_players = len(active_players)
             stats.valid_players = len([player for player in active_players if player.get("is_valid")])
+            if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
+                refreshed_players = active_players
+            else:
+                for player in active_players:
+                    if self._stop_requested:
+                        LOGGER.info("Stop requested during player sync; ending cycle early")
+                        stats.partial = True
+                        break
+                    if not player.get("is_valid", False):
+                        continue
+                    self._sync_player(player=player, stats=stats, now=started_at)
+                    if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
+                        break
 
-            for player in active_players:
-                if self._stop_requested:
-                    LOGGER.info("Stop requested during player sync; ending cycle early")
-                    stats.partial = True
-                    break
-                if not player.get("is_valid", False):
-                    continue
-                self._sync_player(player=player, stats=stats, now=started_at)
-
-            refreshed_players = self._repository.list_active_players(
-                limit=self._settings.sync.max_players_per_cycle
-            )
+                refreshed_players = self._repository.list_active_players(
+                    limit=self._settings.sync.max_players_per_cycle
+                )
             player_keys = [player["player_key"] for player in refreshed_players]
             runs = self._repository.get_runs_for_players(player_keys)
             summary_header = build_summary_header(season_dungeons)
@@ -462,3 +483,40 @@ class SyncService:
             extra={"season": season, "dungeon_count": len(season_dungeons)},
         )
         return self._repository.list_season_dungeons(season=season)
+
+    def _skip_raiderio_sync_due_to_cooldown(self, *, stats: SyncStats) -> bool:
+        """Stop making Raider.IO calls while a persistent cooldown is active."""
+
+        cooldown_remaining = self._raiderio_client.get_cooldown_remaining_seconds()
+        if cooldown_remaining <= 0:
+            return False
+
+        cooldown_reason = self._raiderio_client.get_cooldown_reason() or "Raider.IO cooldown active"
+        message = f"{cooldown_reason}; using cached data for {round(cooldown_remaining, 1)}s."
+        if message not in stats.warnings:
+            LOGGER.warning(
+                "Skipping Raider.IO sync while cooldown is active",
+                extra={
+                    "cooldown_reason": cooldown_reason,
+                    "cooldown_remaining_seconds": round(cooldown_remaining, 1),
+                },
+            )
+            stats.warnings.append(message)
+        stats.partial = True
+        return True
+
+    def _failure_backoff_seconds(self, consecutive_failures: int) -> float:
+        """Compute capped exponential backoff with jitter for failed cycles."""
+
+        base_delay = self._settings.sync.failure_backoff_seconds
+        max_delay = self._settings.sync.max_failure_backoff_seconds
+        jitter = self._settings.sync.failure_backoff_jitter_seconds
+        exponential_delay = min(base_delay * (2 ** max(consecutive_failures - 1, 0)), max_delay)
+        if jitter <= 0:
+            return exponential_delay
+        return min(exponential_delay + random.uniform(0, jitter), max_delay)
+
+    def _wait_for_stop(self, timeout_seconds: float) -> bool:
+        """Wait for either the timeout or a stop signal."""
+
+        return self._stop_event.wait(timeout=max(timeout_seconds, 0.0))

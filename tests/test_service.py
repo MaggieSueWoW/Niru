@@ -6,6 +6,29 @@ from niru.models import PlayerDataStatus
 from niru.service import SyncService, build_summary_header
 
 
+def make_settings():
+    return type(
+        "Settings",
+        (),
+        {
+            "google": type("Google", (), {"roster_start_row": 2})(),
+            "sync": type(
+                "Sync",
+                (),
+                {
+                    "max_players_per_cycle": 100,
+                    "interval_minutes": 15,
+                    "gap_detection_cycles": 2,
+                    "current_season": "season-mn-1",
+                    "failure_backoff_seconds": 30.0,
+                    "max_failure_backoff_seconds": 300.0,
+                    "failure_backoff_jitter_seconds": 0.0,
+                },
+            )(),
+        },
+    )()
+
+
 class FakeRepo:
     def __init__(self) -> None:
         self.players = []
@@ -135,6 +158,8 @@ class FakeSheets:
 class FakeRaiderIO:
     def __init__(self):
         self.api_calls = 0
+        self.cooldown_remaining = 0.0
+        self.cooldown_reason = ""
 
     def get_mythic_plus_static_data(self, *, expansion_id):
         self.api_calls += 1
@@ -196,25 +221,16 @@ class FakeRaiderIO:
             },
         )()
 
+    def get_cooldown_remaining_seconds(self):
+        return self.cooldown_remaining
+
+    def get_cooldown_reason(self):
+        return self.cooldown_reason
+
+
 class SyncServiceTests(unittest.TestCase):
     def test_run_cycle_writes_summary_rows(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {
-                "google": type("Google", (), {"roster_start_row": 2})(),
-                "sync": type(
-                    "Sync",
-                    (),
-                    {
-                        "max_players_per_cycle": 100,
-                        "interval_minutes": 15,
-                        "gap_detection_cycles": 2,
-                        "current_season": "season-mn-1",
-                    },
-                )(),
-            },
-        )()
+        settings = make_settings()
         repo = FakeRepo()
         sheets = FakeSheets(["us/area-52/Mythics"])
         raider = FakeRaiderIO()
@@ -240,23 +256,7 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(repo.sync_docs[0]["api_calls"], 2)
 
     def test_missing_player_still_publishes_row(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {
-                "google": type("Google", (), {"roster_start_row": 2})(),
-                "sync": type(
-                    "Sync",
-                    (),
-                    {
-                        "max_players_per_cycle": 100,
-                        "interval_minutes": 15,
-                        "gap_detection_cycles": 2,
-                        "current_season": "season-mn-1",
-                    },
-                )(),
-            },
-        )()
+        settings = make_settings()
         repo = FakeRepo()
         sheets = FakeSheets(["us/area-52/Missing"])
         raider = FakeRaiderIO()
@@ -273,23 +273,7 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][0:4], ["us", "area-52", "Missing", None])
 
     def test_stop_requested_breaks_sleep_wait(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {
-                "google": type("Google", (), {"roster_start_row": 2})(),
-                "sync": type(
-                    "Sync",
-                    (),
-                    {
-                        "max_players_per_cycle": 100,
-                        "interval_minutes": 15,
-                        "gap_detection_cycles": 2,
-                        "current_season": "season-mn-1",
-                    },
-                )(),
-            },
-        )()
+        settings = make_settings()
         repo = FakeRepo()
         sheets = FakeSheets([])
         raider = FakeRaiderIO()
@@ -305,23 +289,7 @@ class SyncServiceTests(unittest.TestCase):
         service.run_forever()
 
     def test_gap_detection_handles_naive_mongo_datetime(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {
-                "google": type("Google", (), {"roster_start_row": 2})(),
-                "sync": type(
-                    "Sync",
-                    (),
-                    {
-                        "max_players_per_cycle": 100,
-                        "interval_minutes": 15,
-                        "gap_detection_cycles": 2,
-                        "current_season": "season-mn-1",
-                    },
-                )(),
-            },
-        )()
+        settings = make_settings()
         repo = FakeRepo()
         repo.players = [
             {
@@ -348,3 +316,58 @@ class SyncServiceTests(unittest.TestCase):
         service._sync_player(player=repo.players[0], stats=type("Stats", (), {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0})(), now=datetime(2026, 3, 26, 12, 0, tzinfo=UTC))
 
         self.assertTrue(repo.players[0]["gap_flag"])
+
+    def test_run_forever_retries_failed_cycle_without_crashing(self) -> None:
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        attempts = {"count": 0}
+        waits = []
+
+        def fake_run_cycle():
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise RuntimeError("boom")
+            service._stop_requested = True
+
+        def fake_wait(timeout_seconds):
+            waits.append(round(timeout_seconds, 1))
+            return False
+
+        service.install_signal_handlers = lambda: None  # type: ignore[method-assign]
+        service.run_cycle = fake_run_cycle  # type: ignore[method-assign]
+        service._wait_for_stop = fake_wait  # type: ignore[method-assign]
+
+        service.run_forever()
+
+        self.assertEqual(attempts["count"], 2)
+        self.assertEqual(waits, [30.0])
+
+    def test_run_cycle_skips_player_sync_when_cooldown_is_active(self) -> None:
+        repo = FakeRepo()
+        repo.season_dungeons = [
+            {
+                "season": "season-mn-1",
+                "slug": "darkflame-cleft",
+                "name": "Darkflame Cleft",
+                "short_name": "DFC",
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.cooldown_remaining = 120.0
+        raider.cooldown_reason = "Raider.IO rate limit hit"
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets(["us/area-52/Mythics"]),
+            raiderio_client=raider,
+        )
+
+        service.run_cycle()
+
+        self.assertEqual(raider.api_calls, 0)
+        self.assertTrue(repo.sync_docs[0]["partial"])
+        self.assertIn("Raider.IO rate limit hit", repo.sync_docs[0]["warnings"][0])

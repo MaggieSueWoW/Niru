@@ -10,6 +10,7 @@ from typing import Any
 from niru.clients.raiderio import RaiderIOClient, RaiderIOError
 from niru.clients.raiderio_internal import RaiderIOInternalClient
 from niru.config import Settings, load_settings
+from niru.control_state import RedisControlState
 from niru.logging_utils import configure_logging
 from niru.models import PlayerIdentity, SeasonDungeon, utc_now
 from niru.roster import parse_roster_value
@@ -343,8 +344,9 @@ def main() -> None:
     season = args.season or settings.sync.current_season
 
     repository = MongoRepository(settings.mongodb)
-    public_client = RaiderIOClient(settings.raiderio)
-    internal_client = RaiderIOInternalClient(settings.raiderio)
+    control_state = RedisControlState(settings.redis)
+    public_client = RaiderIOClient(settings.raiderio, control_state=control_state)
+    internal_client = RaiderIOInternalClient(settings.raiderio, control_state=control_state)
     service = BackfillService(
         settings=settings,
         repository=repository,

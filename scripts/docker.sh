@@ -31,7 +31,7 @@ Options:
   --service-account-json   Use GOOGLE_SERVICE_ACCOUNT_JSON instead of a file mount
   --detach                 Run the container in the background
   --attach                 Run the container in the foreground
-  --restart POLICY         Docker restart policy for run/loop (default: unless-stopped for loop, no for once)
+  --restart POLICY         Docker restart policy for run/loop (default: on-failure:5 for loop, no for once)
   --help                   Show this help text
 
 Anything after `--` is passed through to `docker run`.
@@ -106,7 +106,7 @@ case "$command" in
   loop)
     mode="loop"
     detach=1
-    restart_policy="unless-stopped"
+    restart_policy="on-failure:5"
     ;;
   run)
     ;;

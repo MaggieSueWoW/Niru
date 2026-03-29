@@ -8,6 +8,7 @@ import logging
 from niru.clients.raiderio import RaiderIOClient
 from niru.clients.sheets import GoogleSheetsClient
 from niru.config import load_settings
+from niru.control_state import RedisControlState
 from niru.logging_utils import configure_logging
 from niru.service import SyncService
 from niru.storage import MongoRepository
@@ -39,9 +40,10 @@ def main() -> None:
     args = parse_args()
     settings = load_settings(args.config)
     configure_logging(settings.logging.level)
+    control_state = RedisControlState(settings.redis)
     repository = MongoRepository(settings.mongodb)
     sheets_client = GoogleSheetsClient(settings.google)
-    raiderio_client = RaiderIOClient(settings.raiderio)
+    raiderio_client = RaiderIOClient(settings.raiderio, control_state=control_state)
     service = SyncService(
         settings=settings,
         repository=repository,

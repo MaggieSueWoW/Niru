@@ -8,6 +8,26 @@ from niru.clients.raiderio_internal import RaiderIOInternalClient
 from niru.config import RaiderIOSettings
 
 
+class FakeControlState:
+    def acquire_request_slot(self, *, requests_per_minute):
+        return None
+
+    def get_cooldown_remaining_seconds(self):
+        return 0.0
+
+    def get_cooldown_reason(self):
+        return ""
+
+    def clear_upstream_failure_streak(self):
+        return None
+
+    def open_cooldown(self, *, seconds, reason):
+        return None
+
+    def increment_upstream_failure_streak(self, *, ttl_seconds):
+        return 1
+
+
 class FakeRepo:
     def __init__(self) -> None:
         self.cached_character_ids = {}
@@ -208,9 +228,11 @@ class BackfillTests(unittest.TestCase):
             timeout_seconds=30,
             retry_attempts=4,
             backoff_seconds=2.0,
+            circuit_breaker_threshold=3,
+            circuit_breaker_cooldown_seconds=300,
         )
 
-        client = RaiderIOInternalClient(settings)
+        client = RaiderIOInternalClient(settings, control_state=FakeControlState())
 
         self.assertEqual(client._settings.base_url, "https://raider.io/api")
 
@@ -228,8 +250,10 @@ class BackfillTests(unittest.TestCase):
             timeout_seconds=30,
             retry_attempts=4,
             backoff_seconds=2.0,
+            circuit_breaker_threshold=3,
+            circuit_breaker_cooldown_seconds=300,
         )
-        client = RaiderIOInternalClient(settings)
+        client = RaiderIOInternalClient(settings, control_state=FakeControlState())
         captured = {}
 
         def fake_get_json(path, params):

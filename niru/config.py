@@ -28,6 +28,9 @@ class SyncSettings:
     current_season: str
     max_players_per_cycle: int
     gap_detection_cycles: int
+    failure_backoff_seconds: float
+    max_failure_backoff_seconds: float
+    failure_backoff_jitter_seconds: float
 
 
 @dataclass(slots=True, frozen=True)
@@ -39,6 +42,14 @@ class RaiderIOSettings:
     timeout_seconds: int
     retry_attempts: int
     backoff_seconds: float
+    circuit_breaker_threshold: int
+    circuit_breaker_cooldown_seconds: int
+
+
+@dataclass(slots=True, frozen=True)
+class RedisSettings:
+    url: str
+    key_prefix: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -60,6 +71,7 @@ class Settings:
     google: GoogleSettings
     sync: SyncSettings
     raiderio: RaiderIOSettings
+    redis: RedisSettings
     mongodb: MongoSettings
     logging: LoggingSettings
 
@@ -95,6 +107,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
     google_raw = raw.get("google", {})
     sync_raw = raw.get("sync", {})
     raiderio_raw = raw.get("raiderio", {})
+    redis_raw = raw.get("redis", {})
     mongodb_raw = raw.get("mongodb", {})
     logging_raw = raw.get("logging", {})
 
@@ -135,6 +148,21 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 sync_raw.get("gap_detection_cycles"),
                 name="sync.gap_detection_cycles",
             ),
+            failure_backoff_seconds=_require_float(
+                sync_raw.get("failure_backoff_seconds", 30.0),
+                name="sync.failure_backoff_seconds",
+                minimum=0.1,
+            ),
+            max_failure_backoff_seconds=_require_float(
+                sync_raw.get("max_failure_backoff_seconds", 900.0),
+                name="sync.max_failure_backoff_seconds",
+                minimum=0.1,
+            ),
+            failure_backoff_jitter_seconds=_require_float(
+                sync_raw.get("failure_backoff_jitter_seconds", 5.0),
+                name="sync.failure_backoff_jitter_seconds",
+                minimum=0.0,
+            ),
         ),
         raiderio=RaiderIOSettings(
             base_url=_require_text(raiderio_raw.get("base_url"), name="raiderio.base_url"),
@@ -154,6 +182,21 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 raiderio_raw.get("backoff_seconds"),
                 name="raiderio.backoff_seconds",
                 minimum=0.1,
+            ),
+            circuit_breaker_threshold=_require_int(
+                raiderio_raw.get("circuit_breaker_threshold", 3),
+                name="raiderio.circuit_breaker_threshold",
+            ),
+            circuit_breaker_cooldown_seconds=_require_int(
+                raiderio_raw.get("circuit_breaker_cooldown_seconds", 300),
+                name="raiderio.circuit_breaker_cooldown_seconds",
+            ),
+        ),
+        redis=RedisSettings(
+            url=_require_text(os.getenv("REDIS_URL", "redis://localhost:6379/0"), name="REDIS_URL"),
+            key_prefix=_require_text(
+                redis_raw.get("key_prefix", "niru"),
+                name="redis.key_prefix",
             ),
         ),
         mongodb=MongoSettings(

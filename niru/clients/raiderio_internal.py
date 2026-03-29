@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 from niru.clients.raiderio import RaiderIOClient, RaiderIOError, RaiderIOResult
 from niru.config import RaiderIOSettings
+from niru.control_state import RedisControlState
 from niru.models import PlayerIdentity
-from niru.rate_limit import RateLimiter
 
 
 class RaiderIOInternalClient(RaiderIOClient):
@@ -17,10 +17,13 @@ class RaiderIOInternalClient(RaiderIOClient):
 
     DEFAULT_REQUESTS_PER_MINUTE = 30
 
-    def __init__(self, settings: RaiderIOSettings) -> None:
-        website_settings = replace(settings, base_url=self._website_base_url(settings.base_url))
-        super().__init__(website_settings)
-        self._rate_limiter = RateLimiter(self.DEFAULT_REQUESTS_PER_MINUTE)
+    def __init__(self, settings: RaiderIOSettings, *, control_state: RedisControlState) -> None:
+        website_settings = replace(
+            settings,
+            base_url=self._website_base_url(settings.base_url),
+            requests_per_minute_cap=self.DEFAULT_REQUESTS_PER_MINUTE,
+        )
+        super().__init__(website_settings, control_state=control_state)
 
     def get_character_page(
         self,

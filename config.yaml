@@ -9,6 +9,9 @@ sync:
   current_season: "season-mn-1"
   max_players_per_cycle: 250
   gap_detection_cycles: 2
+  failure_backoff_seconds: 30
+  max_failure_backoff_seconds: 900
+  failure_backoff_jitter_seconds: 5
 
 raiderio:
   base_url: "https://raider.io/api/v1"
@@ -17,6 +20,11 @@ raiderio:
   timeout_seconds: 30
   retry_attempts: 4
   backoff_seconds: 2.0
+  circuit_breaker_threshold: 3
+  circuit_breaker_cooldown_seconds: 300
+
+redis:
+  key_prefix: "niru"
 
 mongodb:
   database: "niru"

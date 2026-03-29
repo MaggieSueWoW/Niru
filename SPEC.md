@@ -12,7 +12,7 @@ V1 is current-season only and best effort.
 - No scraping
 - Google Sheets is the user-facing surface
 - MongoDB is the system of record
-- Redis is intentionally not used in V1
+- Redis is used only for ephemeral control state such as rate-limit windows and cooldowns
 - Season rollover is manual for now via config update
 
 ## Roster Contract
@@ -51,6 +51,7 @@ Important limitation:
 - Raider.IO's public character profile fields expose recent runs plus scoring-oriented season views such as best and alternate runs.
 - V1 therefore stores every run it can positively discover, but it does not guarantee a complete season history for every player from public API data alone.
 - If polling windows are missed or Raider.IO data is unavailable, the bot should continue publishing best-effort summaries while marking affected players as potentially incomplete.
+- If repeated upstream failures or `429` responses occur, the bot should open a persistent cooldown and publish from cached Mongo data until the cooldown expires.
 
 ### 3. Sheet Publish
 
@@ -84,6 +85,14 @@ Important limitation:
 - sheet row counts
 - warnings and partial-cycle marker
 
+## Redis Control State
+
+- rolling Raider.IO request timestamps for restart-safe rate limiting
+- Raider.IO cooldown expiration and human-readable reason
+- consecutive upstream failure streak used by the Raider.IO circuit breaker
+
+Redis data is ephemeral and is not the source of truth for business data.
+
 ## Summary Semantics
 
 - `current_score`: current Raider.IO dungeon score derived from best and alternate scoring runs in the latest profile payload
@@ -114,8 +123,9 @@ Known recovery requirement:
 
 - Base URL configurable in YAML
 - Unauthenticated mode supported by default
-- Conservative client-side rate limit defaults to 60 requests/minute
+- Conservative cross-restart client-side rate limit defaults to 60 requests/minute
 - Retries for `429` and transient `5xx` errors
+- Opens a persistent cooldown after rate limits or repeated upstream failures
 
 ### Google Sheets
 
@@ -128,9 +138,11 @@ Known recovery requirement:
 - Runs as a long-lived process in Docker
 - Executes one sync immediately on startup
 - Sleeps until the next configured interval
+- Keeps ordinary sync failures inside the process and retries cycles with exponential backoff plus jitter
 - Supports CLI modes for one-shot and looping execution
 - Handles `SIGINT` and `SIGTERM` gracefully
 - Logs to stdout with standard Python logging
+- Uses Docker restart policy as a last-resort recovery layer, not the primary retry loop
 
 ## V2 Candidates
 

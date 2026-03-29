@@ -13,8 +13,8 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from niru.config import RaiderIOSettings
+from niru.control_state import RedisControlState
 from niru.models import PlayerIdentity
-from niru.rate_limit import RateLimiter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +25,10 @@ class RaiderIOError(RuntimeError):
 
 class RaiderIONotFoundError(RaiderIOError):
     """Raised when Raider.IO cannot resolve a player or run."""
+
+
+class RaiderIOCooldownError(RaiderIOError):
+    """Raised when Raider.IO calls are paused by a circuit breaker."""
 
 
 @dataclass(slots=True)
@@ -51,11 +55,21 @@ class RaiderIOClient:
         ]
     )
 
-    def __init__(self, settings: RaiderIOSettings) -> None:
+    def __init__(self, settings: RaiderIOSettings, *, control_state: RedisControlState) -> None:
         self._settings = settings
-        self._rate_limiter = RateLimiter(settings.requests_per_minute_cap)
+        self._control_state = control_state
         self.api_calls = 0
         self._ssl_context = self._build_ssl_context()
+
+    def get_cooldown_remaining_seconds(self) -> float:
+        """Return the current Raider.IO cooldown, if any."""
+
+        return self._control_state.get_cooldown_remaining_seconds()
+
+    def get_cooldown_reason(self) -> str:
+        """Return the current Raider.IO cooldown reason, if any."""
+
+        return self._control_state.get_cooldown_reason()
 
     def get_character_profile(self, player: PlayerIdentity) -> RaiderIOResult:
         """Fetch a character profile with Mythic+ fields."""
@@ -87,8 +101,17 @@ class RaiderIOClient:
         encoded = urlencode(query)
         url = f"{self._settings.base_url}{path}?{encoded}"
 
+        cooldown_remaining = self._control_state.get_cooldown_remaining_seconds()
+        if cooldown_remaining > 0:
+            reason = self._control_state.get_cooldown_reason() or "Raider.IO cooldown active"
+            raise RaiderIOCooldownError(
+                f"{reason}. Retrying after {round(cooldown_remaining, 1)}s."
+            )
+
         for attempt in range(1, self._settings.retry_attempts + 1):
-            self._rate_limiter.acquire()
+            self._control_state.acquire_request_slot(
+                requests_per_minute=self._settings.requests_per_minute_cap
+            )
             self.api_calls += 1
             request = Request(url, headers=self.DEFAULT_HEADERS)
             try:
@@ -98,12 +121,18 @@ class RaiderIOClient:
                     context=self._ssl_context,
                 ) as response:
                     payload = json.load(response)
+                    self._control_state.clear_upstream_failure_streak()
                     return RaiderIOResult(payload=payload, request_url=url)
             except HTTPError as exc:
                 status = exc.code
                 response_snippet = exc.read(400).decode("utf-8", errors="replace").strip()
                 if status == 404:
                     raise RaiderIONotFoundError(f"Not found: {url}") from exc
+                if status == 429:
+                    self._control_state.open_cooldown(
+                        seconds=self._settings.circuit_breaker_cooldown_seconds,
+                        reason="Raider.IO rate limit hit",
+                    )
                 if status in {429, 500, 502, 503, 504} and attempt < self._settings.retry_attempts:
                     wait = self._settings.backoff_seconds * attempt
                     LOGGER.warning(
@@ -116,6 +145,15 @@ class RaiderIOClient:
                     )
                     time.sleep(wait)
                     continue
+                if status in {500, 502, 503, 504}:
+                    streak = self._control_state.increment_upstream_failure_streak(
+                        ttl_seconds=self._settings.circuit_breaker_cooldown_seconds
+                    )
+                    if streak >= self._settings.circuit_breaker_threshold:
+                        self._control_state.open_cooldown(
+                            seconds=self._settings.circuit_breaker_cooldown_seconds,
+                            reason=f"Raider.IO upstream errors reached streak {streak}",
+                        )
                 detail = f"HTTP {status} from Raider.IO for {url}"
                 if response_snippet:
                     detail = f"{detail}. Response: {response_snippet}"
@@ -143,6 +181,14 @@ class RaiderIOClient:
                     )
                     time.sleep(wait)
                     continue
+                streak = self._control_state.increment_upstream_failure_streak(
+                    ttl_seconds=self._settings.circuit_breaker_cooldown_seconds
+                )
+                if streak >= self._settings.circuit_breaker_threshold:
+                    self._control_state.open_cooldown(
+                        seconds=self._settings.circuit_breaker_cooldown_seconds,
+                        reason=f"Raider.IO network errors reached streak {streak}",
+                    )
                 raise RaiderIOError(f"Network error calling Raider.IO for {url}") from exc
 
         raise RaiderIOError(f"Failed to fetch Raider.IO URL: {url}")
