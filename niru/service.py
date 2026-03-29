@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import random
 import signal
@@ -35,6 +35,7 @@ PLAYER_COLUMNS = [
     "name",
     "current_total_mythic_plus_rating",
     "last_successful_sync_time_pacific",
+    "weekly_10_plus_run_count",
 ]
 
 DUNGEON_FIELDS = [
@@ -43,6 +44,45 @@ DUNGEON_FIELDS = [
     "best_upgrade_level",
     "total_runs",
 ]
+
+
+def _safe_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return ensure_utc(value)
+    if isinstance(value, str) and value:
+        return ensure_utc(datetime.fromisoformat(value.replace("Z", "+00:00")))
+    return None
+
+
+def _normalize_weekly_periods(periods_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    periods_by_region: dict[str, dict[str, Any]] = {}
+    for period_entry in periods_payload.get("periods", []) or []:
+        region = str(period_entry.get("region", "")).lower()
+        current = period_entry.get("current") or {}
+        start = _safe_datetime(current.get("start"))
+        end = _safe_datetime(current.get("end"))
+        period_id = current.get("period")
+        if not region or start is None or end is None or period_id is None:
+            continue
+        periods_by_region[region] = {
+            "period": int(period_id),
+            "start": start,
+            "end": end,
+        }
+    return periods_by_region
+
+
+def _weekly_periods_for_metadata(
+    periods_by_region: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, object]]:
+    return {
+        region: {
+            "period": period["period"],
+            "start": period["start"].isoformat(),
+            "end": period["end"].isoformat(),
+        }
+        for region, period in periods_by_region.items()
+    }
 
 
 def _build_dungeon_scores(profile_payload: dict[str, Any]) -> dict[str, float]:
@@ -136,9 +176,12 @@ def build_summary_rows(
     players: list[dict[str, Any]],
     runs: list[dict[str, Any]],
     season_dungeons: list[dict[str, Any]],
+    *,
+    weekly_periods: dict[str, dict[str, Any]] | None = None,
 ) -> list[SummaryRow]:
     """Build Google Sheets summary rows from Mongo state."""
 
+    weekly_periods = weekly_periods or {}
     grouped_runs: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for run in runs:
         player_keys = set(run.get("discovered_from_player_keys", []))
@@ -160,11 +203,30 @@ def build_summary_rows(
     )
     for _, player in players_in_roster_order:
         runs_for_player = grouped_runs.get(player["player_key"], [])
+        unique_runs_for_player = {
+            int(run_id): run
+            for run in runs_for_player
+            if (run_id := run.get("keystone_run_id")) is not None
+        }
         by_dungeon: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for run in runs_for_player:
+        for run in unique_runs_for_player.values():
             dungeon_key = run.get("short_name") or run.get("dungeon") or ""
             if dungeon_key:
                 by_dungeon[dungeon_key].append(run)
+
+        weekly_10_plus_run_count: int | None = None
+        region = str(player.get("region", "")).lower()
+        weekly_period = weekly_periods.get(region)
+        if weekly_period:
+            weekly_start = weekly_period["start"]
+            weekly_end = weekly_period["end"]
+            weekly_10_plus_run_count = sum(
+                1
+                for run in unique_runs_for_player.values()
+                if (completed_at := _safe_datetime(run.get("completed_at"))) is not None
+                and weekly_start <= completed_at < weekly_end
+                and int(run.get("mythic_level") or 0) >= 10
+            )
 
         current_scores: dict[str, float] = player.get("current_dungeon_scores", {})
         values: list[object] = [
@@ -173,6 +235,7 @@ def build_summary_rows(
             player.get("name", ""),
             _display_total_score(player, players),
             to_pacific_datetime(player.get("last_successful_sync_at")),
+            weekly_10_plus_run_count,
         ]
         for dungeon in season_dungeons:
             short_name = dungeon.get("short_name", "")
@@ -311,9 +374,22 @@ class SyncService:
             )
             stats.active_players = len(active_players)
             stats.valid_players = len([player for player in active_players if player.get("is_valid")])
+            weekly_periods: dict[str, dict[str, Any]] = {}
             if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                 refreshed_players = active_players
             else:
+                weekly_periods = self._load_current_weekly_periods()
+                stats.weekly_periods = _weekly_periods_for_metadata(weekly_periods)
+                for player in active_players:
+                    player_region = str(player.get("region", "")).lower()
+                    if player.get("is_valid") and player_region and player_region not in weekly_periods:
+                        message = (
+                            f"Missing Raider.IO weekly period for region {player_region}; "
+                            "weekly 10+ counts left blank."
+                        )
+                        if message not in stats.warnings:
+                            stats.warnings.append(message)
+                        stats.partial = True
                 for player in active_players:
                     if self._stop_requested:
                         LOGGER.info("Stop requested during player sync; ending cycle early")
@@ -331,7 +407,12 @@ class SyncService:
             player_keys = [player["player_key"] for player in refreshed_players]
             runs = self._repository.get_runs_for_players(player_keys)
             summary_header = build_summary_header(season_dungeons)
-            summary_rows = build_summary_rows(refreshed_players, runs, season_dungeons)
+            summary_rows = build_summary_rows(
+                refreshed_players,
+                runs,
+                season_dungeons,
+                weekly_periods=weekly_periods,
+            )
             metadata_rows = build_summary_metadata_rows(header=summary_header, runs=runs)
             stats.sheet_rows_written = self._sheets_client.write_output_rows(
                 summary_header,
@@ -483,6 +564,17 @@ class SyncService:
             extra={"season": season, "dungeon_count": len(season_dungeons)},
         )
         return self._repository.list_season_dungeons(season=season)
+
+    def _load_current_weekly_periods(self) -> dict[str, dict[str, Any]]:
+        """Fetch and normalize the current Raider.IO weekly period windows."""
+
+        payload = self._raiderio_client.get_periods().payload
+        periods_by_region = _normalize_weekly_periods(payload)
+        LOGGER.info(
+            "Resolved Raider.IO weekly periods",
+            extra={"regions": sorted(periods_by_region)},
+        )
+        return periods_by_region
 
     def _skip_raiderio_sync_due_to_cooldown(self, *, stats: SyncStats) -> bool:
         """Stop making Raider.IO calls while a persistent cooldown is active."""

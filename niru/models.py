@@ -105,6 +105,7 @@ class SyncStats:
     new_runs: int = 0
     detail_fetches: int = 0
     sheet_rows_written: int = 0
+    weekly_periods: dict[str, dict[str, object]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     partial: bool = False
 
@@ -123,6 +124,7 @@ class SyncStats:
             "new_runs": self.new_runs,
             "detail_fetches": self.detail_fetches,
             "sheet_rows_written": self.sheet_rows_written,
+            "weekly_periods": self.weekly_periods,
             "warnings": self.warnings,
             "partial": self.partial,
         }

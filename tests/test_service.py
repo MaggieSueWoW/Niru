@@ -160,6 +160,7 @@ class FakeRaiderIO:
         self.api_calls = 0
         self.cooldown_remaining = 0.0
         self.cooldown_reason = ""
+        self.include_us_period = True
 
     def get_mythic_plus_static_data(self, *, expansion_id):
         self.api_calls += 1
@@ -183,6 +184,32 @@ class FakeRaiderIO:
                 }
             },
         )()
+
+    def get_periods(self):
+        self.api_calls += 1
+        periods = [
+            {
+                "region": "eu",
+                "current": {
+                    "period": 1056,
+                    "start": "2026-03-25T04:00:00.000Z",
+                    "end": "2026-04-01T04:00:00.000Z",
+                },
+            }
+        ]
+        if self.include_us_period:
+            periods.insert(
+                0,
+                {
+                    "region": "us",
+                    "current": {
+                        "period": 1056,
+                        "start": "2026-03-24T15:00:00.000Z",
+                        "end": "2026-03-31T15:00:00.000Z",
+                    },
+                },
+            )
+        return type("Result", (), {"payload": {"periods": periods}})()
 
     def get_character_profile(self, player):
         self.api_calls += 1
@@ -249,11 +276,20 @@ class SyncServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(sheets.last_rows), 1)
         self.assertEqual(sheets.last_rows[0][3], 370.2)
-        self.assertEqual(sheets.last_rows[0][5], 370.2)
-        self.assertEqual(sheets.last_rows[0][6], 12)
-        self.assertEqual(sheets.last_rows[0][8], 2)
+        self.assertEqual(sheets.last_rows[0][5], 2)
+        self.assertEqual(sheets.last_rows[0][6], 370.2)
+        self.assertEqual(sheets.last_rows[0][7], 12)
+        self.assertEqual(sheets.last_rows[0][9], 2)
         self.assertEqual(sheets.last_metadata_rows, [("unique_runs", 2)])
-        self.assertEqual(repo.sync_docs[0]["api_calls"], 2)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 3)
+        self.assertEqual(
+            repo.sync_docs[0]["weekly_periods"]["us"],
+            {
+                "period": 1056,
+                "start": "2026-03-24T15:00:00+00:00",
+                "end": "2026-03-31T15:00:00+00:00",
+            },
+        )
 
     def test_missing_player_still_publishes_row(self) -> None:
         settings = make_settings()
@@ -271,6 +307,28 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(len(sheets.last_rows), 1)
         self.assertEqual(sheets.last_rows[0][0:4], ["us", "area-52", "Missing", None])
+
+    def test_missing_weekly_period_leaves_value_blank_and_warns(self) -> None:
+        settings = make_settings()
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/area-52/Mythics"])
+        raider = FakeRaiderIO()
+        raider.include_us_period = False
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=raider,
+        )
+
+        service.run_cycle()
+
+        self.assertIsNone(sheets.last_rows[0][5])
+        self.assertTrue(repo.sync_docs[0]["partial"])
+        self.assertIn(
+            "Missing Raider.IO weekly period for region us; weekly 10+ counts left blank.",
+            repo.sync_docs[0]["warnings"],
+        )
 
     def test_stop_requested_breaks_sleep_wait(self) -> None:
         settings = make_settings()

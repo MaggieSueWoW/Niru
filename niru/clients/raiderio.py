@@ -94,6 +94,11 @@ class RaiderIOClient:
 
         return self._get_json("/mythic-plus/static-data", {"expansion_id": expansion_id})
 
+    def get_periods(self) -> RaiderIOResult:
+        """Fetch current, previous, and next weekly period windows by region."""
+
+        return self._get_json("/periods", {})
+
     def _get_json(self, path: str, params: dict[str, Any]) -> RaiderIOResult:
         query = dict(params)
         if self._settings.access_key_enabled and self._settings.access_key:

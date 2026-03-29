@@ -67,6 +67,7 @@ class SummaryBuilderTests(unittest.TestCase):
                 "name",
                 "current_total_mythic_plus_rating",
                 "last_successful_sync_time_pacific",
+                "weekly_10_plus_run_count",
                 "DFC_current_score",
                 "DFC_best_key_level",
                 "DFC_best_upgrade_level",
@@ -75,7 +76,8 @@ class SummaryBuilderTests(unittest.TestCase):
         )
         self.assertEqual(row[0:4], ["us", "area-52", "Mythics", 382.1])
         self.assertEqual(row[4], datetime(2026, 3, 26, 5, 0))
-        self.assertEqual(row[5:9], [382.1, 13, 1, 2])
+        self.assertIsNone(row[5])
+        self.assertEqual(row[6:10], [382.1, 13, 1, 2])
 
     def test_keeps_player_visible_without_runs(self) -> None:
         players = [
@@ -101,7 +103,7 @@ class SummaryBuilderTests(unittest.TestCase):
         self.assertEqual(len(summary_rows), 1)
         self.assertEqual(
             summary_rows[0].to_sheet_row(),
-            ["us", "area-52", "Mythics", None, None, None, None, None, 0],
+            ["us", "area-52", "Mythics", None, None, None, None, None, None, 0],
         )
 
     def test_keeps_summary_rows_in_sheet_roster_order(self) -> None:
@@ -163,6 +165,149 @@ class SummaryBuilderTests(unittest.TestCase):
 
         self.assertEqual(summary_rows[0].to_sheet_row()[3], 3210.5)
         self.assertEqual(summary_rows[1].to_sheet_row()[3], 3210.4)
+
+    def test_counts_weekly_10_plus_runs_with_period_boundaries_and_deduping(self) -> None:
+        players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "current_total_score": None,
+                "current_dungeon_scores": {},
+            }
+        ]
+        runs = [
+            {
+                "keystone_run_id": 10,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 10,
+                "completed_at": datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 10,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 10,
+                "completed_at": datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+                "discovered_from_player_keys": [],
+                "participants": [{"player_key": "us/area-52/mythics"}],
+            },
+            {
+                "keystone_run_id": 11,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 9,
+                "completed_at": datetime(2026, 3, 25, 12, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 12,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 12,
+                "completed_at": datetime(2026, 3, 24, 14, 59, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 13,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 13,
+                "completed_at": datetime(2026, 3, 31, 15, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 14,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 11,
+                "completed_at": datetime(2026, 3, 29, 12, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+        ]
+
+        summary_rows = build_summary_rows(
+            players,
+            runs,
+            [],
+            weekly_periods={
+                "us": {
+                    "period": 1056,
+                    "start": datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+                    "end": datetime(2026, 3, 31, 15, 0, tzinfo=UTC),
+                }
+            },
+        )
+
+        self.assertEqual(summary_rows[0].to_sheet_row()[5], 2)
+
+    def test_uses_player_region_for_weekly_count(self) -> None:
+        players = [
+            {
+                "player_key": "us/area-52/usplayer",
+                "region": "us",
+                "realm": "area-52",
+                "name": "USPlayer",
+                "is_valid": True,
+                "current_total_score": None,
+                "current_dungeon_scores": {},
+            },
+            {
+                "player_key": "eu/tarren-mill/euplayer",
+                "region": "eu",
+                "realm": "tarren-mill",
+                "name": "EUPlayer",
+                "is_valid": True,
+                "current_total_score": None,
+                "current_dungeon_scores": {},
+            },
+        ]
+        runs = [
+            {
+                "keystone_run_id": 20,
+                "mythic_level": 10,
+                "completed_at": datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/area-52/usplayer"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 21,
+                "mythic_level": 10,
+                "completed_at": datetime(2026, 3, 25, 0, 0, tzinfo=UTC),
+                "discovered_from_player_keys": ["eu/tarren-mill/euplayer"],
+                "participants": [],
+            },
+        ]
+
+        summary_rows = build_summary_rows(
+            players,
+            runs,
+            [],
+            weekly_periods={
+                "us": {
+                    "period": 1056,
+                    "start": datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+                    "end": datetime(2026, 3, 31, 15, 0, tzinfo=UTC),
+                },
+                "eu": {
+                    "period": 1056,
+                    "start": datetime(2026, 3, 25, 4, 0, tzinfo=UTC),
+                    "end": datetime(2026, 4, 1, 4, 0, tzinfo=UTC),
+                },
+            },
+        )
+
+        self.assertEqual(summary_rows[0].to_sheet_row()[5], 1)
+        self.assertEqual(summary_rows[1].to_sheet_row()[5], 0)
 
     def test_builds_unique_run_metadata_for_group_runs(self) -> None:
         header = [
