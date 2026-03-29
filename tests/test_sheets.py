@@ -2,6 +2,7 @@ from datetime import datetime
 import unittest
 
 from niru.clients.sheets import (
+    _build_output_updates,
     _build_metadata_rows,
     _build_sheet_values,
     _build_last_updated_formula,
@@ -63,6 +64,48 @@ class GoogleSheetsHelpersTests(unittest.TestCase):
                 ["a", "b", "last_updated_pacific", '=IFERROR(MAX(G2:G), "")'],
                 [1, 2, "unique_runs", 5],
                 [3, 4, "", ""],
+            ],
+        )
+
+    def test_build_output_updates_only_includes_changed_segments(self) -> None:
+        self.assertEqual(
+            _build_output_updates(
+                tab_name="raw_data",
+                start_cell="C1",
+                existing_values=[
+                    ["a", "b", "meta", "1"],
+                    [1, 2, "", ""],
+                ],
+                target_values=[
+                    ["a", "b", "meta", "2"],
+                    [1, 3, "", ""],
+                ],
+            ),
+            [
+                {"range": "raw_data!F1:F1", "values": [["2"]]},
+                {"range": "raw_data!D2:D2", "values": [[3]]},
+            ],
+        )
+
+    def test_build_output_updates_blanks_stale_rows_and_columns(self) -> None:
+        self.assertEqual(
+            _build_output_updates(
+                tab_name="raw_data",
+                start_cell="C1",
+                existing_values=[
+                    ["a", "b", "meta", "1"],
+                    [1, 2, "old", "x"],
+                    [3, 4, "old", "y"],
+                ],
+                target_values=[
+                    ["a", "b"],
+                    [1, 2],
+                ],
+            ),
+            [
+                {"range": "raw_data!E1:F1", "values": [["", ""]]},
+                {"range": "raw_data!E2:F2", "values": [["", ""]]},
+                {"range": "raw_data!C3:F3", "values": [["", "", "", ""]]},
             ],
         )
 

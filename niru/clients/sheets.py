@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 from datetime import datetime
+from typing import Any
 
 from niru.config import GoogleSettings
 
@@ -37,43 +37,89 @@ class GoogleSheetsClient:
         rows: list[list[object]],
         metadata_rows: list[tuple[object, object]] | None = None,
     ) -> int:
-        """Rewrite the output table section in the configured tab."""
+        """Update only changed output cells in the configured tab."""
 
         start_cell = self._settings.output_start_cell
         tab_name = self._settings.raw_tab_name
         start_column = "".join(ch for ch in start_cell if ch.isalpha())
-        summary_end_column = _column_name(_column_number(start_column) + len(header) - 1)
-        metadata_label_column = _column_name(_column_number(summary_end_column) + 1)
-        metadata_value_column = _column_name(_column_number(summary_end_column) + 2)
-        (
-            self._service.spreadsheets()
-            .values()
-            .clear(
-                spreadsheetId=self._settings.sheet_id,
-                range=f"{tab_name}!{start_column}:{metadata_value_column}",
-                body={},
-            )
-            .execute()
-        )
-
         timestamp_column = _find_timestamp_column(header=header, start_column=start_column)
         metadata = _build_metadata_rows(
             timestamp_column=timestamp_column,
             extra_metadata_rows=metadata_rows,
         )
-        values = _build_sheet_values(header=header, rows=rows, metadata_rows=metadata)
-        (
+        target_values = _build_sheet_values(header=header, rows=rows, metadata_rows=metadata)
+        sheet_size = self._get_sheet_size(tab_name=tab_name)
+        existing_values = self._read_output_values(
+            tab_name=tab_name,
+            start_cell=start_cell,
+            max_rows=sheet_size[0],
+            max_columns=sheet_size[1],
+        )
+        updates = _build_output_updates(
+            tab_name=tab_name,
+            start_cell=start_cell,
+            existing_values=existing_values,
+            target_values=target_values,
+        )
+        if updates:
+            (
+                self._service.spreadsheets()
+                .values()
+                .batchUpdate(
+                    spreadsheetId=self._settings.sheet_id,
+                    body={
+                        "valueInputOption": "USER_ENTERED",
+                        "data": updates,
+                    },
+                )
+                .execute()
+            )
+        return len(rows)
+
+    def _get_sheet_size(self, *, tab_name: str) -> tuple[int, int]:
+        response = (
             self._service.spreadsheets()
-            .values()
-            .update(
+            .get(
                 spreadsheetId=self._settings.sheet_id,
-                range=f"{tab_name}!{start_cell}",
-                valueInputOption="USER_ENTERED",
-                body={"values": values},
+                ranges=[tab_name],
+                fields="sheets(properties(title,gridProperties(rowCount,columnCount)))",
             )
             .execute()
         )
-        return len(rows)
+        for sheet in response.get("sheets", []):
+            properties = sheet.get("properties", {})
+            if properties.get("title") != tab_name:
+                continue
+            grid = properties.get("gridProperties", {})
+            return max(int(grid.get("rowCount", 0)), 1), max(
+                int(grid.get("columnCount", 0)), 1
+            )
+        return 1, 1
+
+    def _read_output_values(
+        self,
+        *,
+        tab_name: str,
+        start_cell: str,
+        max_rows: int,
+        max_columns: int,
+    ) -> list[list[object]]:
+        start_column, start_row = _split_a1_cell(start_cell)
+        start_column_number = _column_number(start_column)
+        if start_row > max_rows or start_column_number > max_columns:
+            return []
+        end_column = _column_name(max_columns)
+        range_name = f"{tab_name}!{start_cell}:{end_column}{max_rows}"
+        response = (
+            self._service.spreadsheets()
+            .values()
+            .get(spreadsheetId=self._settings.sheet_id, range=range_name)
+            .execute()
+        )
+        return [
+            [_normalize_sheet_value(value) for value in row]
+            for row in response.get("values", [])
+        ]
 
     def _build_service(self) -> Any:
         from google.oauth2.service_account import Credentials
@@ -109,6 +155,12 @@ def _column_name(column_number: int) -> str:
         current, remainder = divmod(current - 1, 26)
         chars.append(chr(ord("A") + remainder))
     return "".join(reversed(chars))
+
+
+def _split_a1_cell(cell: str) -> tuple[str, int]:
+    column = "".join(ch for ch in cell if ch.isalpha())
+    row = "".join(ch for ch in cell if ch.isdigit())
+    return column, int(row)
 
 
 def _normalize_sheet_row(
@@ -181,3 +233,111 @@ def _build_sheet_values(
             _normalize_sheet_value(value),
         ]
     return values
+
+
+def _build_output_updates(
+    *,
+    tab_name: str,
+    start_cell: str,
+    existing_values: list[list[object]],
+    target_values: list[list[object]],
+) -> list[dict[str, object]]:
+    start_column, start_row = _split_a1_cell(start_cell)
+    start_column_number = _column_number(start_column)
+    row_count = max(len(existing_values), len(target_values))
+    column_count = max(
+        _max_row_width(existing_values),
+        _max_row_width(target_values),
+    )
+    if row_count == 0 or column_count == 0:
+        return []
+
+    existing_matrix = _pad_matrix(existing_values, row_count=row_count, column_count=column_count)
+    target_matrix = _pad_matrix(target_values, row_count=row_count, column_count=column_count)
+    updates: list[dict[str, object]] = []
+    for row_offset in range(row_count):
+        row_updates = _build_row_updates(
+            tab_name=tab_name,
+            row_number=start_row + row_offset,
+            start_column_number=start_column_number,
+            existing_row=existing_matrix[row_offset],
+            target_row=target_matrix[row_offset],
+        )
+        updates.extend(row_updates)
+    return updates
+
+
+def _build_row_updates(
+    *,
+    tab_name: str,
+    row_number: int,
+    start_column_number: int,
+    existing_row: list[object],
+    target_row: list[object],
+) -> list[dict[str, object]]:
+    updates: list[dict[str, object]] = []
+    current_start: int | None = None
+    current_values: list[object] = []
+    for column_offset, (existing_value, target_value) in enumerate(
+        zip(existing_row, target_row, strict=True)
+    ):
+        if existing_value == target_value:
+            if current_start is not None:
+                updates.append(
+                    _make_update_range(
+                        tab_name=tab_name,
+                        row_number=row_number,
+                        start_column_number=start_column_number + current_start,
+                        values=current_values,
+                    )
+                )
+                current_start = None
+                current_values = []
+            continue
+        if current_start is None:
+            current_start = column_offset
+        current_values.append(target_value)
+    if current_start is not None:
+        updates.append(
+            _make_update_range(
+                tab_name=tab_name,
+                row_number=row_number,
+                start_column_number=start_column_number + current_start,
+                values=current_values,
+            )
+        )
+    return updates
+
+
+def _make_update_range(
+    *,
+    tab_name: str,
+    row_number: int,
+    start_column_number: int,
+    values: list[object],
+) -> dict[str, object]:
+    end_column_number = start_column_number + len(values) - 1
+    return {
+        "range": (
+            f"{tab_name}!{_column_name(start_column_number)}{row_number}:"
+            f"{_column_name(end_column_number)}{row_number}"
+        ),
+        "values": [values],
+    }
+
+
+def _max_row_width(values: list[list[object]]) -> int:
+    if not values:
+        return 0
+    return max((len(row) for row in values), default=0)
+
+
+def _pad_matrix(
+    values: list[list[object]], *, row_count: int, column_count: int
+) -> list[list[object]]:
+    matrix: list[list[object]] = []
+    for row_index in range(row_count):
+        row = list(values[row_index]) if row_index < len(values) else []
+        padded_row = row + [""] * (column_count - len(row))
+        matrix.append(padded_row)
+    return matrix
