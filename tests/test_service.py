@@ -120,13 +120,15 @@ class FakeSheets:
         self.rows = rows
         self.last_header = None
         self.last_rows = None
+        self.last_metadata_rows = None
 
     def read_roster_rows(self):
         return self.rows
 
-    def write_output_rows(self, header, rows):
+    def write_output_rows(self, header, rows, metadata_rows=None):
         self.last_header = header
         self.last_rows = rows
+        self.last_metadata_rows = metadata_rows
         return len(rows)
 
 
@@ -234,6 +236,7 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][5], 370.2)
         self.assertEqual(sheets.last_rows[0][6], 12)
         self.assertEqual(sheets.last_rows[0][8], 2)
+        self.assertEqual(sheets.last_metadata_rows, [("unique_runs", 2)])
         self.assertEqual(repo.sync_docs[0]["api_calls"], 2)
 
     def test_missing_player_still_publishes_row(self) -> None:

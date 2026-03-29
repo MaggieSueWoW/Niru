@@ -31,7 +31,12 @@ class GoogleSheetsClient:
         values = response.get("values", [])
         return [row[0] if row else "" for row in values]
 
-    def write_output_rows(self, header: list[str], rows: list[list[object]]) -> int:
+    def write_output_rows(
+        self,
+        header: list[str],
+        rows: list[list[object]],
+        metadata_rows: list[tuple[object, object]] | None = None,
+    ) -> int:
         """Rewrite the output table section in the configured tab."""
 
         start_cell = self._settings.output_start_cell
@@ -52,11 +57,11 @@ class GoogleSheetsClient:
         )
 
         timestamp_column = _find_timestamp_column(header=header, start_column=start_column)
-        values = [_build_header_row(header, timestamp_column)]
-        values.extend(
-            _normalize_sheet_row(row, include_metadata_columns=timestamp_column is not None)
-            for row in rows
+        metadata = _build_metadata_rows(
+            timestamp_column=timestamp_column,
+            extra_metadata_rows=metadata_rows,
         )
+        values = _build_sheet_values(header=header, rows=rows, metadata_rows=metadata)
         (
             self._service.spreadsheets()
             .values()
@@ -137,7 +142,42 @@ def _build_last_updated_formula(timestamp_column: str) -> str:
     return f'=IFERROR(MAX({timestamp_column}2:{timestamp_column}), "")'
 
 
-def _build_header_row(header: list[str], timestamp_column: str | None) -> list[object]:
-    if timestamp_column is None:
-        return header
-    return [*header, "last_updated_pacific", _build_last_updated_formula(timestamp_column)]
+def _build_metadata_rows(
+    *,
+    timestamp_column: str | None,
+    extra_metadata_rows: list[tuple[object, object]] | None = None,
+) -> list[tuple[object, object]]:
+    metadata_rows: list[tuple[object, object]] = []
+    if timestamp_column is not None:
+        metadata_rows.append(
+            ("last_updated_pacific", _build_last_updated_formula(timestamp_column))
+        )
+    if extra_metadata_rows:
+        metadata_rows.extend(extra_metadata_rows)
+    return metadata_rows
+
+
+def _build_sheet_values(
+    *,
+    header: list[str],
+    rows: list[list[object]],
+    metadata_rows: list[tuple[object, object]],
+) -> list[list[object]]:
+    include_metadata_columns = bool(metadata_rows)
+    values = [
+        _normalize_sheet_row(list(header), include_metadata_columns=include_metadata_columns)
+    ]
+    values.extend(
+        _normalize_sheet_row(row, include_metadata_columns=include_metadata_columns)
+        for row in rows
+    )
+    for row_index, (label, value) in enumerate(metadata_rows):
+        while len(values) <= row_index:
+            values.append([""] * len(header))
+            if include_metadata_columns:
+                values[-1].extend(["", ""])
+        values[row_index][-2:] = [
+            _normalize_sheet_value(label),
+            _normalize_sheet_value(value),
+        ]
+    return values

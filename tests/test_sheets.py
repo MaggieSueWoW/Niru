@@ -2,7 +2,8 @@ from datetime import datetime
 import unittest
 
 from niru.clients.sheets import (
-    _build_header_row,
+    _build_metadata_rows,
+    _build_sheet_values,
     _build_last_updated_formula,
     _find_timestamp_column,
     _normalize_sheet_row,
@@ -36,10 +37,33 @@ class GoogleSheetsHelpersTests(unittest.TestCase):
             '=IFERROR(MAX(G2:G), "")',
         )
 
-    def test_builds_header_row_with_metadata_cells(self) -> None:
+    def test_builds_metadata_rows_with_last_updated_and_extra_rows(self) -> None:
         self.assertEqual(
-            _build_header_row(["a", "b"], "G"),
-            ["a", "b", "last_updated_pacific", '=IFERROR(MAX(G2:G), "")'],
+            _build_metadata_rows(
+                timestamp_column="G",
+                extra_metadata_rows=[("unique_runs", 5)],
+            ),
+            [
+                ("last_updated_pacific", '=IFERROR(MAX(G2:G), "")'),
+                ("unique_runs", 5),
+            ],
+        )
+
+    def test_builds_sheet_values_with_multi_row_metadata(self) -> None:
+        self.assertEqual(
+            _build_sheet_values(
+                header=["a", "b"],
+                rows=[[1, 2], [3, 4]],
+                metadata_rows=[
+                    ("last_updated_pacific", '=IFERROR(MAX(G2:G), "")'),
+                    ("unique_runs", 5),
+                ],
+            ),
+            [
+                ["a", "b", "last_updated_pacific", '=IFERROR(MAX(G2:G), "")'],
+                [1, 2, "unique_runs", 5],
+                [3, 4, "", ""],
+            ],
         )
 
 

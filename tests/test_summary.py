@@ -1,7 +1,11 @@
 from datetime import UTC, datetime
 import unittest
 
-from niru.service import build_summary_header, build_summary_rows
+from niru.service import (
+    build_summary_header,
+    build_summary_metadata_rows,
+    build_summary_rows,
+)
 
 
 class SummaryBuilderTests(unittest.TestCase):
@@ -159,3 +163,22 @@ class SummaryBuilderTests(unittest.TestCase):
 
         self.assertEqual(summary_rows[0].to_sheet_row()[3], 3210.5)
         self.assertEqual(summary_rows[1].to_sheet_row()[3], 3210.4)
+
+    def test_builds_unique_run_metadata_for_group_runs(self) -> None:
+        header = [
+            "region",
+            "realm",
+            "name",
+            "current_total_mythic_plus_rating",
+            "last_successful_sync_time_pacific",
+        ]
+        runs = [
+            {"keystone_run_id": 101, "dungeon": "Darkflame Cleft", "short_name": "DFC"},
+            {"keystone_run_id": 101, "dungeon": "Darkflame Cleft", "short_name": "DFC"},
+            {"keystone_run_id": 202, "dungeon": "Operation: Floodgate", "short_name": "FLOOD"},
+        ]
+
+        self.assertEqual(
+            build_summary_metadata_rows(header=header, runs=runs),
+            [("unique_runs", 2)],
+        )

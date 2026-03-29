@@ -208,6 +208,22 @@ def build_summary_rows(
     return rows
 
 
+def build_summary_metadata_rows(
+    *,
+    header: list[str],
+    runs: list[dict[str, Any]],
+) -> list[tuple[object, object]]:
+    """Build top-right metadata rows for the summary sheet."""
+
+    if "last_successful_sync_time_pacific" not in header:
+        return []
+
+    unique_run_ids = {
+        run_id for run in runs if (run_id := run.get("keystone_run_id")) is not None
+    }
+    return [("unique_runs", len(unique_run_ids))]
+
+
 class SyncService:
     """Coordinates roster reads, Raider.IO syncs, Mongo updates, and Sheets writes."""
 
@@ -295,9 +311,11 @@ class SyncService:
             runs = self._repository.get_runs_for_players(player_keys)
             summary_header = build_summary_header(season_dungeons)
             summary_rows = build_summary_rows(refreshed_players, runs, season_dungeons)
+            metadata_rows = build_summary_metadata_rows(header=summary_header, runs=runs)
             stats.sheet_rows_written = self._sheets_client.write_output_rows(
                 summary_header,
                 [row.to_sheet_row() for row in summary_rows],
+                metadata_rows=metadata_rows,
             )
         except Exception:
             LOGGER.exception("Sync cycle failed")
