@@ -37,6 +37,7 @@ class MongoRepository:
         self.runs = self._db[settings.runs_collection]
         self.sync_cycles = self._db[settings.sync_cycles_collection]
         self.season_dungeons = self._db["season_dungeons"]
+        self.weekly_periods = self._db["weekly_periods"]
         self.players.create_index([("player_key", ASCENDING)], unique=True)
         self.runs.create_index([("keystone_run_id", ASCENDING)], unique=True)
         self.runs.create_index([("completed_at", ASCENDING)])
@@ -46,6 +47,7 @@ class MongoRepository:
         self.players.create_index([("hot_until_at", ASCENDING)])
         self.season_dungeons.create_index([("season", ASCENDING), ("slug", ASCENDING)], unique=True)
         self.season_dungeons.create_index([("season", ASCENDING), ("short_name", ASCENDING)])
+        self.weekly_periods.create_index([("region", ASCENDING)], unique=True)
 
     def sync_roster(self, entries: list[RosterEntry], *, seen_at: datetime) -> None:
         """Upsert current roster entries and deactivate anything no longer listed."""
@@ -430,6 +432,60 @@ class MongoRepository:
         """Return season dungeon metadata in stable short-name order."""
 
         return list(self.season_dungeons.find({"season": season}).sort("short_name"))
+
+    def get_current_weekly_periods(
+        self,
+        *,
+        now: datetime,
+        regions: set[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Return cached weekly periods that still cover the requested time."""
+
+        if not regions:
+            return {}
+        current_time = ensure_utc(now)
+        documents = self.weekly_periods.find({"region": {"$in": sorted(regions)}})
+        periods_by_region: dict[str, dict[str, Any]] = {}
+        for document in documents:
+            region = str(document.get("region", "")).lower()
+            start = _safe_utc_datetime(document.get("start"))
+            end = _safe_utc_datetime(document.get("end"))
+            period = document.get("period")
+            if not region or start is None or end is None or period is None:
+                continue
+            if not start <= current_time < end:
+                continue
+            periods_by_region[region] = {
+                "period": int(period),
+                "start": start,
+                "end": end,
+            }
+        return periods_by_region
+
+    def replace_weekly_periods(
+        self,
+        *,
+        periods_by_region: dict[str, dict[str, Any]],
+        synced_at: datetime,
+    ) -> None:
+        """Persist the latest weekly periods by region."""
+
+        if not periods_by_region:
+            return
+        for region, period in periods_by_region.items():
+            self.weekly_periods.update_one(
+                {"region": region},
+                {
+                    "$set": {
+                        "region": region,
+                        "period": period["period"],
+                        "start": ensure_utc(period["start"]),
+                        "end": ensure_utc(period["end"]),
+                        "last_synced_at": ensure_utc(synced_at),
+                    }
+                },
+                upsert=True,
+            )
 
     def get_player_character_id(self, *, player_key: str) -> int | None:
         """Return a cached Raider.IO website character ID when available."""

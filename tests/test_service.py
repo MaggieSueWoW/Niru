@@ -38,6 +38,7 @@ class FakeRepo:
         self.runs = []
         self.sync_docs = []
         self.season_dungeons = []
+        self.weekly_periods = {}
 
     def sync_roster(self, entries, *, seen_at):
         self.players = [
@@ -171,6 +172,19 @@ class FakeRepo:
 
     def list_season_dungeons(self, *, season):
         return [d for d in self.season_dungeons if d["season"] == season]
+
+    def get_current_weekly_periods(self, *, now, regions):
+        cached = {}
+        for region in regions:
+            period = self.weekly_periods.get(region)
+            if period is None:
+                continue
+            if period["start"] <= now < period["end"]:
+                cached[region] = period
+        return cached
+
+    def replace_weekly_periods(self, *, periods_by_region, synced_at):
+        self.weekly_periods = dict(periods_by_region)
 
     def replace_season_dungeons(self, *, season, dungeons, synced_at):
         self.season_dungeons = [
@@ -373,6 +387,26 @@ class SyncServiceTests(unittest.TestCase):
             "Missing Raider.IO weekly period for region us; weekly 10+ counts left blank.",
             repo.sync_docs[0]["warnings"],
         )
+
+    def test_run_cycle_reuses_cached_current_weekly_periods(self) -> None:
+        settings = make_settings()
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/area-52/Mythics"])
+        raider = FakeRaiderIO()
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=raider,
+        )
+
+        service.run_cycle()
+        first_cycle_api_calls = raider.api_calls
+
+        service.run_cycle()
+
+        self.assertEqual(first_cycle_api_calls, 3)
+        self.assertEqual(raider.api_calls, 5)
 
     def test_stop_requested_breaks_sleep_wait(self) -> None:
         settings = make_settings()

@@ -388,7 +388,15 @@ class SyncService:
                 players_to_sync, _, hot_due_keys = self._select_players_for_sync(
                     now=started_at
                 )
-                weekly_periods = self._load_current_weekly_periods()
+                required_regions = {
+                    str(player.get("region", "")).lower()
+                    for player in active_players
+                    if player.get("is_valid") and player.get("region")
+                }
+                weekly_periods = self._load_current_weekly_periods(
+                    now=started_at,
+                    required_regions=required_regions,
+                )
                 stats.weekly_periods = _weekly_periods_for_metadata(weekly_periods)
                 for player in active_players:
                     player_region = str(player.get("region", "")).lower()
@@ -612,16 +620,42 @@ class SyncService:
         )
         return self._repository.list_season_dungeons(season=season)
 
-    def _load_current_weekly_periods(self) -> dict[str, dict[str, Any]]:
-        """Fetch and normalize the current Raider.IO weekly period windows."""
+    def _load_current_weekly_periods(
+        self,
+        *,
+        now: datetime,
+        required_regions: set[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Load current weekly periods from cache when possible, else refresh from Raider.IO."""
+
+        cached_periods = self._repository.get_current_weekly_periods(
+            now=now,
+            regions=required_regions,
+        )
+        if required_regions and required_regions.issubset(cached_periods):
+            LOGGER.info(
+                "Using cached Raider.IO weekly periods",
+                extra={"regions": sorted(cached_periods)},
+            )
+            return cached_periods
 
         payload = self._raiderio_client.get_periods().payload
         periods_by_region = _normalize_weekly_periods(payload)
+        self._repository.replace_weekly_periods(
+            periods_by_region=periods_by_region,
+            synced_at=now,
+        )
         LOGGER.info(
             "Resolved Raider.IO weekly periods",
             extra={"regions": sorted(periods_by_region)},
         )
-        return periods_by_region
+        if not required_regions:
+            return periods_by_region
+        return {
+            region: period
+            for region, period in periods_by_region.items()
+            if region in required_regions
+        }
 
     def _skip_raiderio_sync_due_to_cooldown(self, *, stats: SyncStats) -> bool:
         """Stop making Raider.IO calls while a persistent cooldown is active."""
