@@ -15,6 +15,7 @@ from niru.clients.raiderio import RaiderIOClient, RaiderIOError, RaiderIONotFoun
 from niru.clients.sheets import GoogleSheetsClient
 from niru.config import Settings
 from niru.models import (
+    PACIFIC_TZ,
     PlayerDataStatus,
     PlayerIdentity,
     SeasonDungeon,
@@ -38,6 +39,7 @@ from niru.roster import parse_roster_rows
 from niru.storage import MongoRepository
 
 LOGGER = logging.getLogger(__name__)
+PACIFIC_DAY_START_HOUR = 0
 
 PLAYER_COLUMNS = [
     "region",
@@ -105,6 +107,36 @@ def _build_dungeon_scores(profile_payload: dict[str, Any]) -> dict[str, float]:
             if dungeon and run_id and score is not None:
                 best_by_dungeon[dungeon][int(run_id)] = float(score)
     return {dungeon: round(sum(scores.values()), 1) for dungeon, scores in best_by_dungeon.items()}
+
+
+def _lag_minutes_for_run(run: dict[str, Any]) -> float | None:
+    created_at = _safe_datetime(run.get("created_at"))
+    completed_at = _safe_datetime(run.get("completed_at"))
+    if created_at is None or completed_at is None:
+        return None
+    lag_seconds = max((created_at - completed_at).total_seconds(), 0.0)
+    return round(lag_seconds / 60.0, 1)
+
+
+def _pacific_day_bounds(now: datetime) -> tuple[datetime, datetime]:
+    pacific_now = ensure_utc(now).astimezone(PACIFIC_TZ)
+    day_start_pacific = pacific_now.replace(
+        hour=PACIFIC_DAY_START_HOUR,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    return day_start_pacific.astimezone(UTC), pacific_now.astimezone(UTC)
+
+
+def _unique_runs_by_id(runs: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    unique_runs: dict[int, dict[str, Any]] = {}
+    for run in runs:
+        run_id = run.get("keystone_run_id")
+        if run_id is None:
+            continue
+        unique_runs[int(run_id)] = run
+    return unique_runs
 
 
 def _build_total_score(profile_payload: dict[str, Any], *, season: str) -> float | None:
@@ -314,16 +346,47 @@ def build_summary_metadata_rows(
     *,
     header: list[str],
     runs: list[dict[str, Any]],
+    now: datetime,
 ) -> list[tuple[object, object]]:
     """Build top-right metadata rows for the summary sheet."""
 
     if "last_successful_sync_time_pacific" not in header:
         return []
 
-    unique_run_ids = {
-        run_id for run in runs if (run_id := run.get("keystone_run_id")) is not None
-    }
-    return [("unique_runs", len(unique_run_ids))]
+    unique_runs = _unique_runs_by_id(runs)
+    metadata_rows: list[tuple[object, object]] = [("unique_runs", len(unique_runs))]
+
+    lag_by_run_id: dict[int, tuple[datetime, float]] = {}
+    today_lags: list[float] = []
+    today_start, today_end = _pacific_day_bounds(now)
+    for run_id, run in unique_runs.items():
+        created_at = _safe_datetime(run.get("created_at"))
+        lag_minutes = _lag_minutes_for_run(run)
+        if created_at is None or lag_minutes is None:
+            continue
+        lag_by_run_id[run_id] = (created_at, lag_minutes)
+        if today_start <= created_at <= today_end:
+            today_lags.append(lag_minutes)
+
+    now_lag = None
+    if lag_by_run_id:
+        _, now_lag = max(lag_by_run_id.values(), key=lambda value: value[0])
+
+    metadata_rows.extend(
+        [
+            ("raiderio_lag_now_minutes", now_lag),
+            (
+                "raiderio_lag_today_avg_minutes",
+                None if not today_lags else round(sum(today_lags) / len(today_lags), 1),
+            ),
+            (
+                "raiderio_lag_today_max_minutes",
+                None if not today_lags else round(max(today_lags), 1),
+            ),
+            ("raiderio_lag_today_run_count", len(today_lags)),
+        ]
+    )
+    return metadata_rows
 
 
 class SyncService:
@@ -488,7 +551,11 @@ class SyncService:
                 season_dungeons,
                 weekly_periods=weekly_periods,
             )
-            metadata_rows = build_summary_metadata_rows(header=summary_header, runs=runs)
+            metadata_rows = build_summary_metadata_rows(
+                header=summary_header,
+                runs=runs,
+                now=started_at,
+            )
             stats.sheet_rows_written = self._sheets_client.write_output_rows(
                 summary_header,
                 [row.to_sheet_row() for row in summary_rows],

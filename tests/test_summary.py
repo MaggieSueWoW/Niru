@@ -318,12 +318,143 @@ class SummaryBuilderTests(unittest.TestCase):
             "last_successful_sync_time_pacific",
         ]
         runs = [
-            {"keystone_run_id": 101, "dungeon": "Darkflame Cleft", "short_name": "DFC"},
-            {"keystone_run_id": 101, "dungeon": "Darkflame Cleft", "short_name": "DFC"},
-            {"keystone_run_id": 202, "dungeon": "Operation: Floodgate", "short_name": "FLOOD"},
+            {
+                "keystone_run_id": 101,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "completed_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 26, 14, 0, tzinfo=UTC),
+            },
+            {
+                "keystone_run_id": 101,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "completed_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 26, 14, 30, tzinfo=UTC),
+            },
+            {
+                "keystone_run_id": 202,
+                "dungeon": "Operation: Floodgate",
+                "short_name": "FLOOD",
+                "completed_at": datetime(2026, 3, 26, 9, 0, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 26, 15, 0, tzinfo=UTC),
+            },
         ]
 
         self.assertEqual(
-            build_summary_metadata_rows(header=header, runs=runs),
-            [("unique_runs", 2)],
+            build_summary_metadata_rows(
+                header=header,
+                runs=runs,
+                now=datetime(2026, 3, 26, 16, 0, tzinfo=UTC),
+            ),
+            [
+                ("unique_runs", 2),
+                ("raiderio_lag_now_minutes", 360.0),
+                ("raiderio_lag_today_avg_minutes", 255.0),
+                ("raiderio_lag_today_max_minutes", 360.0),
+                ("raiderio_lag_today_run_count", 2),
+            ],
+        )
+
+    def test_builds_lag_metadata_with_pacific_day_boundaries(self) -> None:
+        header = [
+            "region",
+            "realm",
+            "name",
+            "current_total_mythic_plus_rating",
+            "last_successful_sync_time_pacific",
+        ]
+        runs = [
+            {
+                "keystone_run_id": 101,
+                "completed_at": datetime(2026, 3, 27, 3, 30, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 27, 6, 30, tzinfo=UTC),
+            },
+            {
+                "keystone_run_id": 202,
+                "completed_at": datetime(2026, 3, 27, 6, 30, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 27, 8, 30, tzinfo=UTC),
+            },
+        ]
+
+        self.assertEqual(
+            build_summary_metadata_rows(
+                header=header,
+                runs=runs,
+                now=datetime(2026, 3, 27, 12, 0, tzinfo=UTC),
+            ),
+            [
+                ("unique_runs", 2),
+                ("raiderio_lag_now_minutes", 120.0),
+                ("raiderio_lag_today_avg_minutes", 120.0),
+                ("raiderio_lag_today_max_minutes", 120.0),
+                ("raiderio_lag_today_run_count", 1),
+            ],
+        )
+
+    def test_clamps_negative_lag_and_skips_missing_timestamps(self) -> None:
+        header = [
+            "region",
+            "realm",
+            "name",
+            "current_total_mythic_plus_rating",
+            "last_successful_sync_time_pacific",
+        ]
+        runs = [
+            {
+                "keystone_run_id": 101,
+                "completed_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                "created_at": datetime(2026, 3, 26, 11, 0, tzinfo=UTC),
+            },
+            {
+                "keystone_run_id": 202,
+                "completed_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+            },
+            {
+                "keystone_run_id": 303,
+                "created_at": datetime(2026, 3, 26, 14, 0, tzinfo=UTC),
+            },
+        ]
+
+        self.assertEqual(
+            build_summary_metadata_rows(
+                header=header,
+                runs=runs,
+                now=datetime(2026, 3, 26, 16, 0, tzinfo=UTC),
+            ),
+            [
+                ("unique_runs", 3),
+                ("raiderio_lag_now_minutes", 0.0),
+                ("raiderio_lag_today_avg_minutes", 0.0),
+                ("raiderio_lag_today_max_minutes", 0.0),
+                ("raiderio_lag_today_run_count", 1),
+            ],
+        )
+
+    def test_leaves_lag_values_blank_when_no_runs_have_complete_timestamps(self) -> None:
+        header = [
+            "region",
+            "realm",
+            "name",
+            "current_total_mythic_plus_rating",
+            "last_successful_sync_time_pacific",
+        ]
+        runs = [
+            {"keystone_run_id": 101, "created_at": datetime(2026, 3, 26, 14, 0, tzinfo=UTC)},
+            {"keystone_run_id": 202, "completed_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC)},
+        ]
+
+        self.assertEqual(
+            build_summary_metadata_rows(
+                header=header,
+                runs=runs,
+                now=datetime(2026, 3, 26, 16, 0, tzinfo=UTC),
+            ),
+            [
+                ("unique_runs", 2),
+                ("raiderio_lag_now_minutes", None),
+                ("raiderio_lag_today_avg_minutes", None),
+                ("raiderio_lag_today_max_minutes", None),
+                ("raiderio_lag_today_run_count", 0),
+            ],
         )
