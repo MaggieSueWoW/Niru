@@ -451,8 +451,10 @@ class SyncService:
                         stats.partial = True
                         break
                     player_key = player["player_key"]
+                    sync_kind = "base"
                     if player_key in hot_due_keys:
                         stats.hot_players_synced += 1
+                        sync_kind = "hot"
                         hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
                         last_attempt = _last_attempted_sync_at(player)
                         if hot_ready_at and (last_attempt is None or last_attempt < hot_ready_at):
@@ -465,7 +467,12 @@ class SyncService:
                             )
                     else:
                         stats.base_due_players_synced += 1
-                    self._sync_player(player=player, stats=stats, now=started_at)
+                    self._sync_player(
+                        player=player,
+                        stats=stats,
+                        now=started_at,
+                        sync_kind=sync_kind,
+                    )
                     if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                         break
 
@@ -512,7 +519,14 @@ class SyncService:
                 },
             )
 
-    def _sync_player(self, *, player: dict[str, Any], stats: SyncStats, now: Any) -> None:
+    def _sync_player(
+        self,
+        *,
+        player: dict[str, Any],
+        stats: SyncStats,
+        now: Any,
+        sync_kind: str,
+    ) -> None:
         player_key = player["player_key"]
         identity = PlayerIdentity(
             region=player["region"],
@@ -520,7 +534,7 @@ class SyncService:
             name=player["name"],
             player_key=player_key,
         )
-        self._repository.mark_sync_started(player_key, now)
+        self._repository.mark_sync_started(player_key, now, sync_kind=sync_kind)
 
         try:
             result = self._raiderio_client.get_character_profile(identity)
@@ -607,6 +621,17 @@ class SyncService:
                 hot_until_at = hot_ready_at + timedelta(
                     minutes=self._settings.sync.active_idle_minutes
                 )
+                if hot_until_at <= ensure_utc(now):
+                    LOGGER.info(
+                        "Skipping stale hot polling window",
+                        extra={
+                            "player_key": player_key,
+                            "last_new_run_completed_at": latest_completed_at.isoformat(),
+                            "hot_ready_at": hot_ready_at.isoformat(),
+                            "hot_until_at": hot_until_at.isoformat(),
+                        },
+                    )
+                    return
                 self._repository.schedule_player_hot_window(
                     player_key=player_key,
                     last_new_run_completed_at=latest_completed_at,
@@ -923,19 +948,27 @@ class SyncService:
         for player in valid_players:
             last_attempt = _last_attempted_sync_at(player)
             if last_attempt is not None:
-                next_base_batch_at = _next_hot_batch_at_or_after(
-                    last_attempt + timedelta(minutes=self._settings.sync.interval_minutes),
+                next_base_batch_at = _current_hot_batch_start(
+                    last_attempt,
                     interval_minutes=self._settings.sync.interval_minutes,
-                )
+                ) + timedelta(minutes=self._settings.sync.interval_minutes)
                 next_due_at = min(next_due_at, next_base_batch_at)
             hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
             hot_until_at = _safe_datetime(player.get("hot_until_at"))
             if hot_ready_at is None or hot_until_at is None or hot_until_at <= normalized_now:
                 continue
+            last_hot_batch_at = None
+            if last_attempt is not None:
+                last_hot_batch_at = _current_hot_batch_start(
+                    last_attempt,
+                    interval_minutes=self._settings.sync.active_interval_minutes,
+                ) + timedelta(minutes=self._settings.sync.active_interval_minutes)
             next_hot_batch_at = _next_hot_batch_at_or_after(
                 max(normalized_now, hot_ready_at),
                 interval_minutes=self._settings.sync.active_interval_minutes,
             )
+            if last_hot_batch_at is not None:
+                next_hot_batch_at = max(next_hot_batch_at, last_hot_batch_at)
             if next_hot_batch_at < hot_until_at:
                 next_due_at = min(next_due_at, next_hot_batch_at)
 

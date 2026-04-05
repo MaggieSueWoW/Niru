@@ -11,6 +11,22 @@ from niru.play_profile import (
 from niru.service import SyncService, build_summary_header
 
 
+def _current_batch_start(now, *, interval_minutes):
+    if interval_minutes <= 0:
+        return now
+    interval_seconds = interval_minutes * 60
+    timestamp = int(now.timestamp())
+    bucket_start_timestamp = timestamp - (timestamp % interval_seconds)
+    return datetime.fromtimestamp(bucket_start_timestamp, tz=UTC)
+
+
+def _next_batch_at_or_after(moment, *, interval_minutes):
+    batch_start = _current_batch_start(moment, interval_minutes=interval_minutes)
+    if batch_start == moment:
+        return batch_start
+    return batch_start + timedelta(minutes=interval_minutes)
+
+
 def make_settings():
     return type(
         "Settings",
@@ -61,6 +77,7 @@ class FakeRepo:
                 "name": entry.identity.name if entry.identity else entry.raw_value,
                 "current_dungeon_scores": {},
                 "current_total_score": None,
+                "last_base_sync_started_at": None,
                 "last_new_run_completed_at": None,
                 "hot_ready_at": None,
                 "hot_until_at": None,
@@ -84,8 +101,17 @@ class FakeRepo:
         for player in self.players[:limit]:
             if not player.get("is_valid", False):
                 continue
-            last_started = player.get("last_sync_started_at")
-            if last_started is None or (now - last_started).total_seconds() >= interval_minutes * 60:
+            last_started = player.get("last_base_sync_started_at") or player.get(
+                "last_sync_started_at"
+            )
+            if last_started is None:
+                due.append(player)
+                continue
+            next_due_at = _next_batch_at_or_after(
+                last_started + timedelta(minutes=interval_minutes),
+                interval_minutes=interval_minutes,
+            )
+            if next_due_at <= now:
                 due.append(player)
         return due[:limit]
 
@@ -101,14 +127,23 @@ class FakeRepo:
             if not hot_ready_at <= now < hot_until_at:
                 continue
             last_started = player.get("last_sync_started_at")
-            if last_started is None or (now - last_started).total_seconds() >= interval_minutes * 60:
+            if last_started is None:
+                due.append(player)
+                continue
+            next_due_at = _next_batch_at_or_after(
+                max(hot_ready_at, last_started + timedelta(minutes=interval_minutes)),
+                interval_minutes=interval_minutes,
+            )
+            if next_due_at <= now:
                 due.append(player)
         return due[:limit]
 
-    def mark_sync_started(self, player_key, started_at):
+    def mark_sync_started(self, player_key, started_at, *, sync_kind):
         for player in self.players:
             if player["player_key"] == player_key:
                 player["last_sync_started_at"] = started_at
+                if sync_kind == "base":
+                    player["last_base_sync_started_at"] = started_at
 
     def update_player_profile(
         self, player_key, *, current_dungeon_scores, current_total_score, synced_at
@@ -576,7 +611,7 @@ class SyncServiceTests(unittest.TestCase):
                 "players_scheduled_for_hot": 0,
             },
         )()
-        service._sync_player(player=repo.players[0], stats=stats, now=now)
+        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
 
         self.assertEqual(repo.players[0]["last_new_run_completed_at"], datetime(2026, 3, 26, 12, 0, tzinfo=UTC))
         self.assertEqual(repo.players[0]["hot_ready_at"], datetime(2026, 3, 26, 12, 20, tzinfo=UTC))
@@ -715,7 +750,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "last_sync_started_at": now - timedelta(minutes=1),
+                "last_sync_started_at": now,
                 "hot_ready_at": now + timedelta(minutes=4),
                 "hot_until_at": now + timedelta(minutes=44),
             }
@@ -778,7 +813,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "last_sync_started_at": datetime(2026, 3, 26, 12, 38, 39, tzinfo=UTC),
+                "last_sync_started_at": datetime(2026, 3, 26, 12, 46, 40, tzinfo=UTC),
             }
         ]
         service = SyncService(
@@ -840,6 +875,38 @@ class SyncServiceTests(unittest.TestCase):
         )
         self.assertEqual(base_keys, {"us/area-52/baseplayer"})
         self.assertEqual(hot_keys, {"us/area-52/hotplayer"})
+
+    def test_hot_sync_does_not_delay_next_base_bucket(self) -> None:
+        now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                "last_base_sync_started_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                "last_sync_started_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        players, base_keys, hot_keys = service._select_players_for_sync(now=now)
+
+        self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
+        self.assertEqual(base_keys, {"us/area-52/mythics"})
+        self.assertEqual(hot_keys, set())
 
     def test_predictive_hot_queue_enqueues_player_for_current_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
@@ -986,10 +1053,61 @@ class SyncServiceTests(unittest.TestCase):
             },
         )()
 
-        service._sync_player(player=repo.players[0], stats=stats, now=now)
+        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
 
         self.assertEqual(repo.players[0]["play_profile_weeks_observed"], 2)
         self.assertEqual(
             len(repo.players[0]["play_profile_seen_week_hours"]),
             2,
         )
+
+    def test_sync_player_skips_stale_hot_window_for_old_new_run(self) -> None:
+        now = datetime(2026, 4, 5, 8, 15, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/illidan/gebus",
+                "region": "us",
+                "realm": "illidan",
+                "name": "Gëbus",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.profile_payload["mythic_plus_recent_runs"] = [
+            {
+                "keystone_run_id": 888,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.0,
+                "mythic_level": 13,
+                "num_keystone_upgrades": 1,
+                "completed_at": "2026-04-04T19:09:30+00:00",
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=raider,
+        )
+        stats = type(
+            "Stats",
+            (),
+            {
+                "partial": False,
+                "warnings": [],
+                "new_runs": 0,
+                "detail_fetches": 0,
+                "players_scheduled_for_hot": 0,
+            },
+        )()
+
+        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
+
+        self.assertEqual(stats.players_scheduled_for_hot, 0)
+        self.assertIsNone(repo.players[0].get("hot_ready_at"))
+        self.assertIsNone(repo.players[0].get("hot_until_at"))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from niru.config import MongoSettings
@@ -23,6 +23,28 @@ def _safe_utc_datetime(value: Any) -> datetime | None:
     if parsed is None:
         return None
     return ensure_utc(parsed)
+
+
+def _current_batch_start(now: datetime, *, interval_minutes: int) -> datetime:
+    """Return the current UTC-aligned batch boundary for an interval."""
+
+    normalized_now = ensure_utc(now)
+    if interval_minutes <= 0:
+        return normalized_now
+    interval_seconds = interval_minutes * 60
+    timestamp = int(normalized_now.timestamp())
+    bucket_start_timestamp = timestamp - (timestamp % interval_seconds)
+    return datetime.fromtimestamp(bucket_start_timestamp, tz=UTC)
+
+
+def _next_batch_at_or_after(moment: datetime, *, interval_minutes: int) -> datetime:
+    """Return the next UTC-aligned batch boundary at or after a timestamp."""
+
+    normalized = ensure_utc(moment)
+    batch_start = _current_batch_start(normalized, interval_minutes=interval_minutes)
+    if batch_start == normalized:
+        return batch_start
+    return batch_start + timedelta(minutes=interval_minutes)
 
 
 class MongoRepository:
@@ -82,6 +104,7 @@ class MongoRepository:
                     "$setOnInsert": {
                         "current_dungeon_scores": {},
                         "current_total_score": None,
+                        "last_base_sync_started_at": None,
                         "last_new_run_completed_at": None,
                         "hot_ready_at": None,
                         "hot_until_at": None,
@@ -129,8 +152,17 @@ class MongoRepository:
         for player in self.list_active_players(limit=limit):
             if not player.get("is_valid", False):
                 continue
-            last_attempt = _safe_utc_datetime(player.get("last_sync_started_at"))
-            if last_attempt is None or cutoff - last_attempt >= timedelta(minutes=interval_minutes):
+            last_attempt = _safe_utc_datetime(
+                player.get("last_base_sync_started_at") or player.get("last_sync_started_at")
+            )
+            if last_attempt is None:
+                due_players.append(player)
+                continue
+            next_due_at = _current_batch_start(
+                last_attempt,
+                interval_minutes=interval_minutes,
+            ) + timedelta(minutes=interval_minutes)
+            if next_due_at <= cutoff:
                 due_players.append(player)
         return due_players[:limit]
 
@@ -155,16 +187,40 @@ class MongoRepository:
             if not hot_ready_at <= cutoff < hot_until_at:
                 continue
             last_attempt = _safe_utc_datetime(player.get("last_sync_started_at"))
-            if last_attempt is None or cutoff - last_attempt >= timedelta(minutes=interval_minutes):
+            if last_attempt is None:
+                due_players.append(player)
+                continue
+            next_hot_ready_batch = _next_batch_at_or_after(
+                hot_ready_at,
+                interval_minutes=interval_minutes,
+            )
+            next_due_at = max(
+                next_hot_ready_batch,
+                _current_batch_start(
+                    last_attempt,
+                    interval_minutes=interval_minutes,
+                )
+                + timedelta(minutes=interval_minutes),
+            )
+            if next_due_at <= cutoff:
                 due_players.append(player)
         return due_players[:limit]
 
-    def mark_sync_started(self, player_key: str, started_at: datetime) -> None:
+    def mark_sync_started(
+        self,
+        player_key: str,
+        started_at: datetime,
+        *,
+        sync_kind: str,
+    ) -> None:
         """Record sync start time."""
 
+        fields_to_set: dict[str, Any] = {"last_sync_started_at": started_at}
+        if sync_kind == "base":
+            fields_to_set["last_base_sync_started_at"] = started_at
         self.players.update_one(
             {"player_key": player_key},
-            {"$set": {"last_sync_started_at": started_at}},
+            {"$set": fields_to_set},
         )
 
     def mark_invalid_player(self, player_key: str, message: str, *, when: datetime) -> None:

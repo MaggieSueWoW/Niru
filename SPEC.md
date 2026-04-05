@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build Niru, a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets on a 15-minute cadence.
+Build Niru, a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets using a bucketed sync loop with config-driven base polling plus targeted hot polling.
 
 ## Scope
 
@@ -45,6 +45,8 @@ For each valid active player:
 - Derive current per-dungeon score from the best and alternate scoring runs returned by Raider.IO
 - Collect run IDs from recent, best, and alternate sets
 - Insert unseen run stubs into MongoDB
+- When new runs are discovered, schedule delayed hot polling starting from the most recent run completion plus the configured start delay
+- Maintain a per-player Pacific-time weekly play profile and use it to predictively queue hot polling at the top of high-probability hours
 
 Important limitation:
 
@@ -68,6 +70,8 @@ Important limitation:
 - validity and sync status
 - last successful sync timestamp
 - current per-dungeon score map
+- delayed hot-poll scheduling timestamps
+- predictive play-profile metadata and probabilities
 - last error
 
 ### `runs`
@@ -128,12 +132,20 @@ Known recovery requirement:
 
 - Runs as a long-lived process in Docker
 - Executes one sync immediately on startup
-- Sleeps until the next configured interval
+- Sleeps until the next due base bucket, hot bucket, predictive top-of-hour enqueue, or retry backoff
+- Base polling uses UTC-aligned buckets defined by `sync.interval_minutes`
+- Hot polling uses UTC-aligned buckets defined by `sync.active_interval_minutes`
+- Predictive hot polling uses Pacific-time weekly hour probabilities and enqueues players into the existing hot window flow
 - Keeps ordinary sync failures inside the process and retries cycles with exponential backoff plus jitter
 - Supports CLI modes for one-shot and looping execution
 - Handles `SIGINT` and `SIGTERM` gracefully
 - Logs to stdout with standard Python logging
 - Uses Docker restart policy as a last-resort recovery layer, not the primary retry loop
+
+## Maintenance Commands
+
+- A standalone play-profile seed command builds predictive profiles from stored current-season runs
+- The seed path supports all active players by default plus optional per-player filtering and dry-run mode
 
 ## V2 Candidates
 

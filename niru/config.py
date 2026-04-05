@@ -98,6 +98,21 @@ def _require_float(value: object, *, name: str, minimum: float = 0.0) -> float:
     return float(value)
 
 
+def _require_float_range(
+    value: object,
+    *,
+    name: str,
+    minimum: float,
+    maximum: float,
+) -> float:
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a number between {minimum} and {maximum}")
+    numeric = float(value)
+    if numeric < minimum or numeric > maximum:
+        raise ValueError(f"{name} must be a number between {minimum} and {maximum}")
+    return numeric
+
+
 def _require_bool(value: object, *, name: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError(f"{name} must be a boolean")
@@ -163,10 +178,11 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 sync_raw.get("predictive_hot_enabled", True),
                 name="sync.predictive_hot_enabled",
             ),
-            predictive_hot_threshold=_require_float(
+            predictive_hot_threshold=_require_float_range(
                 sync_raw.get("predictive_hot_threshold", 0.5),
                 name="sync.predictive_hot_threshold",
                 minimum=0.0,
+                maximum=1.0,
             ),
             current_season=_require_text(
                 sync_raw.get("current_season"), name="sync.current_season"

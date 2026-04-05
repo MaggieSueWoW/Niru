@@ -1,6 +1,6 @@
 # Niru
 
-`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites a raw summary table on a base 15-minute cadence with optional 5-minute hot-player polling.
+`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites a raw summary table on a bucketed base cadence with optional bucketed hot-player polling.
 
 The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Datagear), the mechagnome tinkerer from Rustbolt.
 
@@ -15,6 +15,7 @@ This bot is intentionally conservative:
 - Reads roster entries from the `raw_data` tab, column `A`, starting at `A2`
 - Expects roster cells in `region/realm/name` format, for example `us/area-52/Mythics`
 - Syncs current-season Raider.IO Mythic+ profile data for each valid player
+- Uses bucketed base polling plus delayed and predictive hot polling to decide which players to refresh from Raider.IO
 - Stores player state, normalized runs, and sync cycle metadata in MongoDB
 - Caches current-season dungeon metadata, including Raider.IO short names, in MongoDB
 - Persists Raider.IO cooldown and rolling rate-limit state in Redis so restarts do not reset protections
@@ -198,6 +199,7 @@ Logs are written to stdout and include:
 
 - sync cycle start and finish
 - new run discovery
+- bucketed base and hot polling outcomes
 - delayed hot-poll scheduling and expiry
 - predictive hot-poll queueing
 - invalid roster rows
