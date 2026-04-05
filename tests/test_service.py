@@ -643,6 +643,36 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
         self.assertEqual(hot_keys, {"us/area-52/mythics"})
 
+    def test_hot_player_waits_for_next_batch_boundary(self) -> None:
+        now = datetime(2026, 3, 26, 12, 29, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                "last_sync_started_at": datetime(2026, 3, 26, 12, 24, tzinfo=UTC),
+                "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        players, _, hot_keys = service._select_players_for_sync(now=now)
+
+        self.assertEqual(players, [])
+        self.assertEqual(hot_keys, set())
+
     def test_expired_hot_window_is_cleared(self) -> None:
         now = datetime(2026, 3, 26, 13, 5, tzinfo=UTC)
         repo = FakeRepo()
@@ -703,7 +733,68 @@ class SyncServiceTests(unittest.TestCase):
         finally:
             service_module.utc_now = original_utc_now
 
-        self.assertEqual(delay, 240.0)
+        self.assertEqual(delay, 300.0)
+
+    def test_next_cycle_delay_does_not_immediately_rerun_for_unsynced_player(self) -> None:
+        now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        original_utc_now = service_module.utc_now
+        service_module.utc_now = lambda: now
+        try:
+            delay = service._next_cycle_delay_seconds()
+        finally:
+            service_module.utc_now = original_utc_now
+
+        self.assertEqual(delay, 900.0)
+
+    def test_next_cycle_delay_uses_next_base_bucket_not_exact_last_attempt(self) -> None:
+        now = datetime(2026, 3, 26, 12, 50, 2, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                "last_sync_started_at": datetime(2026, 3, 26, 12, 38, 39, tzinfo=UTC),
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        original_utc_now = service_module.utc_now
+        service_module.utc_now = lambda: now
+        try:
+            delay = service._next_cycle_delay_seconds()
+        finally:
+            service_module.utc_now = original_utc_now
+
+        self.assertEqual(delay, 598.0)
 
     def test_mixed_selection_combines_base_due_and_hot_due_players_once_each(self) -> None:
         now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
@@ -718,7 +809,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "last_sync_started_at": now - timedelta(minutes=16),
+                "last_sync_started_at": now - timedelta(minutes=25),
             },
             {
                 "player_key": "us/area-52/hotplayer",

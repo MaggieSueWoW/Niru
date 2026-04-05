@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 import random
 import signal
@@ -160,6 +160,28 @@ def _last_attempted_sync_at(player: dict[str, Any]) -> datetime | None:
     return _safe_datetime(
         player.get("last_sync_started_at") or player.get("last_sync_completed_at")
     )
+
+
+def _current_hot_batch_start(now: datetime, *, interval_minutes: int) -> datetime:
+    """Return the current batch boundary for the configured interval."""
+
+    normalized_now = ensure_utc(now)
+    if interval_minutes <= 0:
+        return normalized_now
+    interval_seconds = interval_minutes * 60
+    timestamp = int(normalized_now.timestamp())
+    bucket_start_timestamp = timestamp - (timestamp % interval_seconds)
+    return datetime.fromtimestamp(bucket_start_timestamp, tz=UTC)
+
+
+def _next_hot_batch_at_or_after(moment: datetime, *, interval_minutes: int) -> datetime:
+    """Return the next batch boundary at or after a timestamp."""
+
+    normalized = ensure_utc(moment)
+    batch_start = _current_hot_batch_start(normalized, interval_minutes=interval_minutes)
+    if batch_start == normalized:
+        return batch_start
+    return batch_start + timedelta(minutes=interval_minutes)
 
 
 def build_summary_header(dungeons: list[dict[str, Any]]) -> list[str]:
@@ -829,12 +851,18 @@ class SyncService:
 
         limit = self._settings.sync.max_players_per_cycle
         base_due_players = self._repository.list_players_due_for_base_sync(
-            now=now,
+            now=_current_hot_batch_start(
+                now,
+                interval_minutes=self._settings.sync.interval_minutes,
+            ),
             interval_minutes=self._settings.sync.interval_minutes,
             limit=limit,
         )
         hot_due_players = self._repository.list_players_due_for_hot_sync(
-            now=now,
+            now=_current_hot_batch_start(
+                now,
+                interval_minutes=self._settings.sync.active_interval_minutes,
+            ),
             interval_minutes=self._settings.sync.active_interval_minutes,
             limit=limit,
         )
@@ -886,29 +914,36 @@ class SyncService:
             return float(self._settings.sync.interval_minutes * 60)
 
         now = utc_now()
-        base_interval = timedelta(minutes=self._settings.sync.interval_minutes)
-        hot_interval = timedelta(minutes=self._settings.sync.active_interval_minutes)
-        next_due_at = ensure_utc(now) + base_interval
+        normalized_now = ensure_utc(now)
+        next_due_at = _next_hot_batch_at_or_after(
+            normalized_now + timedelta(minutes=self._settings.sync.interval_minutes),
+            interval_minutes=self._settings.sync.interval_minutes,
+        )
 
         for player in valid_players:
             last_attempt = _last_attempted_sync_at(player)
-            if last_attempt is None:
-                return 0.0
-            next_due_at = min(next_due_at, last_attempt + base_interval)
+            if last_attempt is not None:
+                next_base_batch_at = _next_hot_batch_at_or_after(
+                    last_attempt + timedelta(minutes=self._settings.sync.interval_minutes),
+                    interval_minutes=self._settings.sync.interval_minutes,
+                )
+                next_due_at = min(next_due_at, next_base_batch_at)
             hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
             hot_until_at = _safe_datetime(player.get("hot_until_at"))
-            if hot_ready_at is None or hot_until_at is None or hot_until_at <= now:
+            if hot_ready_at is None or hot_until_at is None or hot_until_at <= normalized_now:
                 continue
-            if hot_ready_at > now:
-                next_due_at = min(next_due_at, hot_ready_at)
-                continue
-            next_due_at = min(next_due_at, max(hot_ready_at, last_attempt + hot_interval))
+            next_hot_batch_at = _next_hot_batch_at_or_after(
+                max(normalized_now, hot_ready_at),
+                interval_minutes=self._settings.sync.active_interval_minutes,
+            )
+            if next_hot_batch_at < hot_until_at:
+                next_due_at = min(next_due_at, next_hot_batch_at)
 
-        predictive_wake_at = self._next_predictive_wake_at(valid_players=valid_players, now=now)
+        predictive_wake_at = self._next_predictive_wake_at(valid_players=valid_players, now=normalized_now)
         if predictive_wake_at is not None:
             next_due_at = min(next_due_at, predictive_wake_at)
 
-        return max((next_due_at - now).total_seconds(), 0.0)
+        return max((next_due_at - normalized_now).total_seconds(), 0.0)
 
     def _next_predictive_wake_at(
         self,
