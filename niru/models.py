@@ -14,7 +14,6 @@ class PlayerDataStatus(StrEnum):
 
     OK = "ok"
     INVALID_PLAYER = "invalid_player"
-    PARTIAL_GAP = "partial_gap"
     SYNC_ERROR = "sync_error"
 
 

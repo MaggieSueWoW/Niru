@@ -30,7 +30,6 @@ class SyncSettings:
     active_idle_minutes: int
     current_season: str
     max_players_per_cycle: int
-    gap_detection_cycles: int
     failure_backoff_seconds: float
     max_failure_backoff_seconds: float
     failure_backoff_jitter_seconds: float
@@ -158,10 +157,6 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             max_players_per_cycle=_require_int(
                 sync_raw.get("max_players_per_cycle"),
                 name="sync.max_players_per_cycle",
-            ),
-            gap_detection_cycles=_require_int(
-                sync_raw.get("gap_detection_cycles"),
-                name="sync.gap_detection_cycles",
             ),
             failure_backoff_seconds=_require_float(
                 sync_raw.get("failure_backoff_seconds", 30.0),

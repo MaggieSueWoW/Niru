@@ -476,20 +476,6 @@ class SyncService:
         )
         self._repository.mark_sync_started(player_key, now)
 
-        last_success = player.get("last_successful_sync_at")
-        if last_success:
-            last_success_utc = ensure_utc(last_success)
-            gap_threshold = timedelta(
-                minutes=self._settings.sync.interval_minutes
-                * self._settings.sync.gap_detection_cycles
-            )
-            if ensure_utc(now) - last_success_utc > gap_threshold:
-                message = "Missed polling window; coverage may be incomplete."
-                self._repository.mark_gap_flag(player_key, message)
-                stats.partial = True
-                if message not in stats.warnings:
-                    stats.warnings.append(message)
-
         try:
             result = self._raiderio_client.get_character_profile(identity)
             profile = result.payload

@@ -22,7 +22,6 @@ def make_settings():
                     "active_interval_minutes": 5,
                     "active_start_delay_minutes": 20,
                     "active_idle_minutes": 40,
-                    "gap_detection_cycles": 2,
                     "current_season": "season-mn-1",
                     "failure_backoff_seconds": 30.0,
                     "max_failure_backoff_seconds": 300.0,
@@ -55,7 +54,6 @@ class FakeRepo:
                 "name": entry.identity.name if entry.identity else entry.raw_value,
                 "current_dungeon_scores": {},
                 "current_total_score": None,
-                "gap_flag": False,
                 "last_new_run_completed_at": None,
                 "hot_ready_at": None,
                 "hot_until_at": None,
@@ -96,12 +94,6 @@ class FakeRepo:
         for player in self.players:
             if player["player_key"] == player_key:
                 player["last_sync_started_at"] = started_at
-
-    def mark_gap_flag(self, player_key, message):
-        for player in self.players:
-            if player["player_key"] == player_key:
-                player["gap_flag"] = True
-                player["gap_message"] = message
 
     def update_player_profile(
         self, player_key, *, current_dungeon_scores, current_total_score, synced_at
@@ -398,35 +390,6 @@ class SyncServiceTests(unittest.TestCase):
         service._stop_event.set()
         service.run_forever()
 
-    def test_gap_detection_handles_naive_mongo_datetime(self) -> None:
-        settings = make_settings()
-        repo = FakeRepo()
-        repo.players = [
-            {
-                "player_key": "us/area-52/mythics",
-                "region": "us",
-                "realm": "area-52",
-                "name": "Mythics",
-                "is_valid": True,
-                "status": PlayerDataStatus.OK.value,
-                "status_message": "",
-                "gap_flag": False,
-                "current_dungeon_scores": {},
-                "last_successful_sync_at": datetime(2026, 3, 25, 12, 0),
-            }
-        ]
-        raider = FakeRaiderIO()
-        service = SyncService(
-            settings=settings,
-            repository=repo,
-            sheets_client=FakeSheets([]),
-            raiderio_client=raider,
-        )
-
-        service._sync_player(player=repo.players[0], stats=type("Stats", (), {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0})(), now=datetime(2026, 3, 26, 12, 0, tzinfo=UTC))
-
-        self.assertTrue(repo.players[0]["gap_flag"])
-
     def test_run_forever_retries_failed_cycle_without_crashing(self) -> None:
         service = SyncService(
             settings=make_settings(),
@@ -494,7 +457,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_successful_sync_at": now - timedelta(minutes=15),
             }
@@ -548,7 +510,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=4),
                 "hot_ready_at": now + timedelta(minutes=5),
@@ -579,7 +540,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=5),
                 "hot_ready_at": now,
@@ -610,7 +570,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
                 "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
@@ -640,7 +599,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=1),
                 "hot_ready_at": now + timedelta(minutes=4),
@@ -674,7 +632,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=16),
             },
@@ -686,7 +643,6 @@ class SyncServiceTests(unittest.TestCase):
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
-                "gap_flag": False,
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=5),
                 "hot_ready_at": now - timedelta(minutes=2),

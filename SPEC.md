@@ -68,7 +68,7 @@ Important limitation:
 - validity and sync status
 - last successful sync timestamp
 - current per-dungeon score map
-- gap flags and last error
+- last error
 
 ### `runs`
 
@@ -102,16 +102,7 @@ Redis data is ephemeral and is not the source of truth for business data.
 - `total_runs`: count of stored runs for that player and dungeon
 - `last_run_at`: latest known completion timestamp for that player and dungeon
 
-If the player is invalid, has sync failures, or may have a data gap, the row remains visible with a non-`ok` status.
-
-## Gap Handling
-
-The bot flags `partial_gap` when:
-
-- a player misses more than the configured sync-window threshold
-- Raider.IO data retrieval fails after retries
-
-The public API does not expose a guaranteed complete player-history feed, so gap flags are advisory and may require manual review.
+If the player is invalid or has sync failures, the row remains visible with a non-`ok` status.
 
 Known recovery requirement:
 

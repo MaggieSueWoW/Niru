@@ -80,8 +80,6 @@ class MongoRepository:
                     "$setOnInsert": {
                         "current_dungeon_scores": {},
                         "current_total_score": None,
-                        "gap_flag": False,
-                        "gap_message": "",
                         "last_new_run_completed_at": None,
                         "hot_ready_at": None,
                         "hot_until_at": None,
@@ -187,14 +185,6 @@ class MongoRepository:
                     "last_sync_completed_at": when,
                 }
             },
-        )
-
-    def mark_gap_flag(self, player_key: str, message: str) -> None:
-        """Set the potential-gap flag for a player."""
-
-        self.players.update_one(
-            {"player_key": player_key},
-            {"$set": {"gap_flag": True, "gap_message": message}},
         )
 
     def schedule_player_hot_window(

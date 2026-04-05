@@ -22,7 +22,6 @@ sync:
   active_idle_minutes: 40
   current_season: "season-mn-1"
   max_players_per_cycle: 250
-  gap_detection_cycles: 2
   failure_backoff_seconds: 30
   max_failure_backoff_seconds: 900
   failure_backoff_jitter_seconds: 5

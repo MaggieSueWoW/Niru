@@ -9,7 +9,6 @@ This bot is intentionally conservative:
 - It uses Raider.IO's public API only.
 - It stores every run it can positively identify by `keystone_run_id`.
 - It does not scrape.
-- It marks potential data gaps instead of pretending history is complete.
 
 ## What It Does
 
@@ -42,7 +41,7 @@ For each current-season dungeon, the bot adds four columns using the Raider.IO d
 
 ## Important Limitation
 
-Raider.IO's public character endpoints expose recent runs plus season scoring views such as best and alternate runs. That is enough to discover many runs and keep current summaries fresh, but Raider.IO does not guarantee complete historical coverage through these public endpoints alone. When the bot detects missed polling windows or service problems, it records that coverage may be incomplete.
+Raider.IO's public character endpoints expose recent runs plus season scoring views such as best and alternate runs. That is enough to discover many runs and keep current summaries fresh, but Raider.IO does not guarantee complete historical coverage through these public endpoints alone.
 
 ## Configuration
 
@@ -194,7 +193,6 @@ Logs are written to stdout and include:
 - Raider.IO SSL and network failures
 - Raider.IO retries
 - Raider.IO cooldown activation and cached-data fallback
-- potential gap flags
 
 ## Repo Docs
 
