@@ -25,6 +25,9 @@ class GoogleSettings:
 @dataclass(slots=True, frozen=True)
 class SyncSettings:
     interval_minutes: int
+    active_interval_minutes: int
+    active_start_delay_minutes: int
+    active_idle_minutes: int
     current_season: str
     max_players_per_cycle: int
     gap_detection_cycles: int
@@ -136,6 +139,18 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
         sync=SyncSettings(
             interval_minutes=_require_int(
                 sync_raw.get("interval_minutes"), name="sync.interval_minutes"
+            ),
+            active_interval_minutes=_require_int(
+                sync_raw.get("active_interval_minutes", 5),
+                name="sync.active_interval_minutes",
+            ),
+            active_start_delay_minutes=_require_int(
+                sync_raw.get("active_start_delay_minutes", 20),
+                name="sync.active_start_delay_minutes",
+            ),
+            active_idle_minutes=_require_int(
+                sync_raw.get("active_idle_minutes", 40),
+                name="sync.active_idle_minutes",
             ),
             current_season=_require_text(
                 sync_raw.get("current_season"), name="sync.current_season"

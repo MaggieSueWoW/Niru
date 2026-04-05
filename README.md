@@ -1,6 +1,6 @@
 # Niru
 
-`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites a raw summary table back into the sheet every 15 minutes.
+`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites a raw summary table on a base 15-minute cadence with optional 5-minute hot-player polling.
 
 The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Datagear), the mechagnome tinkerer from Rustbolt.
 
@@ -69,6 +69,9 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `google.roster_start_row`
 - `google.output_start_cell`
 - `sync.interval_minutes`
+- `sync.active_interval_minutes`
+- `sync.active_start_delay_minutes`
+- `sync.active_idle_minutes`
 - `sync.current_season`
 - `sync.max_players_per_cycle`
 - `sync.failure_backoff_seconds`
@@ -186,6 +189,7 @@ Logs are written to stdout and include:
 
 - sync cycle start and finish
 - new run discovery
+- delayed hot-poll scheduling and expiry
 - invalid roster rows
 - Raider.IO SSL and network failures
 - Raider.IO retries

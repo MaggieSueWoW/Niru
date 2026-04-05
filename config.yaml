@@ -6,6 +6,9 @@ google:
 
 sync:
   interval_minutes: 15
+  active_interval_minutes: 5
+  active_start_delay_minutes: 20
+  active_idle_minutes: 40
   current_season: "season-mn-1"
   max_players_per_cycle: 250
   gap_detection_cycles: 2

@@ -146,6 +146,12 @@ def _collect_profile_run_candidates(profile_payload: dict[str, Any]) -> dict[int
     return candidates
 
 
+def _last_attempted_sync_at(player: dict[str, Any]) -> datetime | None:
+    return _safe_datetime(
+        player.get("last_sync_started_at") or player.get("last_sync_completed_at")
+    )
+
+
 def build_summary_header(dungeons: list[dict[str, Any]]) -> list[str]:
     """Build the sheet header for one-row-per-player output."""
 
@@ -321,10 +327,8 @@ class SyncService:
         """Run the sync loop until stopped."""
 
         self.install_signal_handlers()
-        interval_seconds = self._settings.sync.interval_minutes * 60
         consecutive_failures = 0
         while not self._stop_requested:
-            cycle_started = time.monotonic()
             try:
                 self.run_cycle()
                 consecutive_failures = 0
@@ -343,8 +347,7 @@ class SyncService:
                 continue
             if self._stop_requested:
                 break
-            elapsed = time.monotonic() - cycle_started
-            remaining = max(interval_seconds - elapsed, 0)
+            remaining = self._next_cycle_delay_seconds()
             if remaining > 0 and not self._stop_requested:
                 LOGGER.info("Sleeping before next cycle", extra={"sleep_seconds": round(remaining, 1)})
                 if self._wait_for_stop(remaining):
@@ -372,12 +375,19 @@ class SyncService:
             active_players = self._repository.list_active_players(
                 limit=self._settings.sync.max_players_per_cycle
             )
+            self._expire_hot_windows(active_players=active_players, now=started_at)
+            active_players = self._repository.list_active_players(
+                limit=self._settings.sync.max_players_per_cycle
+            )
             stats.active_players = len(active_players)
             stats.valid_players = len([player for player in active_players if player.get("is_valid")])
             weekly_periods: dict[str, dict[str, Any]] = {}
             if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                 refreshed_players = active_players
             else:
+                players_to_sync, _, hot_due_keys = self._select_players_for_sync(
+                    now=started_at
+                )
                 weekly_periods = self._load_current_weekly_periods()
                 stats.weekly_periods = _weekly_periods_for_metadata(weekly_periods)
                 for player in active_players:
@@ -390,13 +400,26 @@ class SyncService:
                         if message not in stats.warnings:
                             stats.warnings.append(message)
                         stats.partial = True
-                for player in active_players:
+                for player in players_to_sync:
                     if self._stop_requested:
                         LOGGER.info("Stop requested during player sync; ending cycle early")
                         stats.partial = True
                         break
-                    if not player.get("is_valid", False):
-                        continue
+                    player_key = player["player_key"]
+                    if player_key in hot_due_keys:
+                        stats.hot_players_synced += 1
+                        hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
+                        last_attempt = _last_attempted_sync_at(player)
+                        if hot_ready_at and (last_attempt is None or last_attempt < hot_ready_at):
+                            LOGGER.info(
+                                "Hot polling window reached",
+                                extra={
+                                    "player_key": player_key,
+                                    "hot_ready_at": hot_ready_at.isoformat(),
+                                },
+                            )
+                    else:
+                        stats.base_due_players_synced += 1
                     self._sync_player(player=player, stats=stats, now=started_at)
                     if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                         break
@@ -434,6 +457,9 @@ class SyncService:
                 extra={
                     "finished_at": finished_at.isoformat(),
                     "api_calls": stats.api_calls,
+                    "base_due_players_synced": stats.base_due_players_synced,
+                    "hot_players_synced": stats.hot_players_synced,
+                    "players_scheduled_for_hot": stats.players_scheduled_for_hot,
                     "new_runs": stats.new_runs,
                     "sheet_rows_written": stats.sheet_rows_written,
                     "partial": stats.partial,
@@ -480,6 +506,8 @@ class SyncService:
             )
 
             known_run_ids = self._repository.get_known_run_ids(list(run_candidates))
+            new_run_completed_at: list[datetime] = []
+            player_new_runs = 0
             for run_id, run_stub in run_candidates.items():
                 if self._stop_requested:
                     LOGGER.info(
@@ -497,6 +525,39 @@ class SyncService:
                     synced_at=now,
                 )
                 stats.new_runs += 1
+                player_new_runs += 1
+                completed_at = _safe_datetime(run_stub.get("completed_at"))
+                if completed_at is not None:
+                    new_run_completed_at.append(completed_at)
+            if new_run_completed_at:
+                latest_completed_at = max(new_run_completed_at)
+            elif player_new_runs > 0:
+                latest_completed_at = ensure_utc(now)
+            else:
+                latest_completed_at = None
+            if latest_completed_at is not None:
+                hot_ready_at = latest_completed_at + timedelta(
+                    minutes=self._settings.sync.active_start_delay_minutes
+                )
+                hot_until_at = hot_ready_at + timedelta(
+                    minutes=self._settings.sync.active_idle_minutes
+                )
+                self._repository.schedule_player_hot_window(
+                    player_key=player_key,
+                    last_new_run_completed_at=latest_completed_at,
+                    hot_ready_at=hot_ready_at,
+                    hot_until_at=hot_until_at,
+                )
+                stats.players_scheduled_for_hot = getattr(stats, "players_scheduled_for_hot", 0) + 1
+                LOGGER.info(
+                    "Scheduled player for delayed hot polling",
+                    extra={
+                        "player_key": player_key,
+                        "last_new_run_completed_at": latest_completed_at.isoformat(),
+                        "hot_ready_at": hot_ready_at.isoformat(),
+                        "hot_until_at": hot_until_at.isoformat(),
+                    },
+                )
         except RaiderIONotFoundError:
             message = "Raider.IO could not find this player."
             LOGGER.warning(
@@ -612,3 +673,89 @@ class SyncService:
         """Wait for either the timeout or a stop signal."""
 
         return self._stop_event.wait(timeout=max(timeout_seconds, 0.0))
+
+    def _select_players_for_sync(
+        self,
+        *,
+        now: datetime,
+    ) -> tuple[list[dict[str, Any]], set[str], set[str]]:
+        """Select valid active players due for either base or hot polling."""
+
+        limit = self._settings.sync.max_players_per_cycle
+        base_due_players = self._repository.list_players_due_for_base_sync(
+            now=now,
+            interval_minutes=self._settings.sync.interval_minutes,
+            limit=limit,
+        )
+        hot_due_players = self._repository.list_players_due_for_hot_sync(
+            now=now,
+            interval_minutes=self._settings.sync.active_interval_minutes,
+            limit=limit,
+        )
+
+        selected_players: list[dict[str, Any]] = []
+        selected_keys: set[str] = set()
+        base_due_keys = {player["player_key"] for player in base_due_players}
+        hot_due_keys: set[str] = set()
+        for player in base_due_players + hot_due_players:
+            player_key = player["player_key"]
+            if player_key in selected_keys:
+                continue
+            if len(selected_players) >= limit:
+                break
+            selected_players.append(player)
+            selected_keys.add(player_key)
+            if player_key not in base_due_keys:
+                hot_due_keys.add(player_key)
+        return selected_players, base_due_keys & selected_keys, hot_due_keys
+
+    def _expire_hot_windows(self, *, active_players: list[dict[str, Any]], now: datetime) -> None:
+        """Clear any expired hot windows so they are not reconsidered indefinitely."""
+
+        for player in active_players:
+            hot_until_at = _safe_datetime(player.get("hot_until_at"))
+            if hot_until_at is None or hot_until_at > ensure_utc(now):
+                continue
+            hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
+            if hot_ready_at is None:
+                continue
+            LOGGER.info(
+                "Hot polling window expired",
+                extra={
+                    "player_key": player["player_key"],
+                    "hot_ready_at": hot_ready_at.isoformat(),
+                    "hot_until_at": hot_until_at.isoformat(),
+                },
+            )
+            self._repository.clear_player_hot_window(player_key=player["player_key"])
+
+    def _next_cycle_delay_seconds(self) -> float:
+        """Compute the next sleep duration from base cadence and delayed hot windows."""
+
+        active_players = self._repository.list_active_players(
+            limit=self._settings.sync.max_players_per_cycle
+        )
+        valid_players = [player for player in active_players if player.get("is_valid", False)]
+        if not valid_players:
+            return float(self._settings.sync.interval_minutes * 60)
+
+        now = utc_now()
+        base_interval = timedelta(minutes=self._settings.sync.interval_minutes)
+        hot_interval = timedelta(minutes=self._settings.sync.active_interval_minutes)
+        next_due_at = ensure_utc(now) + base_interval
+
+        for player in valid_players:
+            last_attempt = _last_attempted_sync_at(player)
+            if last_attempt is None:
+                return 0.0
+            next_due_at = min(next_due_at, last_attempt + base_interval)
+            hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
+            hot_until_at = _safe_datetime(player.get("hot_until_at"))
+            if hot_ready_at is None or hot_until_at is None or hot_until_at <= now:
+                continue
+            if hot_ready_at > now:
+                next_due_at = min(next_due_at, hot_ready_at)
+                continue
+            next_due_at = min(next_due_at, max(hot_ready_at, last_attempt + hot_interval))
+
+        return max((next_due_at - now).total_seconds(), 0.0)

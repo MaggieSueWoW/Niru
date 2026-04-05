@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from niru.config import MongoSettings
-from niru.models import PlayerDataStatus, RosterEntry, SeasonDungeon
+from niru.models import PlayerDataStatus, RosterEntry, SeasonDungeon, ensure_utc
 
 
 def _safe_isoformat(value: Any) -> datetime | None:
@@ -16,6 +16,13 @@ def _safe_isoformat(value: Any) -> datetime | None:
         normalized = value.replace("Z", "+00:00")
         return datetime.fromisoformat(normalized)
     return None
+
+
+def _safe_utc_datetime(value: Any) -> datetime | None:
+    parsed = _safe_isoformat(value)
+    if parsed is None:
+        return None
+    return ensure_utc(parsed)
 
 
 class MongoRepository:
@@ -35,6 +42,8 @@ class MongoRepository:
         self.runs.create_index([("completed_at", ASCENDING)])
         self.runs.create_index([("participants.player_key", ASCENDING)])
         self.runs.create_index([("discovered_from_player_keys", ASCENDING)])
+        self.players.create_index([("hot_ready_at", ASCENDING)])
+        self.players.create_index([("hot_until_at", ASCENDING)])
         self.season_dungeons.create_index([("season", ASCENDING), ("slug", ASCENDING)], unique=True)
         self.season_dungeons.create_index([("season", ASCENDING), ("short_name", ASCENDING)])
 
@@ -73,6 +82,9 @@ class MongoRepository:
                         "current_total_score": None,
                         "gap_flag": False,
                         "gap_message": "",
+                        "last_new_run_completed_at": None,
+                        "hot_ready_at": None,
+                        "hot_until_at": None,
                         "requires_backfill": entry.is_valid,
                         "created_at": seen_at,
                     },
@@ -94,6 +106,50 @@ class MongoRepository:
         """Return all active roster documents for manual backfill operations."""
 
         return list(self.players.find({"is_active": True}).sort("player_key"))
+
+    def list_players_due_for_base_sync(
+        self,
+        *,
+        now: datetime,
+        interval_minutes: int,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Return valid active players due for the base sync cadence."""
+
+        cutoff = ensure_utc(now)
+        due_players: list[dict[str, Any]] = []
+        for player in self.list_active_players(limit=limit):
+            if not player.get("is_valid", False):
+                continue
+            last_attempt = _safe_utc_datetime(player.get("last_sync_started_at"))
+            if last_attempt is None or cutoff - last_attempt >= timedelta(minutes=interval_minutes):
+                due_players.append(player)
+        return due_players[:limit]
+
+    def list_players_due_for_hot_sync(
+        self,
+        *,
+        now: datetime,
+        interval_minutes: int,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Return valid active players due for hot polling."""
+
+        cutoff = ensure_utc(now)
+        due_players: list[dict[str, Any]] = []
+        for player in self.list_active_players(limit=limit):
+            if not player.get("is_valid", False):
+                continue
+            hot_ready_at = _safe_utc_datetime(player.get("hot_ready_at"))
+            hot_until_at = _safe_utc_datetime(player.get("hot_until_at"))
+            if hot_ready_at is None or hot_until_at is None:
+                continue
+            if not hot_ready_at <= cutoff < hot_until_at:
+                continue
+            last_attempt = _safe_utc_datetime(player.get("last_sync_started_at"))
+            if last_attempt is None or cutoff - last_attempt >= timedelta(minutes=interval_minutes):
+                due_players.append(player)
+        return due_players[:limit]
 
     def mark_sync_started(self, player_key: str, started_at: datetime) -> None:
         """Record sync start time."""
@@ -139,6 +195,40 @@ class MongoRepository:
         self.players.update_one(
             {"player_key": player_key},
             {"$set": {"gap_flag": True, "gap_message": message}},
+        )
+
+    def schedule_player_hot_window(
+        self,
+        *,
+        player_key: str,
+        last_new_run_completed_at: datetime,
+        hot_ready_at: datetime,
+        hot_until_at: datetime,
+    ) -> None:
+        """Persist delayed hot-polling timestamps for a player."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "last_new_run_completed_at": last_new_run_completed_at,
+                    "hot_ready_at": hot_ready_at,
+                    "hot_until_at": hot_until_at,
+                }
+            },
+        )
+
+    def clear_player_hot_window(self, *, player_key: str) -> None:
+        """Clear expired hot-polling timestamps for a player."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "hot_ready_at": None,
+                    "hot_until_at": None,
+                }
+            },
         )
 
     def update_player_profile(
