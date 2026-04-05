@@ -24,6 +24,16 @@ from niru.models import (
     to_pacific_datetime,
     utc_now,
 )
+from niru.play_profile import (
+    PLAY_PROFILE_HOURS_PER_WEEK,
+    build_play_profile,
+    current_week_hour_key,
+    expected_weeks_observed,
+    next_pacific_hour_start,
+    pacific_hour_start,
+    pacific_week_hour_index,
+    update_play_profile,
+)
 from niru.roster import parse_roster_rows
 from niru.storage import MongoRepository
 
@@ -376,6 +386,11 @@ class SyncService:
                 limit=self._settings.sync.max_players_per_cycle
             )
             self._expire_hot_windows(active_players=active_players, now=started_at)
+            self._queue_predictive_hot_players(
+                active_players=active_players,
+                now=started_at,
+                stats=stats,
+            )
             active_players = self._repository.list_active_players(
                 limit=self._settings.sync.max_players_per_cycle
             )
@@ -468,6 +483,7 @@ class SyncService:
                     "base_due_players_synced": stats.base_due_players_synced,
                     "hot_players_synced": stats.hot_players_synced,
                     "players_scheduled_for_hot": stats.players_scheduled_for_hot,
+                    "predictive_hot_players_queued": stats.predictive_hot_players_queued,
                     "new_runs": stats.new_runs,
                     "sheet_rows_written": stats.sheet_rows_written,
                     "partial": stats.partial,
@@ -529,6 +545,39 @@ class SyncService:
                 latest_completed_at = ensure_utc(now)
             else:
                 latest_completed_at = None
+            if player_new_runs > 0:
+                profile_completed_at = (
+                    new_run_completed_at if new_run_completed_at else [ensure_utc(now)]
+                )
+                existing_profile = {
+                    "play_profile_first_week_start_at": player.get("play_profile_first_week_start_at"),
+                    "play_profile_last_seeded_at": player.get("play_profile_last_seeded_at"),
+                    "play_profile_weeks_observed": player.get("play_profile_weeks_observed", 0),
+                    "play_profile_hour_counts": player.get("play_profile_hour_counts", []),
+                    "play_profile_hour_probabilities": player.get(
+                        "play_profile_hour_probabilities", []
+                    ),
+                    "play_profile_seen_week_hours": player.get("play_profile_seen_week_hours", []),
+                    "play_profile_last_enqueued_week_hour": player.get(
+                        "play_profile_last_enqueued_week_hour", ""
+                    ),
+                }
+                if existing_profile.get("play_profile_seen_week_hours"):
+                    profile = update_play_profile(
+                        existing_profile=existing_profile,
+                        completed_at_values=profile_completed_at,
+                        now=ensure_utc(now),
+                    )
+                else:
+                    profile = build_play_profile(
+                        completed_at_values=profile_completed_at,
+                        now=ensure_utc(now),
+                        last_seeded_at=player.get("play_profile_last_seeded_at"),
+                        last_enqueued_week_hour=str(
+                            player.get("play_profile_last_enqueued_week_hour", "") or ""
+                        ),
+                    )
+                self._repository.upsert_player_play_profile(player_key=player_key, profile=profile)
             if latest_completed_at is not None:
                 hot_ready_at = latest_completed_at + timedelta(
                     minutes=self._settings.sync.active_start_delay_minutes
@@ -694,6 +743,83 @@ class SyncService:
 
         return self._stop_event.wait(timeout=max(timeout_seconds, 0.0))
 
+    def _queue_predictive_hot_players(
+        self,
+        *,
+        active_players: list[dict[str, Any]],
+        now: datetime,
+        stats: SyncStats,
+    ) -> None:
+        """Queue hot polling for players predicted to play in the current Pacific hour."""
+
+        if not self._settings.sync.predictive_hot_enabled:
+            return
+
+        current_slot_index = pacific_week_hour_index(now)
+        current_week_hour = current_week_hour_key(now)
+        current_hour_start = pacific_hour_start(now)
+        predictive_hot_until = current_hour_start + timedelta(
+            minutes=self._settings.sync.active_idle_minutes
+        )
+        for player in active_players:
+            if not player.get("is_valid", False):
+                continue
+            player_key = player["player_key"]
+            refreshed_profile = self._refresh_play_profile_for_current_week(
+                player=player,
+                now=now,
+            )
+            probabilities = refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
+                continue
+            if refreshed_profile.get("play_profile_last_enqueued_week_hour") == current_week_hour:
+                continue
+            probability = float(probabilities[current_slot_index])
+            if probability < self._settings.sync.predictive_hot_threshold:
+                continue
+            self._repository.mark_predictive_hot_enqueue(
+                player_key=player_key,
+                week_hour_key=current_week_hour,
+                hot_ready_at=current_hour_start,
+                hot_until_at=predictive_hot_until,
+            )
+            stats.predictive_hot_players_queued += 1
+            LOGGER.info(
+                "Queued predictive hot polling",
+                extra={
+                    "player_key": player_key,
+                    "week_hour_index": current_slot_index,
+                    "probability": round(probability, 4),
+                    "hot_ready_at": current_hour_start.isoformat(),
+                    "hot_until_at": predictive_hot_until.isoformat(),
+                },
+            )
+
+    def _refresh_play_profile_for_current_week(
+        self,
+        *,
+        player: dict[str, Any],
+        now: datetime,
+    ) -> dict[str, Any]:
+        """Refresh stored profile probabilities when a new calendar week changes the denominator."""
+
+        first_week_start_at = _safe_datetime(player.get("play_profile_first_week_start_at"))
+        seen_week_hours = player.get("play_profile_seen_week_hours", []) or []
+        if first_week_start_at is None or not seen_week_hours:
+            return player
+        expected_weeks = expected_weeks_observed(first_week_start_at, now=now)
+        if int(player.get("play_profile_weeks_observed", 0) or 0) == expected_weeks:
+            return player
+        profile = update_play_profile(
+            existing_profile=player,
+            completed_at_values=[],
+            now=ensure_utc(now),
+        )
+        self._repository.upsert_player_play_profile(player_key=player["player_key"], profile=profile)
+        refreshed_player = dict(player)
+        refreshed_player.update(profile)
+        return refreshed_player
+
     def _select_players_for_sync(
         self,
         *,
@@ -778,4 +904,33 @@ class SyncService:
                 continue
             next_due_at = min(next_due_at, max(hot_ready_at, last_attempt + hot_interval))
 
+        predictive_wake_at = self._next_predictive_wake_at(valid_players=valid_players, now=now)
+        if predictive_wake_at is not None:
+            next_due_at = min(next_due_at, predictive_wake_at)
+
         return max((next_due_at - now).total_seconds(), 0.0)
+
+    def _next_predictive_wake_at(
+        self,
+        *,
+        valid_players: list[dict[str, Any]],
+        now: datetime,
+    ) -> datetime | None:
+        """Return the next top-of-hour wake-up needed for predictive hot scheduling."""
+
+        if not self._settings.sync.predictive_hot_enabled:
+            return None
+
+        next_hour_start = next_pacific_hour_start(now)
+        next_slot_index = pacific_week_hour_index(next_hour_start)
+        next_week_hour = current_week_hour_key(next_hour_start)
+        for player in valid_players:
+            refreshed_profile = self._refresh_play_profile_for_current_week(player=player, now=now)
+            probabilities = refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
+                continue
+            if refreshed_profile.get("play_profile_last_enqueued_week_hour") == next_week_hour:
+                continue
+            if float(probabilities[next_slot_index]) >= self._settings.sync.predictive_hot_threshold:
+                return next_hour_start
+        return None

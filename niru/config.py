@@ -28,6 +28,8 @@ class SyncSettings:
     active_interval_minutes: int
     active_start_delay_minutes: int
     active_idle_minutes: int
+    predictive_hot_enabled: bool
+    predictive_hot_threshold: float
     current_season: str
     max_players_per_cycle: int
     failure_backoff_seconds: float
@@ -96,6 +98,12 @@ def _require_float(value: object, *, name: str, minimum: float = 0.0) -> float:
     return float(value)
 
 
+def _require_bool(value: object, *, name: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+    return value
+
+
 def load_settings(config_path: str = "config.yaml") -> Settings:
     """Load YAML config plus environment overrides."""
 
@@ -150,6 +158,15 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             active_idle_minutes=_require_int(
                 sync_raw.get("active_idle_minutes", 40),
                 name="sync.active_idle_minutes",
+            ),
+            predictive_hot_enabled=_require_bool(
+                sync_raw.get("predictive_hot_enabled", True),
+                name="sync.predictive_hot_enabled",
+            ),
+            predictive_hot_threshold=_require_float(
+                sync_raw.get("predictive_hot_threshold", 0.5),
+                name="sync.predictive_hot_threshold",
+                minimum=0.0,
             ),
             current_season=_require_text(
                 sync_raw.get("current_season"), name="sync.current_season"

@@ -85,6 +85,14 @@ class MongoRepository:
                         "last_new_run_completed_at": None,
                         "hot_ready_at": None,
                         "hot_until_at": None,
+                        "play_profile_timezone": "America/Los_Angeles",
+                        "play_profile_first_week_start_at": None,
+                        "play_profile_last_seeded_at": None,
+                        "play_profile_weeks_observed": 0,
+                        "play_profile_hour_counts": [0] * 168,
+                        "play_profile_hour_probabilities": [0.0] * 168,
+                        "play_profile_seen_week_hours": [],
+                        "play_profile_last_enqueued_week_hour": "",
                         "requires_backfill": entry.is_valid,
                         "created_at": seen_at,
                     },
@@ -219,6 +227,53 @@ class MongoRepository:
                 "$set": {
                     "hot_ready_at": None,
                     "hot_until_at": None,
+                }
+            },
+        )
+
+    def upsert_player_play_profile(
+        self,
+        *,
+        player_key: str,
+        profile: dict[str, Any],
+    ) -> None:
+        """Persist predictive play-profile state for a player."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {"$set": profile},
+        )
+
+    def mark_predictive_hot_enqueue(
+        self,
+        *,
+        player_key: str,
+        week_hour_key: str,
+        hot_ready_at: datetime,
+        hot_until_at: datetime,
+    ) -> None:
+        """Record a predictive hot enqueue while preserving stronger existing coverage."""
+
+        player = self.players.find_one(
+            {"player_key": player_key},
+            {"hot_ready_at": 1, "hot_until_at": 1},
+        ) or {}
+        existing_hot_ready = _safe_utc_datetime(player.get("hot_ready_at"))
+        existing_hot_until = _safe_utc_datetime(player.get("hot_until_at"))
+        resolved_hot_ready = hot_ready_at
+        if existing_hot_ready is not None:
+            resolved_hot_ready = min(existing_hot_ready, ensure_utc(hot_ready_at))
+        resolved_hot_until = hot_until_at
+        if existing_hot_until is not None:
+            resolved_hot_until = max(existing_hot_until, ensure_utc(hot_until_at))
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {
+                "$set": {
+                    "hot_ready_at": resolved_hot_ready,
+                    "hot_until_at": resolved_hot_until,
+                    "play_profile_last_enqueued_week_hour": week_hour_key,
                 }
             },
         )
@@ -397,6 +452,21 @@ class MongoRepository:
                         {"participants.player_key": {"$in": player_keys}},
                         {"discovered_from_player_keys": {"$in": player_keys}},
                     ]
+                }
+            )
+        )
+
+    def get_runs_for_player(self, *, player_key: str, season: str) -> list[dict[str, Any]]:
+        """Fetch current-season runs relevant to one player."""
+
+        return list(
+            self.runs.find(
+                {
+                    "season": season,
+                    "$or": [
+                        {"participants.player_key": player_key},
+                        {"discovered_from_player_keys": player_key},
+                    ],
                 }
             )
         )

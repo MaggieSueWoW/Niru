@@ -71,6 +71,8 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `sync.active_interval_minutes`
 - `sync.active_start_delay_minutes`
 - `sync.active_idle_minutes`
+- `sync.predictive_hot_enabled`
+- `sync.predictive_hot_threshold`
 - `sync.current_season`
 - `sync.max_players_per_cycle`
 - `sync.failure_backoff_seconds`
@@ -125,6 +127,14 @@ Use a custom config path:
 
 ```bash
 python main.py --config /path/to/config.yaml --mode once
+```
+
+Seed predictive play profiles from stored runs:
+
+```bash
+niru-seed-play-profile
+niru-seed-play-profile --player us/area-52/Mythics
+niru-seed-play-profile --dry-run
 ```
 
 ## Docker
@@ -189,6 +199,7 @@ Logs are written to stdout and include:
 - sync cycle start and finish
 - new run discovery
 - delayed hot-poll scheduling and expiry
+- predictive hot-poll queueing
 - invalid roster rows
 - Raider.IO SSL and network failures
 - Raider.IO retries

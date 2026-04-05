@@ -20,6 +20,8 @@ sync:
   active_interval_minutes: 5
   active_start_delay_minutes: 20
   active_idle_minutes: 40
+  predictive_hot_enabled: true
+  predictive_hot_threshold: 0.5
   current_season: "season-mn-1"
   max_players_per_cycle: 250
   failure_backoff_seconds: 30
@@ -69,6 +71,8 @@ logging:
         self.assertEqual(settings.sync.active_interval_minutes, 5)
         self.assertEqual(settings.sync.active_start_delay_minutes, 20)
         self.assertEqual(settings.sync.active_idle_minutes, 40)
+        self.assertTrue(settings.sync.predictive_hot_enabled)
+        self.assertEqual(settings.sync.predictive_hot_threshold, 0.5)
 
 
 if __name__ == "__main__":

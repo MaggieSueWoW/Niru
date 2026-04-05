@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 niru = "niru.app:main"
+niru-seed-play-profile = "niru.play_profile_seed:main"
 
 [tool.setuptools.packages.find]
 include = ["niru*"]

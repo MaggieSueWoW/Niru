@@ -4,6 +4,10 @@ import unittest
 import niru.service as service_module
 from niru.clients.raiderio import RaiderIONotFoundError
 from niru.models import PlayerDataStatus
+from niru.play_profile import (
+    build_play_profile,
+    current_week_hour_key,
+)
 from niru.service import SyncService, build_summary_header
 
 
@@ -22,6 +26,8 @@ def make_settings():
                     "active_interval_minutes": 5,
                     "active_start_delay_minutes": 20,
                     "active_idle_minutes": 40,
+                    "predictive_hot_enabled": True,
+                    "predictive_hot_threshold": 0.5,
                     "current_season": "season-mn-1",
                     "failure_backoff_seconds": 30.0,
                     "max_failure_backoff_seconds": 300.0,
@@ -58,6 +64,14 @@ class FakeRepo:
                 "last_new_run_completed_at": None,
                 "hot_ready_at": None,
                 "hot_until_at": None,
+                "play_profile_timezone": "America/Los_Angeles",
+                "play_profile_first_week_start_at": None,
+                "play_profile_last_seeded_at": None,
+                "play_profile_weeks_observed": 0,
+                "play_profile_hour_counts": [0] * 168,
+                "play_profile_hour_probabilities": [0.0] * 168,
+                "play_profile_seen_week_hours": [],
+                "play_profile_last_enqueued_week_hour": "",
             }
             for entry in entries
         ]
@@ -167,8 +181,45 @@ class FakeRepo:
                 player["hot_ready_at"] = None
                 player["hot_until_at"] = None
 
+    def upsert_player_play_profile(self, *, player_key, profile):
+        for player in self.players:
+            if player["player_key"] == player_key:
+                player.update(profile)
+
+    def mark_predictive_hot_enqueue(self, *, player_key, week_hour_key, hot_ready_at, hot_until_at):
+        for player in self.players:
+            if player["player_key"] != player_key:
+                continue
+            existing_hot_ready = player.get("hot_ready_at")
+            existing_hot_until = player.get("hot_until_at")
+            player["hot_ready_at"] = (
+                hot_ready_at
+                if existing_hot_ready is None
+                else min(existing_hot_ready, hot_ready_at)
+            )
+            player["hot_until_at"] = (
+                hot_until_at
+                if existing_hot_until is None
+                else max(existing_hot_until, hot_until_at)
+            )
+            player["play_profile_last_enqueued_week_hour"] = week_hour_key
+
     def get_runs_for_players(self, player_keys):
         return self.runs
+
+    def get_runs_for_player(self, *, player_key, season):
+        return [
+            run
+            for run in self.runs
+            if run.get("season") == season
+            and (
+                player_key in run.get("discovered_from_player_keys", [])
+                or any(
+                    participant.get("player_key") == player_key
+                    for participant in run.get("participants", [])
+                )
+            )
+        ]
 
     def list_season_dungeons(self, *, season):
         return [d for d in self.season_dungeons if d["season"] == season]
@@ -698,3 +749,156 @@ class SyncServiceTests(unittest.TestCase):
         )
         self.assertEqual(base_keys, {"us/area-52/baseplayer"})
         self.assertEqual(hot_keys, {"us/area-52/hotplayer"})
+
+    def test_predictive_hot_queue_enqueues_player_for_current_hour(self) -> None:
+        now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
+        profile = build_play_profile(completed_at_values=[now], now=now)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                **profile,
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+
+        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+
+        self.assertEqual(stats.predictive_hot_players_queued, 1)
+        self.assertEqual(repo.players[0]["play_profile_last_enqueued_week_hour"], current_week_hour_key(now))
+        self.assertIsNotNone(repo.players[0]["hot_ready_at"])
+        self.assertIsNotNone(repo.players[0]["hot_until_at"])
+
+    def test_predictive_hot_queue_does_not_repeat_same_week_hour(self) -> None:
+        now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
+        current_key = current_week_hour_key(now)
+        profile = build_play_profile(completed_at_values=[now], now=now)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                **profile,
+                "play_profile_last_enqueued_week_hour": current_key,
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+
+        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+
+        self.assertEqual(stats.predictive_hot_players_queued, 0)
+
+    def test_predictive_queue_preserves_later_run_triggered_hot_window(self) -> None:
+        now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
+        profile = build_play_profile(completed_at_values=[now], now=now)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                "hot_ready_at": now + timedelta(minutes=20),
+                "hot_until_at": now + timedelta(minutes=60),
+                **profile,
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+
+        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+
+        self.assertEqual(repo.players[0]["hot_until_at"], now + timedelta(minutes=60))
+        self.assertEqual(repo.players[0]["hot_ready_at"], datetime(2026, 3, 26, 20, 0, tzinfo=UTC))
+
+    def test_sync_player_updates_play_profile_from_new_runs(self) -> None:
+        now = datetime(2026, 3, 26, 12, 30, tzinfo=UTC)
+        repo = FakeRepo()
+        existing_profile = build_play_profile(
+            completed_at_values=[datetime(2026, 3, 19, 12, 0, tzinfo=UTC)],
+            now=now,
+        )
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                **existing_profile,
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.profile_payload["mythic_plus_recent_runs"] = [
+            {
+                "keystone_run_id": 777,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.0,
+                "mythic_level": 13,
+                "num_keystone_upgrades": 1,
+                "completed_at": "2026-03-26T12:00:00+00:00",
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=raider,
+        )
+        stats = type(
+            "Stats",
+            (),
+            {
+                "partial": False,
+                "warnings": [],
+                "new_runs": 0,
+                "detail_fetches": 0,
+                "players_scheduled_for_hot": 0,
+            },
+        )()
+
+        service._sync_player(player=repo.players[0], stats=stats, now=now)
+
+        self.assertEqual(repo.players[0]["play_profile_weeks_observed"], 2)
+        self.assertEqual(
+            len(repo.players[0]["play_profile_seen_week_hours"]),
+            2,
+        )
