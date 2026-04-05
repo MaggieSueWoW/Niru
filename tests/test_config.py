@@ -18,7 +18,6 @@ google:
 sync:
   interval_minutes: 15
   active_interval_minutes: 5
-  active_start_delay_minutes: 20
   active_idle_minutes: 40
   predictive_hot_enabled: true
   predictive_hot_threshold: 0.5
@@ -69,7 +68,6 @@ logging:
                         os.environ[key] = value
 
         self.assertEqual(settings.sync.active_interval_minutes, 5)
-        self.assertEqual(settings.sync.active_start_delay_minutes, 20)
         self.assertEqual(settings.sync.active_idle_minutes, 40)
         self.assertTrue(settings.sync.predictive_hot_enabled)
         self.assertEqual(settings.sync.predictive_hot_threshold, 0.5)

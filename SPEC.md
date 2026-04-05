@@ -45,7 +45,6 @@ For each valid active player:
 - Derive current per-dungeon score from the best and alternate scoring runs returned by Raider.IO
 - Collect run IDs from recent, best, and alternate sets
 - Insert unseen run stubs into MongoDB
-- When new runs are discovered, schedule delayed hot polling starting from the most recent run completion plus the configured start delay
 - Maintain a per-player Pacific-time weekly play profile and use it to predictively queue hot polling at the top of high-probability hours
 
 Important limitation:
@@ -70,7 +69,7 @@ Important limitation:
 - validity and sync status
 - last successful sync timestamp
 - current per-dungeon score map
-- delayed hot-poll scheduling timestamps
+- predictive hot-poll window timestamps
 - predictive play-profile metadata and probabilities
 - last error
 

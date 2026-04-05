@@ -26,7 +26,6 @@ class GoogleSettings:
 class SyncSettings:
     interval_minutes: int
     active_interval_minutes: int
-    active_start_delay_minutes: int
     active_idle_minutes: int
     predictive_hot_enabled: bool
     predictive_hot_threshold: float
@@ -165,10 +164,6 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             active_interval_minutes=_require_int(
                 sync_raw.get("active_interval_minutes", 5),
                 name="sync.active_interval_minutes",
-            ),
-            active_start_delay_minutes=_require_int(
-                sync_raw.get("active_start_delay_minutes", 20),
-                name="sync.active_start_delay_minutes",
             ),
             active_idle_minutes=_require_int(
                 sync_raw.get("active_idle_minutes", 40),

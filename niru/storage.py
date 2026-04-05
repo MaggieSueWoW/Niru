@@ -105,7 +105,6 @@ class MongoRepository:
                         "current_dungeon_scores": {},
                         "current_total_score": None,
                         "last_base_sync_started_at": None,
-                        "last_new_run_completed_at": None,
                         "hot_ready_at": None,
                         "hot_until_at": None,
                         "play_profile_timezone": "America/Los_Angeles",
@@ -249,27 +248,6 @@ class MongoRepository:
                     "status_message": message,
                     "last_error": message,
                     "last_sync_completed_at": when,
-                }
-            },
-        )
-
-    def schedule_player_hot_window(
-        self,
-        *,
-        player_key: str,
-        last_new_run_completed_at: datetime,
-        hot_ready_at: datetime,
-        hot_until_at: datetime,
-    ) -> None:
-        """Persist delayed hot-polling timestamps for a player."""
-
-        self.players.update_one(
-            {"player_key": player_key},
-            {
-                "$set": {
-                    "last_new_run_completed_at": last_new_run_completed_at,
-                    "hot_ready_at": hot_ready_at,
-                    "hot_until_at": hot_until_at,
                 }
             },
         )

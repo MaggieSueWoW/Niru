@@ -511,7 +511,6 @@ class SyncService:
                     "api_calls": stats.api_calls,
                     "base_due_players_synced": stats.base_due_players_synced,
                     "hot_players_synced": stats.hot_players_synced,
-                    "players_scheduled_for_hot": stats.players_scheduled_for_hot,
                     "predictive_hot_players_queued": stats.predictive_hot_players_queued,
                     "new_runs": stats.new_runs,
                     "sheet_rows_written": stats.sheet_rows_written,
@@ -575,12 +574,6 @@ class SyncService:
                 completed_at = _safe_datetime(run_stub.get("completed_at"))
                 if completed_at is not None:
                     new_run_completed_at.append(completed_at)
-            if new_run_completed_at:
-                latest_completed_at = max(new_run_completed_at)
-            elif player_new_runs > 0:
-                latest_completed_at = ensure_utc(now)
-            else:
-                latest_completed_at = None
             if player_new_runs > 0:
                 profile_completed_at = (
                     new_run_completed_at if new_run_completed_at else [ensure_utc(now)]
@@ -614,40 +607,6 @@ class SyncService:
                         ),
                     )
                 self._repository.upsert_player_play_profile(player_key=player_key, profile=profile)
-            if latest_completed_at is not None:
-                hot_ready_at = latest_completed_at + timedelta(
-                    minutes=self._settings.sync.active_start_delay_minutes
-                )
-                hot_until_at = hot_ready_at + timedelta(
-                    minutes=self._settings.sync.active_idle_minutes
-                )
-                if hot_until_at <= ensure_utc(now):
-                    LOGGER.info(
-                        "Skipping stale hot polling window",
-                        extra={
-                            "player_key": player_key,
-                            "last_new_run_completed_at": latest_completed_at.isoformat(),
-                            "hot_ready_at": hot_ready_at.isoformat(),
-                            "hot_until_at": hot_until_at.isoformat(),
-                        },
-                    )
-                    return
-                self._repository.schedule_player_hot_window(
-                    player_key=player_key,
-                    last_new_run_completed_at=latest_completed_at,
-                    hot_ready_at=hot_ready_at,
-                    hot_until_at=hot_until_at,
-                )
-                stats.players_scheduled_for_hot = getattr(stats, "players_scheduled_for_hot", 0) + 1
-                LOGGER.info(
-                    "Scheduled player for delayed hot polling",
-                    extra={
-                        "player_key": player_key,
-                        "last_new_run_completed_at": latest_completed_at.isoformat(),
-                        "hot_ready_at": hot_ready_at.isoformat(),
-                        "hot_until_at": hot_until_at.isoformat(),
-                    },
-                )
         except RaiderIONotFoundError:
             message = "Raider.IO could not find this player."
             LOGGER.warning(
@@ -929,7 +888,7 @@ class SyncService:
             self._repository.clear_player_hot_window(player_key=player["player_key"])
 
     def _next_cycle_delay_seconds(self) -> float:
-        """Compute the next sleep duration from base cadence and delayed hot windows."""
+        """Compute the next sleep duration from base cadence and hot windows."""
 
         active_players = self._repository.list_active_players(
             limit=self._settings.sync.max_players_per_cycle

@@ -102,7 +102,6 @@ class SyncStats:
     invalid_players: int = 0
     base_due_players_synced: int = 0
     hot_players_synced: int = 0
-    players_scheduled_for_hot: int = 0
     predictive_hot_players_queued: int = 0
     api_calls: int = 0
     new_runs: int = 0
@@ -125,7 +124,6 @@ class SyncStats:
             "invalid_players": self.invalid_players,
             "base_due_players_synced": self.base_due_players_synced,
             "hot_players_synced": self.hot_players_synced,
-            "players_scheduled_for_hot": self.players_scheduled_for_hot,
             "predictive_hot_players_queued": self.predictive_hot_players_queued,
             "api_calls": self.api_calls,
             "new_runs": self.new_runs,

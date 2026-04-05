@@ -15,7 +15,7 @@ This bot is intentionally conservative:
 - Reads roster entries from the `raw_data` tab, column `A`, starting at `A2`
 - Expects roster cells in `region/realm/name` format, for example `us/area-52/Mythics`
 - Syncs current-season Raider.IO Mythic+ profile data for each valid player
-- Uses bucketed base polling plus delayed and predictive hot polling to decide which players to refresh from Raider.IO
+- Uses bucketed base polling plus predictive hot polling to decide which players to refresh from Raider.IO
 - Stores player state, normalized runs, and sync cycle metadata in MongoDB
 - Caches current-season dungeon metadata, including Raider.IO short names, in MongoDB
 - Persists Raider.IO cooldown and rolling rate-limit state in Redis so restarts do not reset protections
@@ -70,7 +70,6 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `google.output_start_cell`
 - `sync.interval_minutes`
 - `sync.active_interval_minutes`
-- `sync.active_start_delay_minutes`
 - `sync.active_idle_minutes`
 - `sync.predictive_hot_enabled`
 - `sync.predictive_hot_threshold`
@@ -200,7 +199,6 @@ Logs are written to stdout and include:
 - sync cycle start and finish
 - new run discovery
 - bucketed base and hot polling outcomes
-- delayed hot-poll scheduling and expiry
 - predictive hot-poll queueing
 - invalid roster rows
 - Raider.IO SSL and network failures
