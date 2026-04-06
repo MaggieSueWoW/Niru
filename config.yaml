@@ -41,10 +41,10 @@ blizzard:
   run_fingerprint_fuzz_seconds: 2
 
 redis:
-  key_prefix: "niru_test"
+  key_prefix: "niru"
 
 mongodb:
-  database: "niru_test"
+  database: "niru"
   players_collection: "players"
   runs_collection: "runs"
   sync_cycles_collection: "sync_cycles"
