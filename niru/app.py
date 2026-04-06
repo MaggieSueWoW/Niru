@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 
+from niru.clients.blizzard import BlizzardClient
 from niru.clients.raiderio import RaiderIOClient
 from niru.clients.sheets import GoogleSheetsClient
 from niru.config import load_settings
@@ -44,11 +45,13 @@ def main() -> None:
     repository = MongoRepository(settings.mongodb)
     sheets_client = GoogleSheetsClient(settings.google)
     raiderio_client = RaiderIOClient(settings.raiderio, control_state=control_state)
+    blizzard_client = BlizzardClient(settings.blizzard)
     service = SyncService(
         settings=settings,
         repository=repository,
         sheets_client=sheets_client,
         raiderio_client=raiderio_client,
+        blizzard_client=blizzard_client,
     )
     try:
         if args.mode == "once":

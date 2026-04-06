@@ -72,6 +72,25 @@ class SeasonDungeon:
     background_image_url: str = ""
 
 
+@dataclass(slots=True, frozen=True)
+class NormalizedRunCandidate:
+    """Unified run shape across upstream sources."""
+
+    source: str
+    keystone_run_id: int | None
+    completed_at: datetime | None
+    clear_time_ms: int | None
+    dungeon_id: int | None
+    dungeon: str
+    short_name: str
+    mythic_level: int | None
+    num_keystone_upgrades: int | None
+    score: float | None
+    is_completed_within_time: bool | None
+    participants: list[dict[str, object]]
+    raw_payload: dict[str, Any]
+
+
 @dataclass(slots=True)
 class SummaryRow:
     """One player row written to the summary table."""

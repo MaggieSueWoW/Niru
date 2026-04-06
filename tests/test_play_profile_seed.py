@@ -3,6 +3,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
+import niru.play_profile_seed as play_profile_seed_module
 from niru.play_profile_seed import (
     PlayProfileSeedService,
     _load_all_active_players,
@@ -87,7 +88,12 @@ class PlayProfileSeedTests(unittest.TestCase):
         service = PlayProfileSeedService(settings=settings, repository=repo)
         players = _parse_players(["us/proudmoore/MaggieSue"])
 
-        stats = service.run(players=players)
+        with patch.object(
+            play_profile_seed_module,
+            "utc_now",
+            return_value=datetime(2026, 4, 1, 12, 0, tzinfo=UTC),
+        ):
+            stats = service.run(players=players)
 
         self.assertEqual(stats.seeded_players, 1)
         profile = repo.updated_profiles["us/proudmoore/maggiesue"]
@@ -104,7 +110,12 @@ class PlayProfileSeedTests(unittest.TestCase):
         service = PlayProfileSeedService(settings=settings, repository=repo)
         players = _parse_players(["us/proudmoore/MaggieSue"])
 
-        stats = service.run(players=players, dry_run=True)
+        with patch.object(
+            play_profile_seed_module,
+            "utc_now",
+            return_value=datetime(2026, 4, 1, 12, 0, tzinfo=UTC),
+        ):
+            stats = service.run(players=players, dry_run=True)
 
         self.assertTrue(stats.dry_run)
         self.assertEqual(repo.updated_profiles, {})

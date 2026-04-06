@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import logging
 from typing import Any
 
+from pymongo import ASCENDING
+
 from niru.config import MongoSettings
-from niru.models import PlayerDataStatus, RosterEntry, SeasonDungeon, ensure_utc
+from niru.models import (
+    NormalizedRunCandidate,
+    PlayerDataStatus,
+    RosterEntry,
+    SeasonDungeon,
+    ensure_utc, PlayerIdentity,
+)
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _safe_isoformat(value: Any) -> datetime | None:
@@ -23,6 +34,153 @@ def _safe_utc_datetime(value: Any) -> datetime | None:
     if parsed is None:
         return None
     return ensure_utc(parsed)
+
+
+def _candidate_short_name_for_update(
+    candidate: NormalizedRunCandidate,
+    existing_short_name: str,
+) -> str | None:
+    """Return the short name to persist, preserving known abbreviations."""
+
+    candidate_short_name = str(candidate.short_name or "").strip()
+    candidate_dungeon = str(candidate.dungeon or "").strip()
+    existing_short_name = str(existing_short_name or "").strip()
+    if candidate_short_name and candidate_short_name != candidate_dungeon:
+        return candidate_short_name
+    if existing_short_name:
+        return existing_short_name
+    if candidate_short_name:
+        return candidate_short_name
+    return None
+
+
+def _summarize_run_differences(
+    existing_run: dict[str, Any],
+    candidate: NormalizedRunCandidate,
+    *,
+    fuzz_seconds: int,
+) -> list[str]:
+    """Describe surprising differences between a stored run and a matched candidate."""
+
+    warnings: list[str] = []
+    existing_dungeon_id = (
+        existing_run.get("map_challenge_mode_id")
+        or existing_run.get("dungeon_id")
+        or existing_run.get("zone_id")
+    )
+    if existing_dungeon_id is not None and int(existing_dungeon_id) != int(candidate.dungeon_id):
+        warnings.append(
+            f"dungeon_id existing={int(existing_dungeon_id)} candidate={int(candidate.dungeon_id)}"
+        )
+
+    existing_level = existing_run.get("mythic_level")
+    if existing_level is not None and int(existing_level) != int(candidate.mythic_level):
+        warnings.append(
+            f"mythic_level existing={int(existing_level)} candidate={int(candidate.mythic_level)}"
+        )
+
+    existing_completed_at = _safe_utc_datetime(existing_run.get("completed_at"))
+    if existing_completed_at is not None:
+        completed_delta_seconds = abs(
+            (existing_completed_at - ensure_utc(candidate.completed_at)).total_seconds()
+        )
+        if completed_delta_seconds > max(fuzz_seconds, 0):
+            warnings.append(
+                "completed_at_delta_seconds="
+                f"{round(completed_delta_seconds, 3)} exceeds fuzz={max(fuzz_seconds, 0)}"
+            )
+
+    existing_clear_time_ms = existing_run.get("clear_time_ms")
+    if existing_clear_time_ms is not None:
+        duration_delta_ms = abs(int(existing_clear_time_ms) - int(candidate.clear_time_ms))
+        if duration_delta_ms > max(fuzz_seconds, 0) * 1000:
+            warnings.append(
+                "clear_time_delta_ms="
+                f"{duration_delta_ms} exceeds fuzz={max(fuzz_seconds, 0) * 1000}"
+            )
+
+    existing_score = existing_run.get("score")
+    if existing_score is not None and candidate.score is not None:
+        score_delta = abs(float(existing_score) - float(candidate.score))
+        if score_delta > 1.0:
+            warnings.append(
+                f"score_delta={round(score_delta, 3)} existing={float(existing_score)} "
+                f"candidate={float(candidate.score)}"
+            )
+
+    existing_dungeon_name = str(existing_run.get("dungeon", "") or "").strip()
+    candidate_dungeon_name = str(candidate.dungeon or "").strip()
+    if (
+        existing_dungeon_name
+        and candidate_dungeon_name
+        and existing_dungeon_name.casefold() != candidate_dungeon_name.casefold()
+    ):
+        warnings.append(
+            f"dungeon_name existing={existing_dungeon_name!r} candidate={candidate_dungeon_name!r}"
+        )
+
+    existing_short_name = str(existing_run.get("short_name", "") or "").strip()
+    candidate_short_name = str(candidate.short_name or "").strip()
+    if (
+        existing_short_name
+        and candidate_short_name
+        and existing_short_name != candidate_short_name
+        and candidate_short_name != candidate_dungeon_name
+    ):
+        warnings.append(
+            f"short_name existing={existing_short_name!r} candidate={candidate_short_name!r}"
+        )
+
+    existing_within_time = existing_run.get("is_completed_within_time")
+    if (
+        existing_within_time is not None
+        and candidate.is_completed_within_time is not None
+        and bool(existing_within_time) != bool(candidate.is_completed_within_time)
+    ):
+        warnings.append(
+            "is_completed_within_time "
+            f"existing={bool(existing_within_time)} candidate={bool(candidate.is_completed_within_time)}"
+        )
+
+    existing_keystone_run_id = existing_run.get("keystone_run_id")
+    if (
+        existing_keystone_run_id is not None
+        and candidate.keystone_run_id is not None
+        and int(existing_keystone_run_id) != int(candidate.keystone_run_id)
+    ):
+        warnings.append(
+            "keystone_run_id "
+            f"existing={int(existing_keystone_run_id)} candidate={int(candidate.keystone_run_id)}"
+        )
+
+    return warnings
+
+
+def _warn_on_surprising_run_change(
+    existing_run: dict[str, Any],
+    candidate: NormalizedRunCandidate,
+    *,
+    fuzz_seconds: int,
+) -> None:
+    """Log a strong warning when a matched update changes unexpected run fields."""
+
+    differences = _summarize_run_differences(
+        existing_run,
+        candidate,
+        fuzz_seconds=fuzz_seconds,
+    )
+    if not differences:
+        return
+    LOGGER.warning(
+        "Matched run candidate differs from existing run",
+        extra={
+            "candidate_source": candidate.source,
+            "existing_run_id": str(existing_run.get("_id", "")),
+            "existing_keystone_run_id": existing_run.get("keystone_run_id"),
+            "candidate_keystone_run_id": candidate.keystone_run_id,
+            "differences": differences,
+        },
+    )
 
 
 def _current_batch_start(now: datetime, *, interval_minutes: int) -> datetime:
@@ -61,7 +219,7 @@ class MongoRepository:
         self.season_dungeons = self._db["season_dungeons"]
         self.weekly_periods = self._db["weekly_periods"]
         self.players.create_index([("player_key", ASCENDING)], unique=True)
-        self.runs.create_index([("keystone_run_id", ASCENDING)], unique=True)
+        self._ensure_sparse_keystone_run_id_index()
         self.runs.create_index([("completed_at", ASCENDING)])
         self.runs.create_index([("participants.player_key", ASCENDING)])
         self.runs.create_index([("discovered_from_player_keys", ASCENDING)])
@@ -70,6 +228,21 @@ class MongoRepository:
         self.season_dungeons.create_index([("season", ASCENDING), ("slug", ASCENDING)], unique=True)
         self.season_dungeons.create_index([("season", ASCENDING), ("short_name", ASCENDING)])
         self.weekly_periods.create_index([("region", ASCENDING)], unique=True)
+
+    def _ensure_sparse_keystone_run_id_index(self) -> None:
+        """Replace the legacy keystone_run_id index with the sparse version when needed."""
+
+        index_name = "keystone_run_id_1"
+        index_info = self.runs.index_information().get(index_name)
+        if index_info:
+            key = index_info.get("key")
+            if key == [("keystone_run_id", 1)] and not index_info.get("sparse", False):
+                self.runs.drop_index(index_name)
+        self.runs.create_index(
+            [("keystone_run_id", ASCENDING)],
+            unique=True,
+            sparse=True,
+        )
 
     def sync_roster(self, entries: list[RosterEntry], *, seen_at: datetime) -> None:
         """Upsert current roster entries and deactivate anything no longer listed."""
@@ -116,6 +289,9 @@ class MongoRepository:
                         "play_profile_seen_week_hours": [],
                         "play_profile_last_enqueued_week_hour": "",
                         "requires_backfill": entry.is_valid,
+                        "score_source": "",
+                        "score_source_fetched_at": None,
+                        "blizzard_last_successful_sync_at": None,
                         "created_at": seen_at,
                     },
                 },
@@ -318,6 +494,7 @@ class MongoRepository:
         *,
         current_dungeon_scores: dict[str, float],
         current_total_score: float | None,
+        score_source: str,
         synced_at: datetime,
     ) -> None:
         """Persist successful profile sync metadata."""
@@ -331,6 +508,11 @@ class MongoRepository:
                     "last_error": "",
                     "current_dungeon_scores": current_dungeon_scores,
                     "current_total_score": current_total_score,
+                    "score_source": score_source,
+                    "score_source_fetched_at": synced_at,
+                    "blizzard_last_successful_sync_at": (
+                        synced_at if score_source == "blizzard" else None
+                    ),
                     "last_sync_completed_at": synced_at,
                     "last_successful_sync_at": synced_at,
                     "requires_backfill": False,
@@ -359,6 +541,176 @@ class MongoRepository:
             {"$addToSet": {"discovered_from_player_keys": player_key}},
         )
 
+    def upsert_normalized_run(
+        self,
+        candidate: NormalizedRunCandidate,
+        *,
+        player_key: str,
+        season: str,
+        synced_at: datetime,
+        fuzz_seconds: int,
+    ) -> bool:
+        """Store or enrich a unified run document."""
+
+        participants = []
+        for participant in candidate.participants:
+            normalized = dict(participant)
+            player_value = normalized.get("player_key")
+            if isinstance(player_value, str):
+                normalized["player_key"] = player_value
+            participants.append(normalized)
+
+        query: dict[str, Any] | None = None
+        existing = None
+        if candidate.keystone_run_id is not None:
+            existing = self.runs.find_one(
+                {"keystone_run_id": int(candidate.keystone_run_id)},
+                {
+                    "_id": 1,
+                    "keystone_run_id": 1,
+                    "map_challenge_mode_id": 1,
+                    "dungeon_id": 1,
+                    "zone_id": 1,
+                    "dungeon": 1,
+                    "short_name": 1,
+                    "mythic_level": 1,
+                    "completed_at": 1,
+                    "clear_time_ms": 1,
+                    "score": 1,
+                    "is_completed_within_time": 1,
+                },
+            )
+            if existing:
+                query = {"_id": existing["_id"]}
+        if existing is None:
+            existing = self.find_run_by_fuzzy_fields(
+                dungeon_id=candidate.dungeon_id,
+                mythic_level=candidate.mythic_level,
+                completed_at=candidate.completed_at,
+                clear_time_ms=candidate.clear_time_ms,
+                fuzz_seconds=fuzz_seconds,
+            )
+            if existing is not None:
+                query = {"_id": existing["_id"]}
+        if query is None:
+            query = {
+                "map_challenge_mode_id": candidate.dungeon_id,
+                "mythic_level": candidate.mythic_level,
+                "completed_at": candidate.completed_at,
+                "clear_time_ms": candidate.clear_time_ms,
+                "keystone_run_id": {"$exists": False},
+            }
+
+        if existing is not None:
+            _warn_on_surprising_run_change(
+                existing,
+                candidate,
+                fuzz_seconds=fuzz_seconds,
+            )
+
+        short_name = _candidate_short_name_for_update(
+            candidate,
+            str(existing.get("short_name", "") if existing else ""),
+        )
+        update_doc = {
+            "season": season,
+            "dungeon": candidate.dungeon,
+            "mythic_level": candidate.mythic_level,
+            "completed_at": candidate.completed_at,
+            "clear_time_ms": candidate.clear_time_ms,
+            "score": candidate.score,
+            "is_completed_within_time": candidate.is_completed_within_time,
+            "participants": participants,
+            "last_seen_at": synced_at,
+        }
+        if short_name is not None:
+            update_doc["short_name"] = short_name
+        if candidate.num_keystone_upgrades is not None:
+            update_doc["num_keystone_upgrades"] = candidate.num_keystone_upgrades
+        if candidate.dungeon_id is not None:
+            update_doc["dungeon_id"] = candidate.dungeon_id
+            update_doc["map_challenge_mode_id"] = candidate.dungeon_id
+        if candidate.keystone_run_id is not None:
+            update_doc["keystone_run_id"] = int(candidate.keystone_run_id)
+        if candidate.source == "blizzard":
+            update_doc["blizzard_payload"] = candidate.raw_payload
+        else:
+            update_doc["raiderio_payload"] = candidate.raw_payload
+
+        self.runs.update_one(
+            query,
+            {
+                "$set": update_doc,
+                "$addToSet": {
+                    "discovered_from_player_keys": player_key,
+                    "sources": candidate.source,
+                },
+                "$setOnInsert": {"created_at": synced_at},
+            },
+            upsert=True,
+        )
+        return existing is None
+
+    def find_run_by_fuzzy_fields(
+        self,
+        *,
+        dungeon_id: int | None,
+        mythic_level: int | None,
+        completed_at: datetime | None,
+        clear_time_ms: int | None,
+        fuzz_seconds: int,
+    ) -> dict[str, Any] | None:
+        """Find a single existing run doc that matches within the configured fuzz window."""
+
+        if (
+            dungeon_id is None
+            or mythic_level is None
+            or completed_at is None
+            or clear_time_ms is None
+        ):
+            return None
+        time_delta = timedelta(seconds=max(fuzz_seconds, 0))
+        duration_delta = max(fuzz_seconds, 0) * 1000
+        matches = list(
+            self.runs.find(
+                {
+                    "map_challenge_mode_id": int(dungeon_id),
+                    "mythic_level": int(mythic_level),
+                    "completed_at": {
+                        "$gte": ensure_utc(completed_at) - time_delta,
+                        "$lte": ensure_utc(completed_at) + time_delta,
+                    },
+                    "clear_time_ms": {
+                        "$gte": int(clear_time_ms) - duration_delta,
+                        "$lte": int(clear_time_ms) + duration_delta,
+                    },
+                },
+                {
+                    "_id": 1,
+                    "keystone_run_id": 1,
+                    "map_challenge_mode_id": 1,
+                    "dungeon_id": 1,
+                    "zone_id": 1,
+                    "dungeon": 1,
+                    "short_name": 1,
+                    "mythic_level": 1,
+                    "completed_at": 1,
+                    "clear_time_ms": 1,
+                    "score": 1,
+                    "is_completed_within_time": 1,
+                },
+            )
+        )
+        if not matches:
+            return None
+        if len(matches) > 1:
+            raise RuntimeError(
+                "Multiple runs matched fuzzy run identity lookup for "
+                f"dungeon_id={dungeon_id}, mythic_level={mythic_level}, "
+                f"completed_at={completed_at.isoformat()}, clear_time_ms={clear_time_ms}"
+            )
+        return matches[0]
+
     def upsert_run_stub(
         self,
         run: dict[str, Any],
@@ -370,14 +722,24 @@ class MongoRepository:
         """Store a run stub discovered from a character profile."""
 
         run_id = int(run["keystone_run_id"])
+        completed_at = _safe_isoformat(run.get("completed_at"))
+        clear_time_ms = run.get("clear_time_ms")
+        dungeon_id = run.get("map_challenge_mode_id") or run.get("zone_id")
+        mythic_level = run.get("mythic_level")
+        if completed_at is None or clear_time_ms is None or dungeon_id is None or mythic_level is None:
+            raise ValueError(
+                f"Raider.IO run stub {run_id} missing required UID fields: "
+                f"map_challenge_mode_id/zone_id={dungeon_id}, mythic_level={mythic_level}, "
+                f"completed_at={completed_at}, clear_time_ms={clear_time_ms}"
+            )
         stub = {
             "keystone_run_id": run_id,
             "season": season,
             "dungeon": run.get("dungeon", ""),
             "short_name": run.get("short_name", ""),
             "mythic_level": run.get("mythic_level"),
-            "completed_at": _safe_isoformat(run.get("completed_at")),
-            "clear_time_ms": run.get("clear_time_ms"),
+            "completed_at": completed_at,
+            "clear_time_ms": clear_time_ms,
             "par_time_ms": run.get("par_time_ms"),
             "num_keystone_upgrades": run.get("num_keystone_upgrades"),
             "map_challenge_mode_id": run.get("map_challenge_mode_id"),
@@ -441,6 +803,18 @@ class MongoRepository:
 
         dungeon = payload.get("dungeon") or payload.get("run", {}).get("dungeon") or {}
         season = payload.get("season") or payload.get("run", {}).get("season") or ""
+        completed_at = _safe_isoformat(
+            payload.get("completed_at") or payload.get("run", {}).get("completed_at")
+        )
+        clear_time_ms = payload.get("clear_time_ms")
+        mythic_level = payload.get("mythic_level")
+        dungeon_id = dungeon.get("map_challenge_mode_id") or dungeon.get("id")
+        if completed_at is None or clear_time_ms is None or mythic_level is None or dungeon_id is None:
+            raise ValueError(
+                f"Raider.IO run details for {run_id} missing required UID fields: "
+                f"map_challenge_mode_id/id={dungeon_id}, mythic_level={mythic_level}, "
+                f"completed_at={completed_at}, clear_time_ms={clear_time_ms}"
+            )
 
         self.runs.update_one(
             {"keystone_run_id": run_id},
@@ -450,12 +824,12 @@ class MongoRepository:
                     "season": season,
                     "dungeon": dungeon.get("name", ""),
                     "short_name": dungeon.get("short_name", ""),
-                    "mythic_level": payload.get("mythic_level"),
+                    "mythic_level": mythic_level,
                     "score": payload.get("score"),
-                    "clear_time_ms": payload.get("clear_time_ms"),
+                    "clear_time_ms": clear_time_ms,
                     "par_time_ms": payload.get("keystone_time_ms"),
                     "num_keystone_upgrades": payload.get("num_chests"),
-                    "map_challenge_mode_id": dungeon.get("map_challenge_mode_id"),
+                    "map_challenge_mode_id": dungeon.get("map_challenge_mode_id") or dungeon_id,
                     "zone_id": dungeon.get("id"),
                     "zone_expansion_id": dungeon.get("expansion_id"),
                     "icon_url": dungeon.get("icon_url"),
@@ -463,10 +837,7 @@ class MongoRepository:
                     "detail_payload": payload,
                     "participants": participants,
                     "last_seen_at": synced_at,
-                    "completed_at": _safe_isoformat(
-                        payload.get("completed_at")
-                        or payload.get("run", {}).get("completed_at")
-                    ),
+                    "completed_at": completed_at,
                 },
                 "$addToSet": {"discovered_from_player_keys": player_key},
                 "$setOnInsert": {"created_at": synced_at},
@@ -536,6 +907,36 @@ class MongoRepository:
         """Return season dungeon metadata in stable short-name order."""
 
         return list(self.season_dungeons.find({"season": season}).sort("short_name"))
+
+    def normalize_run_short_names(
+        self,
+        *,
+        season: str,
+        dungeons: list[dict[str, Any]],
+    ) -> None:
+        """Align stored run short names with the current season dungeon catalog."""
+
+        for dungeon in dungeons:
+            short_name = str(dungeon.get("short_name", "") or "")
+            if not short_name:
+                continue
+            dungeon_id = dungeon.get("dungeon_id")
+            challenge_mode_id = dungeon.get("challenge_mode_id")
+            filters: list[dict[str, Any]] = []
+            if dungeon_id is not None:
+                filters.append({"dungeon_id": int(dungeon_id)})
+                filters.append({"zone_id": int(dungeon_id)})
+            if challenge_mode_id is not None:
+                filters.append({"map_challenge_mode_id": int(challenge_mode_id)})
+            if not filters:
+                continue
+            self.runs.update_many(
+                {
+                    "season": season,
+                    "$or": filters,
+                },
+                {"$set": {"short_name": short_name}},
+            )
 
     def get_current_weekly_periods(
         self,

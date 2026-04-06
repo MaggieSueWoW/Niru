@@ -1,0 +1,4966 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/17?namespace=profile-us"
+    }
+  },
+  "season": {
+    "key": {
+      "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/season/17?namespace=dynamic-us"
+    },
+    "id": 17
+  },
+  "best_runs": [
+    {
+      "completed_timestamp": 1774649948000,
+      "duration": 2164894,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/162?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Pulsar",
+            "es_MX": "Pacto de Xal'atath: Púlsar",
+            "pt_BR": "Barganha de Xal'atath: Pulsar",
+            "de_DE": "Xal'ataths Handel: Pulsare",
+            "en_GB": "Xal'atath's Bargain: Pulsar",
+            "es_ES": "Trato de Xal'atath: Púlsar",
+            "fr_FR": "Marché de Xal’atath : pulsar",
+            "it_IT": "Patto di Xal'atath: Pulsar",
+            "ru_RU": "Сделка с Ксал'атат: пульсар",
+            "ko_KR": "잘아타스의 제안: 맥동성",
+            "zh_TW": "薩拉塔斯的交易：星體",
+            "zh_CN": "萨拉塔斯的交易：脉冲"
+          },
+          "id": 162
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Dropbae",
+            "id": 177940509,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/269?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Windwalker",
+              "es_MX": "Viajero del viento",
+              "pt_BR": "Andarilho do Vento",
+              "de_DE": "Windläufer",
+              "en_GB": "Windwalker",
+              "es_ES": "Viajero del viento",
+              "fr_FR": "Marche-vent",
+              "it_IT": "Impeto",
+              "ru_RU": "Танцующий с ветром",
+              "ko_KR": "풍운",
+              "zh_TW": "御風",
+              "zh_CN": "踏风"
+            },
+            "id": 269
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/25?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Pandaren",
+              "es_MX": "Pandaren",
+              "pt_BR": "Pandaren",
+              "de_DE": "Pandaren",
+              "en_GB": "Pandaren",
+              "es_ES": "Pandaren",
+              "fr_FR": "Pandaren",
+              "it_IT": "Pandaren",
+              "ru_RU": "Пандарен",
+              "ko_KR": "판다렌",
+              "zh_TW": "熊貓人",
+              "zh_CN": "熊猫人"
+            },
+            "id": 25
+          },
+          "equipped_item_level": 251
+        },
+        {
+          "character": {
+            "name": "Boltchi",
+            "id": 195673595,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/270?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Mistweaver",
+              "es_MX": "Tejedor de niebla",
+              "pt_BR": "Tecelão da Névoa",
+              "de_DE": "Nebelwirker",
+              "en_GB": "Mistweaver",
+              "es_ES": "Tejedor de niebla",
+              "fr_FR": "Tisse-brume",
+              "it_IT": "Misticismo",
+              "ru_RU": "Ткач туманов",
+              "ko_KR": "운무",
+              "zh_TW": "織霧",
+              "zh_CN": "织雾"
+            },
+            "id": 270
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/25?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Pandaren",
+              "es_MX": "Pandaren",
+              "pt_BR": "Pandaren",
+              "de_DE": "Pandaren",
+              "en_GB": "Pandaren",
+              "es_ES": "Pandaren",
+              "fr_FR": "Pandaren",
+              "it_IT": "Pandaren",
+              "ru_RU": "Пандарен",
+              "ko_KR": "판다렌",
+              "zh_TW": "熊貓人",
+              "zh_CN": "熊猫人"
+            },
+            "id": 25
+          },
+          "equipped_item_level": 255
+        },
+        {
+          "character": {
+            "name": "Tröxz",
+            "id": 242922488,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 262
+        },
+        {
+          "character": {
+            "name": "Toadtoad",
+            "id": 238840038,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/258?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Shadow",
+              "es_MX": "Sombra",
+              "pt_BR": "Sombra",
+              "de_DE": "Schatten",
+              "en_GB": "Shadow",
+              "es_ES": "Sombra",
+              "fr_FR": "Ombre",
+              "it_IT": "Ombra",
+              "ru_RU": "Тьма",
+              "ko_KR": "암흑",
+              "zh_TW": "暗影",
+              "zh_CN": "暗影"
+            },
+            "id": 258
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 257
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 265
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/560?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Maisara Caverns",
+          "es_MX": "Cavernas de Maisara",
+          "pt_BR": "Cavernas de Maisara",
+          "de_DE": "Maisarakavernen",
+          "en_GB": "Maisara Caverns",
+          "es_ES": "Cavernas de Maisara",
+          "fr_FR": "Cavernes de Maisara",
+          "it_IT": "Caverne di Maisara",
+          "ru_RU": "Пещеры Маисара",
+          "ko_KR": "마이사라 동굴",
+          "zh_TW": "梅薩拉洞穴",
+          "zh_CN": "迈萨拉洞窟"
+        },
+        "id": 560
+      },
+      "is_completed_within_time": false,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 301.49823
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 341.05313
+      }
+    },
+    {
+      "completed_timestamp": 1775437678000,
+      "duration": 1660394,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Lyvinia",
+            "id": 225823655,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+              },
+              "id": 1566,
+              "slug": "area-52"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/8?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Troll",
+              "es_MX": "Trol",
+              "pt_BR": "Troll",
+              "de_DE": "Troll",
+              "en_GB": "Troll",
+              "es_ES": "Trol",
+              "fr_FR": "Troll",
+              "it_IT": "Troll",
+              "ru_RU": "Тролль",
+              "ko_KR": "트롤",
+              "zh_TW": "食人妖",
+              "zh_CN": "巨魔"
+            },
+            "id": 8
+          },
+          "equipped_item_level": 267
+        },
+        {
+          "character": {
+            "name": "Eviltiger",
+            "id": 29502278,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/4?namespace=dynamic-us"
+              },
+              "id": 4,
+              "slug": "kilrogg"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Marksmanship",
+              "es_MX": "Puntería",
+              "pt_BR": "Precisão",
+              "de_DE": "Treffsicherheit",
+              "en_GB": "Marksmanship",
+              "es_ES": "Puntería",
+              "fr_FR": "Précision",
+              "it_IT": "Precisione di Tiro",
+              "ru_RU": "Стрельба",
+              "ko_KR": "사격",
+              "zh_TW": "射擊",
+              "zh_CN": "射击"
+            },
+            "id": 254
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Night Elf",
+              "es_MX": "Elfo de la noche",
+              "pt_BR": "Elfo Noturno",
+              "de_DE": "Nachtelf",
+              "en_GB": "Night Elf",
+              "es_ES": "Elfo de la noche",
+              "fr_FR": "Elfe de la nuit",
+              "it_IT": "Elfo della Notte",
+              "ru_RU": "Ночной эльф",
+              "ko_KR": "나이트 엘프",
+              "zh_TW": "夜精靈",
+              "zh_CN": "暗夜精灵"
+            },
+            "id": 4
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Monkyz",
+            "id": 190845305,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1263?namespace=dynamic-us"
+              },
+              "id": 1263,
+              "slug": "thrall"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/268?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Brewmaster",
+              "es_MX": "Maestro cervecero",
+              "pt_BR": "Mestre Cervejeiro",
+              "de_DE": "Braumeister",
+              "en_GB": "Brewmaster",
+              "es_ES": "Maestro cervecero",
+              "fr_FR": "Maître brasseur",
+              "it_IT": "Mastro Birraio",
+              "ru_RU": "Хмелевар",
+              "ko_KR": "양조",
+              "zh_TW": "釀酒",
+              "zh_CN": "酒仙"
+            },
+            "id": 268
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 273
+        },
+        {
+          "character": {
+            "name": "Hotes",
+            "id": 244597656,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+              },
+              "id": 11,
+              "slug": "tichondrius"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Fury",
+              "es_MX": "Furia",
+              "pt_BR": "Fúria",
+              "de_DE": "Furor",
+              "en_GB": "Fury",
+              "es_ES": "Furia",
+              "fr_FR": "Fureur",
+              "it_IT": "Furia",
+              "ru_RU": "Неистовство",
+              "ko_KR": "분노",
+              "zh_TW": "狂怒",
+              "zh_CN": "狂怒"
+            },
+            "id": 72
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Void Elf",
+              "es_MX": "Elfo del Vacío",
+              "pt_BR": "Elfo Caótico",
+              "de_DE": "Leerenelf",
+              "en_GB": "Void Elf",
+              "es_ES": "Elfo del Vacío",
+              "fr_FR": "Elfe du Vide",
+              "it_IT": "Elfo del Vuoto",
+              "ru_RU": "Эльф Бездны",
+              "ko_KR": "공허 엘프",
+              "zh_TW": "虛無精靈",
+              "zh_CN": "虚空精灵"
+            },
+            "id": 29
+          },
+          "equipped_item_level": 270
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/560?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Maisara Caverns",
+          "es_MX": "Cavernas de Maisara",
+          "pt_BR": "Cavernas de Maisara",
+          "de_DE": "Maisarakavernen",
+          "en_GB": "Maisara Caverns",
+          "es_ES": "Cavernas de Maisara",
+          "fr_FR": "Cavernes de Maisara",
+          "it_IT": "Caverne di Maisara",
+          "ru_RU": "Пещеры Маисара",
+          "ko_KR": "마이사라 동굴",
+          "zh_TW": "梅薩拉洞穴",
+          "zh_CN": "迈萨拉洞窟"
+        },
+        "id": 560
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 341.05313
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 341.05313
+      }
+    },
+    {
+      "completed_timestamp": 1775192131000,
+      "duration": 1460738,
+      "keystone_level": 12,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Guile",
+            "es_MX": "Astucia de Xal'atath",
+            "pt_BR": "Astúcia de Xal'atath",
+            "de_DE": "Xal'ataths List",
+            "en_GB": "Xal'atath's Guile",
+            "es_ES": "Argucia de Xal'atath",
+            "fr_FR": "Ruse de Xal’atath",
+            "it_IT": "Inganno di Xal'atath",
+            "ru_RU": "Вероломство Ксал'атат",
+            "ko_KR": "잘아타스의 기만",
+            "zh_TW": "薩拉塔斯之詐",
+            "zh_CN": "萨拉塔斯的狡诈"
+          },
+          "id": 147
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Smolbeanz",
+            "id": 182562039,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1365?namespace=dynamic-us"
+              },
+              "id": 1365,
+              "slug": "moon-guard"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/270?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Mistweaver",
+              "es_MX": "Tejedor de niebla",
+              "pt_BR": "Tecelão da Névoa",
+              "de_DE": "Nebelwirker",
+              "en_GB": "Mistweaver",
+              "es_ES": "Tejedor de niebla",
+              "fr_FR": "Tisse-brume",
+              "it_IT": "Misticismo",
+              "ru_RU": "Ткач туманов",
+              "ko_KR": "운무",
+              "zh_TW": "織霧",
+              "zh_CN": "织雾"
+            },
+            "id": 270
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/7?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Gnome",
+              "es_MX": "Gnomo",
+              "pt_BR": "Gnomo",
+              "de_DE": "Gnom",
+              "en_GB": "Gnome",
+              "es_ES": "Gnomo",
+              "fr_FR": "Gnome",
+              "it_IT": "Gnomo",
+              "ru_RU": "Гном",
+              "ko_KR": "노움",
+              "zh_TW": "地精",
+              "zh_CN": "侏儒"
+            },
+            "id": 7
+          },
+          "equipped_item_level": 265
+        },
+        {
+          "character": {
+            "name": "Holybozo",
+            "id": 245273988,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/66?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Protection",
+              "es_MX": "Protección",
+              "pt_BR": "Proteção",
+              "de_DE": "Schutz",
+              "en_GB": "Protection",
+              "es_ES": "Protección",
+              "fr_FR": "Protection",
+              "it_IT": "Protezione",
+              "ru_RU": "Защита",
+              "ko_KR": "보호",
+              "zh_TW": "防護",
+              "zh_CN": "防护"
+            },
+            "id": 66
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 268
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Quinnfreeze",
+            "id": 244665639,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Frost",
+              "es_MX": "Escarcha",
+              "pt_BR": "Gélido",
+              "de_DE": "Frost",
+              "en_GB": "Frost",
+              "es_ES": "Escarcha",
+              "fr_FR": "Givre",
+              "it_IT": "Gelo",
+              "ru_RU": "Лед",
+              "ko_KR": "냉기",
+              "zh_TW": "冰霜",
+              "zh_CN": "冰霜"
+            },
+            "id": 64
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Night Elf",
+              "es_MX": "Elfo de la noche",
+              "pt_BR": "Elfo Noturno",
+              "de_DE": "Nachtelf",
+              "en_GB": "Night Elf",
+              "es_ES": "Elfo de la noche",
+              "fr_FR": "Elfe de la nuit",
+              "it_IT": "Elfo della Notte",
+              "ru_RU": "Ночной эльф",
+              "ko_KR": "나이트 엘프",
+              "zh_TW": "夜精靈",
+              "zh_CN": "暗夜精灵"
+            },
+            "id": 4
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Khalanøs",
+            "id": 234387307,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+              },
+              "id": 57,
+              "slug": "illidan"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Devourer",
+              "es_MX": "Devoración",
+              "pt_BR": "Devorador",
+              "de_DE": "Verschlinger",
+              "en_GB": "Devourer",
+              "es_ES": "Devorador",
+              "fr_FR": "Dévoration",
+              "it_IT": "Divoratore",
+              "ru_RU": "Пожиратель",
+              "ko_KR": "포식",
+              "zh_TW": "噬滅",
+              "zh_CN": "噬灭"
+            },
+            "id": 1480
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 272
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/161?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Skyreach",
+          "es_MX": "Trecho Celestial",
+          "pt_BR": "Beira-céu",
+          "de_DE": "Die Himmelsnadel",
+          "en_GB": "Skyreach",
+          "es_ES": "Trecho Celestial",
+          "fr_FR": "Orée-du-Ciel",
+          "it_IT": "Vetta dei Cieli",
+          "ru_RU": "Небесный Путь",
+          "ko_KR": "하늘탑",
+          "zh_TW": "擎天峰",
+          "zh_CN": "通天峰"
+        },
+        "id": 161
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 369.89423
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 369.89423
+      }
+    },
+    {
+      "completed_timestamp": 1775187298000,
+      "duration": 1783334,
+      "keystone_level": 12,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Guile",
+            "es_MX": "Astucia de Xal'atath",
+            "pt_BR": "Astúcia de Xal'atath",
+            "de_DE": "Xal'ataths List",
+            "en_GB": "Xal'atath's Guile",
+            "es_ES": "Argucia de Xal'atath",
+            "fr_FR": "Ruse de Xal’atath",
+            "it_IT": "Inganno di Xal'atath",
+            "ru_RU": "Вероломство Ксал'атат",
+            "ko_KR": "잘아타스의 기만",
+            "zh_TW": "薩拉塔斯之詐",
+            "zh_CN": "萨拉塔斯的狡诈"
+          },
+          "id": 147
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Sard",
+            "id": 246437191,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Fury",
+              "es_MX": "Furia",
+              "pt_BR": "Fúria",
+              "de_DE": "Furor",
+              "en_GB": "Fury",
+              "es_ES": "Furia",
+              "fr_FR": "Fureur",
+              "it_IT": "Furia",
+              "ru_RU": "Неистовство",
+              "ko_KR": "분노",
+              "zh_TW": "狂怒",
+              "zh_CN": "狂怒"
+            },
+            "id": 72
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Orc",
+              "es_MX": "Orco",
+              "pt_BR": "Orc",
+              "de_DE": "Orc",
+              "en_GB": "Orc",
+              "es_ES": "Orco",
+              "fr_FR": "Orc",
+              "it_IT": "Orco",
+              "ru_RU": "Орк",
+              "ko_KR": "오크",
+              "zh_TW": "獸人",
+              "zh_CN": "兽人"
+            },
+            "id": 2
+          },
+          "equipped_item_level": 270
+        },
+        {
+          "character": {
+            "name": "Thirtyfell",
+            "id": 238507462,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Devourer",
+              "es_MX": "Devoración",
+              "pt_BR": "Devorador",
+              "de_DE": "Verschlinger",
+              "en_GB": "Devourer",
+              "es_ES": "Devorador",
+              "fr_FR": "Dévoration",
+              "it_IT": "Divoratore",
+              "ru_RU": "Пожиратель",
+              "ko_KR": "포식",
+              "zh_TW": "噬滅",
+              "zh_CN": "噬灭"
+            },
+            "id": 1480
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Void Elf",
+              "es_MX": "Elfo del Vacío",
+              "pt_BR": "Elfo Caótico",
+              "de_DE": "Leerenelf",
+              "en_GB": "Void Elf",
+              "es_ES": "Elfo del Vacío",
+              "fr_FR": "Elfe du Vide",
+              "it_IT": "Elfo del Vuoto",
+              "ru_RU": "Эльф Бездны",
+              "ko_KR": "공허 엘프",
+              "zh_TW": "虛無精靈",
+              "zh_CN": "虚空精灵"
+            },
+            "id": 29
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 273
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/402?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Algeth'ar Academy",
+          "es_MX": "Academia Algeth'ar",
+          "pt_BR": "Academia Algeth'ar",
+          "de_DE": "Akademie von Algeth'ar",
+          "en_GB": "Algeth'ar Academy",
+          "es_ES": "Academia Algeth'ar",
+          "fr_FR": "Académie d’Algeth’ar",
+          "it_IT": "Accademia di Algeth'ar",
+          "ru_RU": "Академия Алгет'ар",
+          "ko_KR": "알게타르 대학",
+          "zh_TW": "阿爾蓋薩學院",
+          "zh_CN": "艾杰斯亚学院"
+        },
+        "id": 402
+      },
+      "is_completed_within_time": false,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 319.06607
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.772
+      }
+    },
+    {
+      "completed_timestamp": 1775190483000,
+      "duration": 1193779,
+      "keystone_level": 10,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Dinorian",
+            "id": 179577183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Marksmanship",
+              "es_MX": "Puntería",
+              "pt_BR": "Precisão",
+              "de_DE": "Treffsicherheit",
+              "en_GB": "Marksmanship",
+              "es_ES": "Puntería",
+              "fr_FR": "Précision",
+              "it_IT": "Precisione di Tiro",
+              "ru_RU": "Стрельба",
+              "ko_KR": "사격",
+              "zh_TW": "射擊",
+              "zh_CN": "射击"
+            },
+            "id": 254
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/34?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Dark Iron Dwarf",
+              "es_MX": "Enano Hierro Negro",
+              "pt_BR": "Anão Ferro Negro",
+              "de_DE": "Dunkeleisenzwerg",
+              "en_GB": "Dark Iron Dwarf",
+              "es_ES": "Enano Hierro Negro",
+              "fr_FR": "Nain sombrefer",
+              "it_IT": "Nano Ferroscuro",
+              "ru_RU": "Дворф из клана Черного Железа",
+              "ko_KR": "검은무쇠 드워프",
+              "zh_TW": "黑鐵矮人",
+              "zh_CN": "黑铁矮人"
+            },
+            "id": 34
+          },
+          "equipped_item_level": 263
+        },
+        {
+          "character": {
+            "name": "Sard",
+            "id": 246437191,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Fury",
+              "es_MX": "Furia",
+              "pt_BR": "Fúria",
+              "de_DE": "Furor",
+              "en_GB": "Fury",
+              "es_ES": "Furia",
+              "fr_FR": "Fureur",
+              "it_IT": "Furia",
+              "ru_RU": "Неистовство",
+              "ko_KR": "분노",
+              "zh_TW": "狂怒",
+              "zh_CN": "狂怒"
+            },
+            "id": 72
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Orc",
+              "es_MX": "Orco",
+              "pt_BR": "Orc",
+              "de_DE": "Orc",
+              "en_GB": "Orc",
+              "es_ES": "Orco",
+              "fr_FR": "Orc",
+              "it_IT": "Orco",
+              "ru_RU": "Орк",
+              "ko_KR": "오크",
+              "zh_TW": "獸人",
+              "zh_CN": "兽人"
+            },
+            "id": 2
+          },
+          "equipped_item_level": 270
+        },
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 273
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/402?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Algeth'ar Academy",
+          "es_MX": "Academia Algeth'ar",
+          "pt_BR": "Academia Algeth'ar",
+          "de_DE": "Akademie von Algeth'ar",
+          "en_GB": "Algeth'ar Academy",
+          "es_ES": "Academia Algeth'ar",
+          "fr_FR": "Académie d’Algeth’ar",
+          "it_IT": "Accademia di Algeth'ar",
+          "ru_RU": "Академия Алгет'ар",
+          "ko_KR": "알게타르 대학",
+          "zh_TW": "阿爾蓋薩學院",
+          "zh_CN": "艾杰斯亚学院"
+        },
+        "id": 402
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.772
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.772
+      }
+    },
+    {
+      "completed_timestamp": 1775269214000,
+      "duration": 1894047,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Wylda",
+            "id": 174848716,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/76?namespace=dynamic-us"
+              },
+              "id": 76,
+              "slug": "sargeras"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Frost",
+              "es_MX": "Escarcha",
+              "pt_BR": "Gélido",
+              "de_DE": "Frost",
+              "en_GB": "Frost",
+              "es_ES": "Escarcha",
+              "fr_FR": "Givre",
+              "it_IT": "Gelo",
+              "ru_RU": "Лед",
+              "ko_KR": "냉기",
+              "zh_TW": "冰霜",
+              "zh_CN": "冰霜"
+            },
+            "id": 64
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 267
+        },
+        {
+          "character": {
+            "name": "Danielaulter",
+            "id": 235471358,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+              },
+              "id": 57,
+              "slug": "illidan"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/70?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Retribution",
+              "es_MX": "Reprensión",
+              "pt_BR": "Retribuição",
+              "de_DE": "Vergeltung",
+              "en_GB": "Retribution",
+              "es_ES": "Reprensión",
+              "fr_FR": "Vindicte",
+              "it_IT": "Castigo",
+              "ru_RU": "Воздаяние",
+              "ko_KR": "징벌",
+              "zh_TW": "懲戒",
+              "zh_CN": "惩戒"
+            },
+            "id": 70
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 265
+        },
+        {
+          "character": {
+            "name": "Onlydanns",
+            "id": 235538454,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/59?namespace=dynamic-us"
+              },
+              "id": 59,
+              "slug": "malganis"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/250?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood",
+              "es_MX": "Sangre",
+              "pt_BR": "Sangue",
+              "de_DE": "Blut",
+              "en_GB": "Blood",
+              "es_ES": "Sangre",
+              "fr_FR": "Sang",
+              "it_IT": "Sangue",
+              "ru_RU": "Кровь",
+              "ko_KR": "혈기",
+              "zh_TW": "血魄",
+              "zh_CN": "鲜血"
+            },
+            "id": 250
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 254
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Tyleloth",
+            "id": 232201285,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+              },
+              "id": 1566,
+              "slug": "area-52"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/65?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Holy",
+              "es_MX": "Sagrado",
+              "pt_BR": "Sagrado",
+              "de_DE": "Heilig",
+              "en_GB": "Holy",
+              "es_ES": "Sagrado",
+              "fr_FR": "Sacré",
+              "it_IT": "Sacro",
+              "ru_RU": "Свет",
+              "ko_KR": "신성",
+              "zh_TW": "神聖",
+              "zh_CN": "神圣"
+            },
+            "id": 65
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 264
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/556?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Pit of Saron",
+          "es_MX": "Foso de Saron",
+          "pt_BR": "Fosso de Saron",
+          "de_DE": "Grube von Saron",
+          "en_GB": "Pit of Saron",
+          "es_ES": "Foso de Saron",
+          "fr_FR": "Fosse de Saron",
+          "it_IT": "Fossa di Saron",
+          "ru_RU": "Яма Сарона",
+          "ko_KR": "사론의 구덩이",
+          "zh_TW": "薩倫之淵",
+          "zh_CN": "萨隆矿坑"
+        },
+        "id": 556
+      },
+      "is_completed_within_time": false,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 303.04068
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 347.71512
+      }
+    },
+    {
+      "completed_timestamp": 1775188906000,
+      "duration": 1189674,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 269
+        },
+        {
+          "character": {
+            "name": "Dinorian",
+            "id": 179577183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Marksmanship",
+              "es_MX": "Puntería",
+              "pt_BR": "Precisão",
+              "de_DE": "Treffsicherheit",
+              "en_GB": "Marksmanship",
+              "es_ES": "Puntería",
+              "fr_FR": "Précision",
+              "it_IT": "Precisione di Tiro",
+              "ru_RU": "Стрельба",
+              "ko_KR": "사격",
+              "zh_TW": "射擊",
+              "zh_CN": "射击"
+            },
+            "id": 254
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/34?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Dark Iron Dwarf",
+              "es_MX": "Enano Hierro Negro",
+              "pt_BR": "Anão Ferro Negro",
+              "de_DE": "Dunkeleisenzwerg",
+              "en_GB": "Dark Iron Dwarf",
+              "es_ES": "Enano Hierro Negro",
+              "fr_FR": "Nain sombrefer",
+              "it_IT": "Nano Ferroscuro",
+              "ru_RU": "Дворф из клана Черного Железа",
+              "ko_KR": "검은무쇠 드워프",
+              "zh_TW": "黑鐵矮人",
+              "zh_CN": "黑铁矮人"
+            },
+            "id": 34
+          },
+          "equipped_item_level": 263
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 273
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 272
+        },
+        {
+          "character": {
+            "name": "Sard",
+            "id": 246437191,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Fury",
+              "es_MX": "Furia",
+              "pt_BR": "Fúria",
+              "de_DE": "Furor",
+              "en_GB": "Fury",
+              "es_ES": "Furia",
+              "fr_FR": "Fureur",
+              "it_IT": "Furia",
+              "ru_RU": "Неистовство",
+              "ko_KR": "분노",
+              "zh_TW": "狂怒",
+              "zh_CN": "狂怒"
+            },
+            "id": 72
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Orc",
+              "es_MX": "Orco",
+              "pt_BR": "Orc",
+              "de_DE": "Orc",
+              "en_GB": "Orc",
+              "es_ES": "Orco",
+              "fr_FR": "Orc",
+              "it_IT": "Orco",
+              "ru_RU": "Орк",
+              "ko_KR": "오크",
+              "zh_TW": "獸人",
+              "zh_CN": "兽人"
+            },
+            "id": 2
+          },
+          "equipped_item_level": 270
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/556?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Pit of Saron",
+          "es_MX": "Foso de Saron",
+          "pt_BR": "Fosso de Saron",
+          "de_DE": "Grube von Saron",
+          "en_GB": "Pit of Saron",
+          "es_ES": "Foso de Saron",
+          "fr_FR": "Fosse de Saron",
+          "it_IT": "Fossa di Saron",
+          "ru_RU": "Яма Сарона",
+          "ko_KR": "사론의 구덩이",
+          "zh_TW": "薩倫之淵",
+          "zh_CN": "萨隆矿坑"
+        },
+        "id": 556
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 347.71512
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 347.71512
+      }
+    },
+    {
+      "completed_timestamp": 1774647595000,
+      "duration": 1948342,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/162?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Pulsar",
+            "es_MX": "Pacto de Xal'atath: Púlsar",
+            "pt_BR": "Barganha de Xal'atath: Pulsar",
+            "de_DE": "Xal'ataths Handel: Pulsare",
+            "en_GB": "Xal'atath's Bargain: Pulsar",
+            "es_ES": "Trato de Xal'atath: Púlsar",
+            "fr_FR": "Marché de Xal’atath : pulsar",
+            "it_IT": "Patto di Xal'atath: Pulsar",
+            "ru_RU": "Сделка с Ксал'атат: пульсар",
+            "ko_KR": "잘아타스의 제안: 맥동성",
+            "zh_TW": "薩拉塔斯的交易：星體",
+            "zh_CN": "萨拉塔斯的交易：脉冲"
+          },
+          "id": 162
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Dropbae",
+            "id": 177940509,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/269?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Windwalker",
+              "es_MX": "Viajero del viento",
+              "pt_BR": "Andarilho do Vento",
+              "de_DE": "Windläufer",
+              "en_GB": "Windwalker",
+              "es_ES": "Viajero del viento",
+              "fr_FR": "Marche-vent",
+              "it_IT": "Impeto",
+              "ru_RU": "Танцующий с ветром",
+              "ko_KR": "풍운",
+              "zh_TW": "御風",
+              "zh_CN": "踏风"
+            },
+            "id": 269
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/25?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Pandaren",
+              "es_MX": "Pandaren",
+              "pt_BR": "Pandaren",
+              "de_DE": "Pandaren",
+              "en_GB": "Pandaren",
+              "es_ES": "Pandaren",
+              "fr_FR": "Pandaren",
+              "it_IT": "Pandaren",
+              "ru_RU": "Пандарен",
+              "ko_KR": "판다렌",
+              "zh_TW": "熊貓人",
+              "zh_CN": "熊猫人"
+            },
+            "id": 25
+          },
+          "equipped_item_level": 251
+        },
+        {
+          "character": {
+            "name": "Boltchi",
+            "id": 195673595,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/270?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Mistweaver",
+              "es_MX": "Tejedor de niebla",
+              "pt_BR": "Tecelão da Névoa",
+              "de_DE": "Nebelwirker",
+              "en_GB": "Mistweaver",
+              "es_ES": "Tejedor de niebla",
+              "fr_FR": "Tisse-brume",
+              "it_IT": "Misticismo",
+              "ru_RU": "Ткач туманов",
+              "ko_KR": "운무",
+              "zh_TW": "織霧",
+              "zh_CN": "织雾"
+            },
+            "id": 270
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/25?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Pandaren",
+              "es_MX": "Pandaren",
+              "pt_BR": "Pandaren",
+              "de_DE": "Pandaren",
+              "en_GB": "Pandaren",
+              "es_ES": "Pandaren",
+              "fr_FR": "Pandaren",
+              "it_IT": "Pandaren",
+              "ru_RU": "Пандарен",
+              "ko_KR": "판다렌",
+              "zh_TW": "熊貓人",
+              "zh_CN": "熊猫人"
+            },
+            "id": 25
+          },
+          "equipped_item_level": 256
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 265
+        },
+        {
+          "character": {
+            "name": "Toadtoad",
+            "id": 238840038,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/258?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Shadow",
+              "es_MX": "Sombra",
+              "pt_BR": "Sombra",
+              "de_DE": "Schatten",
+              "en_GB": "Shadow",
+              "es_ES": "Sombra",
+              "fr_FR": "Ombre",
+              "it_IT": "Ombra",
+              "ru_RU": "Тьма",
+              "ko_KR": "암흑",
+              "zh_TW": "暗影",
+              "zh_CN": "暗影"
+            },
+            "id": 258
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 257
+        },
+        {
+          "character": {
+            "name": "Tröxz",
+            "id": 242922488,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 262
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/557?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Windrunner Spire",
+          "es_MX": "Aguja Brisaveloz",
+          "pt_BR": "Pico dos Correventos",
+          "de_DE": "Windläuferturm",
+          "en_GB": "Windrunner Spire",
+          "es_ES": "Aguja Brisaveloz",
+          "fr_FR": "Flèche de Coursevent",
+          "it_IT": "Pinnacolo dei Ventolesto",
+          "ru_RU": "Шпили Ветрокрылых",
+          "ko_KR": "윈드러너 첨탑",
+          "zh_TW": "風行者塔",
+          "zh_CN": "风行者之塔"
+        },
+        "id": 557
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 335.59958
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 335.59958
+      }
+    },
+    {
+      "completed_timestamp": 1775364364000,
+      "duration": 2102731,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Mumra",
+            "id": 240721063,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/100?namespace=dynamic-us"
+              },
+              "id": 100,
+              "slug": "earthen-ring"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/66?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Protection",
+              "es_MX": "Protección",
+              "pt_BR": "Proteção",
+              "de_DE": "Schutz",
+              "en_GB": "Protection",
+              "es_ES": "Protección",
+              "fr_FR": "Protection",
+              "it_IT": "Protezione",
+              "ru_RU": "Защита",
+              "ko_KR": "보호",
+              "zh_TW": "防護",
+              "zh_CN": "防护"
+            },
+            "id": 66
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/3?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Dwarf",
+              "es_MX": "Enano",
+              "pt_BR": "Anão",
+              "de_DE": "Zwerg",
+              "en_GB": "Dwarf",
+              "es_ES": "Enano",
+              "fr_FR": "Nain",
+              "it_IT": "Nano",
+              "ru_RU": "Дворф",
+              "ko_KR": "드워프",
+              "zh_TW": "矮人",
+              "zh_CN": "矮人"
+            },
+            "id": 3
+          },
+          "equipped_item_level": 264
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 273
+        },
+        {
+          "character": {
+            "name": "Kevdot",
+            "id": 225075527,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+              },
+              "id": 57,
+              "slug": "illidan"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/266?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Demonology",
+              "es_MX": "Demonología",
+              "pt_BR": "Demonologia",
+              "de_DE": "Dämonologie",
+              "en_GB": "Demonology",
+              "es_ES": "Demonología",
+              "fr_FR": "Démonologie",
+              "it_IT": "Demonologia",
+              "ru_RU": "Демонология",
+              "ko_KR": "악마",
+              "zh_TW": "惡魔學識",
+              "zh_CN": "恶魔学识"
+            },
+            "id": 266
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Orc",
+              "es_MX": "Orco",
+              "pt_BR": "Orc",
+              "de_DE": "Orc",
+              "en_GB": "Orc",
+              "es_ES": "Orco",
+              "fr_FR": "Orc",
+              "it_IT": "Orco",
+              "ru_RU": "Орк",
+              "ko_KR": "오크",
+              "zh_TW": "獸人",
+              "zh_CN": "兽人"
+            },
+            "id": 2
+          },
+          "equipped_item_level": 267
+        },
+        {
+          "character": {
+            "name": "Projectone",
+            "id": 215355475,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1427?namespace=dynamic-us"
+              },
+              "id": 1427,
+              "slug": "ragnaros"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/263?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Enhancement",
+              "es_MX": "Mejora",
+              "pt_BR": "Aperfeiçoamento",
+              "de_DE": "Verstärkung",
+              "en_GB": "Enhancement",
+              "es_ES": "Mejora",
+              "fr_FR": "Amélioration",
+              "it_IT": "Potenziamento",
+              "ru_RU": "Совершенствование",
+              "ko_KR": "고양",
+              "zh_TW": "增強",
+              "zh_CN": "增强"
+            },
+            "id": 263
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/6?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Tauren",
+              "es_MX": "Tauren",
+              "pt_BR": "Tauren",
+              "de_DE": "Tauren",
+              "en_GB": "Tauren",
+              "es_ES": "Tauren",
+              "fr_FR": "Tauren",
+              "it_IT": "Tauren",
+              "ru_RU": "Таурен",
+              "ko_KR": "타우렌",
+              "zh_TW": "牛頭人",
+              "zh_CN": "牛头人"
+            },
+            "id": 6
+          },
+          "equipped_item_level": 267
+        },
+        {
+          "character": {
+            "name": "Jámsap",
+            "id": 240735753,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/100?namespace=dynamic-us"
+              },
+              "id": 100,
+              "slug": "earthen-ring"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1468?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Preservation",
+              "es_MX": "Preservación",
+              "pt_BR": "Preservação",
+              "de_DE": "Bewahrung",
+              "en_GB": "Preservation",
+              "es_ES": "Preservación",
+              "fr_FR": "Préservation",
+              "it_IT": "Conservazione",
+              "ru_RU": "Хранитель",
+              "ko_KR": "보존",
+              "zh_TW": "護存",
+              "zh_CN": "恩护"
+            },
+            "id": 1468
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/52?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Dracthyr",
+              "es_MX": "Dracthyr",
+              "pt_BR": "Dracthyr",
+              "de_DE": "Dracthyr",
+              "en_GB": "Dracthyr",
+              "es_ES": "Dracthyr",
+              "fr_FR": "Dracthyr",
+              "it_IT": "Dracthyr",
+              "ru_RU": "Драктир",
+              "ko_KR": "드랙티르",
+              "zh_TW": "半龍人",
+              "zh_CN": "龙希尔"
+            },
+            "id": 52
+          },
+          "equipped_item_level": 261
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/558?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Magisters' Terrace",
+          "es_MX": "Bancal del Magister",
+          "pt_BR": "Terraço dos Magísteres",
+          "de_DE": "Terrasse der Magister",
+          "en_GB": "Magisters' Terrace",
+          "es_ES": "Bancal del Magister",
+          "fr_FR": "Terrasse des Magistères",
+          "it_IT": "Terrazza dei Magistri",
+          "ru_RU": "Терраса Магистров",
+          "ko_KR": "마법학자의 정원",
+          "zh_TW": "博學者殿堂",
+          "zh_CN": "魔导师平台"
+        },
+        "id": 558
+      },
+      "is_completed_within_time": false,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 303.84686
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 344.52078
+      }
+    },
+    {
+      "completed_timestamp": 1775080895000,
+      "duration": 1522070,
+      "keystone_level": 11,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Voidbound",
+            "es_MX": "Pacto de Xal'atath: Unida al Vacío",
+            "pt_BR": "Barganha de Xal'atath: Distorcido pelo Caos",
+            "de_DE": "Xal'ataths Handel: Leerengebunden",
+            "en_GB": "Xal'atath's Bargain: Voidbound",
+            "es_ES": "Trato de Xal'atath: Ligada al Vacío",
+            "fr_FR": "Marché de Xal’atath : Lié par le Vide",
+            "it_IT": "Patto di Xal'atath: Vincolato dal Vuoto",
+            "ru_RU": "Сделка с Ксал'атат: слуга Бездны",
+            "ko_KR": "잘아타스의 제안: 공허결속",
+            "zh_TW": "薩拉塔斯的交易：虛無之縛",
+            "zh_CN": "萨拉塔斯的交易：虚缚"
+          },
+          "id": 158
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Ravoren",
+            "id": 156459299,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+              },
+              "id": 1566,
+              "slug": "area-52"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/268?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Brewmaster",
+              "es_MX": "Maestro cervecero",
+              "pt_BR": "Mestre Cervejeiro",
+              "de_DE": "Braumeister",
+              "en_GB": "Brewmaster",
+              "es_ES": "Maestro cervecero",
+              "fr_FR": "Maître brasseur",
+              "it_IT": "Mastro Birraio",
+              "ru_RU": "Хмелевар",
+              "ko_KR": "양조",
+              "zh_TW": "釀酒",
+              "zh_CN": "酒仙"
+            },
+            "id": 268
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 266
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 271
+        },
+        {
+          "character": {
+            "name": "Solyz",
+            "id": 237401993,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+              },
+              "id": 11,
+              "slug": "tichondrius"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/65?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Holy",
+              "es_MX": "Sagrado",
+              "pt_BR": "Sagrado",
+              "de_DE": "Heilig",
+              "en_GB": "Holy",
+              "es_ES": "Sagrado",
+              "fr_FR": "Sacré",
+              "it_IT": "Sacro",
+              "ru_RU": "Свет",
+              "ko_KR": "신성",
+              "zh_TW": "神聖",
+              "zh_CN": "神圣"
+            },
+            "id": 65
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 267
+        },
+        {
+          "character": {
+            "name": "Gengargy",
+            "id": 249179936,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/59?namespace=dynamic-us"
+              },
+              "id": 59,
+              "slug": "malganis"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/266?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Demonology",
+              "es_MX": "Demonología",
+              "pt_BR": "Demonologia",
+              "de_DE": "Dämonologie",
+              "en_GB": "Demonology",
+              "es_ES": "Demonología",
+              "fr_FR": "Démonologie",
+              "it_IT": "Demonologia",
+              "ru_RU": "Демонология",
+              "ko_KR": "악마",
+              "zh_TW": "惡魔學識",
+              "zh_CN": "恶魔学识"
+            },
+            "id": 266
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/8?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Troll",
+              "es_MX": "Trol",
+              "pt_BR": "Troll",
+              "de_DE": "Troll",
+              "en_GB": "Troll",
+              "es_ES": "Trol",
+              "fr_FR": "Troll",
+              "it_IT": "Troll",
+              "ru_RU": "Тролль",
+              "ko_KR": "트롤",
+              "zh_TW": "食人妖",
+              "zh_CN": "巨魔"
+            },
+            "id": 8
+          },
+          "equipped_item_level": 271
+        },
+        {
+          "character": {
+            "name": "Morpheusyee",
+            "id": 246636861,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+              },
+              "id": 11,
+              "slug": "tichondrius"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Devourer",
+              "es_MX": "Devoración",
+              "pt_BR": "Devorador",
+              "de_DE": "Verschlinger",
+              "en_GB": "Devourer",
+              "es_ES": "Devorador",
+              "fr_FR": "Dévoration",
+              "it_IT": "Divoratore",
+              "ru_RU": "Пожиратель",
+              "ko_KR": "포식",
+              "zh_TW": "噬滅",
+              "zh_CN": "噬灭"
+            },
+            "id": 1480
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 266
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/558?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Magisters' Terrace",
+          "es_MX": "Bancal del Magister",
+          "pt_BR": "Terraço dos Magísteres",
+          "de_DE": "Terrasse der Magister",
+          "en_GB": "Magisters' Terrace",
+          "es_ES": "Bancal del Magister",
+          "fr_FR": "Terrasse des Magistères",
+          "it_IT": "Terrazza dei Magistri",
+          "ru_RU": "Терраса Магистров",
+          "ko_KR": "마법학자의 정원",
+          "zh_TW": "博學者殿堂",
+          "zh_CN": "魔导师平台"
+        },
+        "id": 558
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 344.52078
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 344.52078
+      }
+    },
+    {
+      "completed_timestamp": 1774462896000,
+      "duration": 2021506,
+      "keystone_level": 10,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/162?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Pulsar",
+            "es_MX": "Pacto de Xal'atath: Púlsar",
+            "pt_BR": "Barganha de Xal'atath: Pulsar",
+            "de_DE": "Xal'ataths Handel: Pulsare",
+            "en_GB": "Xal'atath's Bargain: Pulsar",
+            "es_ES": "Trato de Xal'atath: Púlsar",
+            "fr_FR": "Marché de Xal’atath : pulsar",
+            "it_IT": "Patto di Xal'atath: Pulsar",
+            "ru_RU": "Сделка с Ксал'атат: пульсар",
+            "ko_KR": "잘아타스의 제안: 맥동성",
+            "zh_TW": "薩拉塔斯的交易：星體",
+            "zh_CN": "萨拉塔斯的交易：脉冲"
+          },
+          "id": 162
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 255
+        },
+        {
+          "character": {
+            "name": "Quinnfreeze",
+            "id": 244665639,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Frost",
+              "es_MX": "Escarcha",
+              "pt_BR": "Gélido",
+              "de_DE": "Frost",
+              "en_GB": "Frost",
+              "es_ES": "Escarcha",
+              "fr_FR": "Givre",
+              "it_IT": "Gelo",
+              "ru_RU": "Лед",
+              "ko_KR": "냉기",
+              "zh_TW": "冰霜",
+              "zh_CN": "冰霜"
+            },
+            "id": 64
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Night Elf",
+              "es_MX": "Elfo de la noche",
+              "pt_BR": "Elfo Noturno",
+              "de_DE": "Nachtelf",
+              "en_GB": "Night Elf",
+              "es_ES": "Elfo de la noche",
+              "fr_FR": "Elfe de la nuit",
+              "it_IT": "Elfo della Notte",
+              "ru_RU": "Ночной эльф",
+              "ko_KR": "나이트 엘프",
+              "zh_TW": "夜精靈",
+              "zh_CN": "暗夜精灵"
+            },
+            "id": 4
+          },
+          "equipped_item_level": 256
+        },
+        {
+          "character": {
+            "name": "Floofz",
+            "id": 245124750,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/103?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Feral",
+              "es_MX": "Feral",
+              "pt_BR": "Feral",
+              "de_DE": "Wildheit",
+              "en_GB": "Feral",
+              "es_ES": "Feral",
+              "fr_FR": "Farouche",
+              "it_IT": "Aggressore Ferino",
+              "ru_RU": "Сила зверя",
+              "ko_KR": "야성",
+              "zh_TW": "野性戰鬥",
+              "zh_CN": "野性"
+            },
+            "id": 103
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Night Elf",
+              "es_MX": "Elfo de la noche",
+              "pt_BR": "Elfo Noturno",
+              "de_DE": "Nachtelf",
+              "en_GB": "Night Elf",
+              "es_ES": "Elfo de la noche",
+              "fr_FR": "Elfe de la nuit",
+              "it_IT": "Elfo della Notte",
+              "ru_RU": "Ночной эльф",
+              "ko_KR": "나이트 엘프",
+              "zh_TW": "夜精靈",
+              "zh_CN": "暗夜精灵"
+            },
+            "id": 4
+          },
+          "equipped_item_level": 250
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 250
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 257
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/559?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Nexus-Point Xenas",
+          "es_MX": "Punto del Nexo Xenas",
+          "pt_BR": "Ponto de Nexus Xenas",
+          "de_DE": "Nexuspunkt Xenas",
+          "en_GB": "Nexus-Point Xenas",
+          "es_ES": "Punto de Nexo: Xenas",
+          "fr_FR": "Point-nexus Xenas",
+          "it_IT": "Punta del Nexus Xenas",
+          "ru_RU": "Узел Нексуса Зенас",
+          "ko_KR": "공결탑 제나스",
+          "zh_TW": "奧核點瑟納斯",
+          "zh_CN": "节点希纳斯"
+        },
+        "id": 559
+      },
+      "is_completed_within_time": false,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 300.38528
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.58905
+      }
+    },
+    {
+      "completed_timestamp": 1774728127000,
+      "duration": 1243726,
+      "keystone_level": 10,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/162?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Bargain: Pulsar",
+            "es_MX": "Pacto de Xal'atath: Púlsar",
+            "pt_BR": "Barganha de Xal'atath: Pulsar",
+            "de_DE": "Xal'ataths Handel: Pulsare",
+            "en_GB": "Xal'atath's Bargain: Pulsar",
+            "es_ES": "Trato de Xal'atath: Púlsar",
+            "fr_FR": "Marché de Xal’atath : pulsar",
+            "it_IT": "Patto di Xal'atath: Pulsar",
+            "ru_RU": "Сделка с Ксал'атат: пульсар",
+            "ko_KR": "잘아타스의 제안: 맥동성",
+            "zh_TW": "薩拉塔斯的交易：星體",
+            "zh_CN": "萨拉塔斯的交易：脉冲"
+          },
+          "id": 162
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 265
+        },
+        {
+          "character": {
+            "name": "Thirtyfell",
+            "id": 238507462,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Devourer",
+              "es_MX": "Devoración",
+              "pt_BR": "Devorador",
+              "de_DE": "Verschlinger",
+              "en_GB": "Devourer",
+              "es_ES": "Devorador",
+              "fr_FR": "Dévoration",
+              "it_IT": "Divoratore",
+              "ru_RU": "Пожиратель",
+              "ko_KR": "포식",
+              "zh_TW": "噬滅",
+              "zh_CN": "噬灭"
+            },
+            "id": 1480
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Void Elf",
+              "es_MX": "Elfo del Vacío",
+              "pt_BR": "Elfo Caótico",
+              "de_DE": "Leerenelf",
+              "en_GB": "Void Elf",
+              "es_ES": "Elfo del Vacío",
+              "fr_FR": "Elfe du Vide",
+              "it_IT": "Elfo del Vuoto",
+              "ru_RU": "Эльф Бездны",
+              "ko_KR": "공허 엘프",
+              "zh_TW": "虛無精靈",
+              "zh_CN": "虚空精灵"
+            },
+            "id": 29
+          },
+          "equipped_item_level": 260
+        },
+        {
+          "character": {
+            "name": "Toadtoad",
+            "id": 238840038,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/258?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Shadow",
+              "es_MX": "Sombra",
+              "pt_BR": "Sombra",
+              "de_DE": "Schatten",
+              "en_GB": "Shadow",
+              "es_ES": "Sombra",
+              "fr_FR": "Ombre",
+              "it_IT": "Ombra",
+              "ru_RU": "Тьма",
+              "ko_KR": "암흑",
+              "zh_TW": "暗影",
+              "zh_CN": "暗影"
+            },
+            "id": 258
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Blood Elf",
+              "es_MX": "Elfo de sangre",
+              "pt_BR": "Elfo Sangrento",
+              "de_DE": "Blutelf",
+              "en_GB": "Blood Elf",
+              "es_ES": "Elfo de sangre",
+              "fr_FR": "Elfe de sang",
+              "it_IT": "Elfo del Sangue",
+              "ru_RU": "Эльф крови",
+              "ko_KR": "블러드 엘프",
+              "zh_TW": "血精靈",
+              "zh_CN": "血精灵"
+            },
+            "id": 10
+          },
+          "equipped_item_level": 258
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 265
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 269
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/559?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Nexus-Point Xenas",
+          "es_MX": "Punto del Nexo Xenas",
+          "pt_BR": "Ponto de Nexus Xenas",
+          "de_DE": "Nexuspunkt Xenas",
+          "en_GB": "Nexus-Point Xenas",
+          "es_ES": "Punto de Nexo: Xenas",
+          "fr_FR": "Point-nexus Xenas",
+          "it_IT": "Punta del Nexus Xenas",
+          "ru_RU": "Узел Нексуса Зенас",
+          "ko_KR": "공결탑 제나스",
+          "zh_TW": "奧核點瑟納斯",
+          "zh_CN": "节点希纳斯"
+        },
+        "id": 559
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.58905
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 331.58905
+      }
+    },
+    {
+      "completed_timestamp": 1775440878000,
+      "duration": 1648158,
+      "keystone_level": 13,
+      "keystone_affixes": [
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Tyrannical",
+            "es_MX": "Tiránico",
+            "pt_BR": "Tirânica",
+            "de_DE": "Tyrannisch",
+            "en_GB": "Tyrannical",
+            "es_ES": "Tiránica",
+            "fr_FR": "Tyrannique",
+            "it_IT": "Tirannia",
+            "ru_RU": "Тиранический",
+            "ko_KR": "폭군",
+            "zh_TW": "暴君",
+            "zh_CN": "残暴"
+          },
+          "id": 9
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Fortified",
+            "es_MX": "Reforzado",
+            "pt_BR": "Fortificada",
+            "de_DE": "Verstärkt",
+            "en_GB": "Fortified",
+            "es_ES": "Reforzada",
+            "fr_FR": "Fortifié",
+            "it_IT": "Potenziamento",
+            "ru_RU": "Укрепленный",
+            "ko_KR": "경화",
+            "zh_TW": "強悍",
+            "zh_CN": "强韧"
+          },
+          "id": 10
+        },
+        {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+          },
+          "name": {
+            "en_US": "Xal'atath's Guile",
+            "es_MX": "Astucia de Xal'atath",
+            "pt_BR": "Astúcia de Xal'atath",
+            "de_DE": "Xal'ataths List",
+            "en_GB": "Xal'atath's Guile",
+            "es_ES": "Argucia de Xal'atath",
+            "fr_FR": "Ruse de Xal’atath",
+            "it_IT": "Inganno di Xal'atath",
+            "ru_RU": "Вероломство Ксал'атат",
+            "ko_KR": "잘아타스의 기만",
+            "zh_TW": "薩拉塔斯之詐",
+            "zh_CN": "萨拉塔斯的狡诈"
+          },
+          "id": 147
+        }
+      ],
+      "members": [
+        {
+          "character": {
+            "name": "Grrif",
+            "id": 238857549,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Guardian",
+              "es_MX": "Guardián",
+              "pt_BR": "Guardião",
+              "de_DE": "Wächter",
+              "en_GB": "Guardian",
+              "es_ES": "Guardián",
+              "fr_FR": "Gardien",
+              "it_IT": "Guardiano Ferino",
+              "ru_RU": "Страж",
+              "ko_KR": "수호",
+              "zh_TW": "守護者",
+              "zh_CN": "守护"
+            },
+            "id": 104
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 270
+        },
+        {
+          "character": {
+            "name": "Quinnfreeze",
+            "id": 244665639,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Frost",
+              "es_MX": "Escarcha",
+              "pt_BR": "Gélido",
+              "de_DE": "Frost",
+              "en_GB": "Frost",
+              "es_ES": "Escarcha",
+              "fr_FR": "Givre",
+              "it_IT": "Gelo",
+              "ru_RU": "Лед",
+              "ko_KR": "냉기",
+              "zh_TW": "冰霜",
+              "zh_CN": "冰霜"
+            },
+            "id": 64
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Night Elf",
+              "es_MX": "Elfo de la noche",
+              "pt_BR": "Elfo Noturno",
+              "de_DE": "Nachtelf",
+              "en_GB": "Night Elf",
+              "es_ES": "Elfo de la noche",
+              "fr_FR": "Elfe de la nuit",
+              "it_IT": "Elfo della Notte",
+              "ru_RU": "Ночной эльф",
+              "ko_KR": "나이트 엘프",
+              "zh_TW": "夜精靈",
+              "zh_CN": "暗夜精灵"
+            },
+            "id": 4
+          },
+          "equipped_item_level": 270
+        },
+        {
+          "character": {
+            "name": "Nyph",
+            "id": 239322498,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Restoration",
+              "es_MX": "Restauración",
+              "pt_BR": "Restauração",
+              "de_DE": "Wiederherstellung",
+              "en_GB": "Restoration",
+              "es_ES": "Restauración",
+              "fr_FR": "Restauration",
+              "it_IT": "Rigenerazione",
+              "ru_RU": "Исцеление",
+              "ko_KR": "회복",
+              "zh_TW": "恢復",
+              "zh_CN": "恢复"
+            },
+            "id": 105
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Haranir",
+              "es_MX": "Haranir",
+              "pt_BR": "Haranir",
+              "de_DE": "Haranir",
+              "en_GB": "Haranir",
+              "es_ES": "Haranir",
+              "fr_FR": "Haranir",
+              "it_IT": "Haranir",
+              "ru_RU": "Харанир",
+              "ko_KR": "하라니르",
+              "zh_TW": "哈拉尼爾",
+              "zh_CN": "哈籁尼尔"
+            },
+            "id": 86
+          },
+          "equipped_item_level": 274
+        },
+        {
+          "character": {
+            "name": "Maggiesue",
+            "id": 142558183,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+              },
+              "id": 5,
+              "slug": "proudmoore"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Assassination",
+              "es_MX": "Asesinato",
+              "pt_BR": "Assassinato",
+              "de_DE": "Meucheln",
+              "en_GB": "Assassination",
+              "es_ES": "Asesinato",
+              "fr_FR": "Assassinat",
+              "it_IT": "Assassinio",
+              "ru_RU": "Ликвидация",
+              "ko_KR": "암살",
+              "zh_TW": "刺殺",
+              "zh_CN": "奇袭"
+            },
+            "id": 259
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Human",
+              "es_MX": "Humano",
+              "pt_BR": "Humano",
+              "de_DE": "Mensch",
+              "en_GB": "Human",
+              "es_ES": "Humano",
+              "fr_FR": "Humain",
+              "it_IT": "Umano",
+              "ru_RU": "Человек",
+              "ko_KR": "인간",
+              "zh_TW": "人類",
+              "zh_CN": "人类"
+            },
+            "id": 1
+          },
+          "equipped_item_level": 273
+        },
+        {
+          "character": {
+            "name": "Mapleglen",
+            "id": 224302961,
+            "realm": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/realm/1263?namespace=dynamic-us"
+              },
+              "id": 1263,
+              "slug": "thrall"
+            }
+          },
+          "specialization": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1473?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Augmentation",
+              "es_MX": "Aumento",
+              "pt_BR": "Aprimoramento",
+              "de_DE": "Verstärkung",
+              "en_GB": "Augmentation",
+              "es_ES": "Aumento",
+              "fr_FR": "Augmentation",
+              "it_IT": "Fortificazione",
+              "ru_RU": "Насыщатель",
+              "ko_KR": "증강",
+              "zh_TW": "強化",
+              "zh_CN": "增辉"
+            },
+            "id": 1473
+          },
+          "race": {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/playable-race/70?namespace=static-12.0.1_65617-us"
+            },
+            "name": {
+              "en_US": "Dracthyr",
+              "es_MX": "Dracthyr",
+              "pt_BR": "Dracthyr",
+              "de_DE": "Dracthyr",
+              "en_GB": "Dracthyr",
+              "es_ES": "Dracthyr",
+              "fr_FR": "Dracthyr",
+              "it_IT": "Dracthyr",
+              "ru_RU": "Драктир",
+              "ko_KR": "드랙티르",
+              "zh_TW": "半龍人",
+              "zh_CN": "龙希尔"
+            },
+            "id": 70
+          },
+          "equipped_item_level": 267
+        }
+      ],
+      "dungeon": {
+        "key": {
+          "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/239?namespace=dynamic-us"
+        },
+        "name": {
+          "en_US": "Seat of the Triumvirate",
+          "es_MX": "Trono del Triunvirato",
+          "pt_BR": "Sede do Triunvirato",
+          "de_DE": "Sitz des Triumvirats",
+          "en_GB": "Seat of the Triumvirate",
+          "es_ES": "Trono del Triunvirato",
+          "fr_FR": "Siège du triumvirat",
+          "it_IT": "Seggio del Triumvirato",
+          "ru_RU": "Престол Триумвирата",
+          "ko_KR": "삼두정의 권좌",
+          "zh_TW": "三傑議會之座",
+          "zh_CN": "执政团之座"
+        },
+        "id": 239
+      },
+      "is_completed_within_time": true,
+      "mythic_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 387.20297
+      },
+      "map_rating": {
+        "color": {
+          "r": 255,
+          "g": 128,
+          "b": 0,
+          "a": 1.0
+        },
+        "rating": 387.20297
+      }
+    }
+  ],
+  "character": {
+    "key": {
+      "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue?namespace=profile-us"
+    },
+    "name": "Maggiesue",
+    "id": 142558183,
+    "realm": {
+      "key": {
+        "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+      },
+      "name": {
+        "en_US": "Proudmoore",
+        "es_MX": "Proudmoore",
+        "pt_BR": "Proudmoore",
+        "de_DE": "Proudmoore",
+        "en_GB": "Proudmoore",
+        "es_ES": "Proudmoore",
+        "fr_FR": "Proudmoore",
+        "it_IT": "Proudmoore",
+        "ru_RU": "Proudmoore",
+        "ko_KR": "Proudmoore",
+        "zh_TW": "普勞德摩爾",
+        "zh_CN": "普罗德摩"
+      },
+      "id": 5,
+      "slug": "proudmoore"
+    }
+  },
+  "mythic_rating": {
+    "color": {
+      "r": 255,
+      "g": 128,
+      "b": 0,
+      "a": 1.0
+    },
+    "rating": 2789.347
+  }
+}

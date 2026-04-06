@@ -356,6 +356,59 @@ class SummaryBuilderTests(unittest.TestCase):
             ],
         )
 
+    def test_dedupes_by_composite_fields_when_keystone_run_id_missing(self) -> None:
+        players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "current_total_score": 400.2,
+                "current_dungeon_scores": {"Darkflame Cleft": 400.2},
+            }
+        ]
+        runs = [
+            {
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "map_challenge_mode_id": 101,
+                "score": 200.0,
+                "mythic_level": 12,
+                "completed_at": datetime(2026, 3, 25, 12, 0, tzinfo=UTC),
+                "clear_time_ms": 1800000,
+                "discovered_from_player_keys": ["us/area-52/mythics"],
+                "participants": [],
+            },
+            {
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "map_challenge_mode_id": 101,
+                "score": 200.0,
+                "mythic_level": 12,
+                "completed_at": datetime(2026, 3, 25, 12, 0, tzinfo=UTC),
+                "clear_time_ms": 1800000,
+                "discovered_from_player_keys": [],
+                "participants": [{"player_key": "us/area-52/mythics"}],
+            },
+        ]
+
+        summary_rows = build_summary_rows(
+            players,
+            runs,
+            [
+                {
+                    "season": "season-mn-1",
+                    "slug": "darkflame-cleft",
+                    "name": "Darkflame Cleft",
+                    "short_name": "DFC",
+                }
+            ],
+        )
+
+        self.assertEqual(summary_rows[0].to_sheet_row()[9], 1)
+
+
     def test_builds_lag_metadata_with_pacific_day_boundaries(self) -> None:
         header = [
             "region",

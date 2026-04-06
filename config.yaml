@@ -26,11 +26,25 @@ raiderio:
   circuit_breaker_threshold: 3
   circuit_breaker_cooldown_seconds: 300
 
+blizzard:
+  enabled: true
+  base_url: "https://us.api.blizzard.com"
+  oauth_url: "https://oauth.battle.net/token"
+  requests_per_hour_cap: 36000
+  requests_per_second_cap: 100
+  timeout_seconds: 30
+  retry_attempts: 4
+  backoff_seconds: 2.0
+  locale: "en_US"
+  namespace_profile: "profile-us"
+  namespace_dynamic: "dynamic-us"
+  run_fingerprint_fuzz_seconds: 2
+
 redis:
-  key_prefix: "niru"
+  key_prefix: "niru_test"
 
 mongodb:
-  database: "niru"
+  database: "niru_test"
   players_collection: "players"
   runs_collection: "runs"
   sync_cycles_collection: "sync_cycles"

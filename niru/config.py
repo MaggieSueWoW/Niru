@@ -29,7 +29,7 @@ class SyncSettings:
     active_idle_minutes: int
     predictive_hot_enabled: bool
     predictive_hot_threshold: float
-    current_season: str
+    current_season: str | None
     max_players_per_cycle: int
     failure_backoff_seconds: float
     max_failure_backoff_seconds: float
@@ -47,6 +47,24 @@ class RaiderIOSettings:
     backoff_seconds: float
     circuit_breaker_threshold: int
     circuit_breaker_cooldown_seconds: int
+
+
+@dataclass(slots=True, frozen=True)
+class BlizzardSettings:
+    enabled: bool
+    base_url: str
+    oauth_url: str
+    client_id: str | None
+    client_secret: str | None
+    requests_per_hour_cap: int
+    requests_per_second_cap: int
+    timeout_seconds: int
+    retry_attempts: int
+    backoff_seconds: float
+    locale: str
+    namespace_profile: str
+    namespace_dynamic: str
+    run_fingerprint_fuzz_seconds: int
 
 
 @dataclass(slots=True, frozen=True)
@@ -74,6 +92,7 @@ class Settings:
     google: GoogleSettings
     sync: SyncSettings
     raiderio: RaiderIOSettings
+    blizzard: BlizzardSettings
     redis: RedisSettings
     mongodb: MongoSettings
     logging: LoggingSettings
@@ -118,6 +137,15 @@ def _require_bool(value: object, *, name: str) -> bool:
     return value
 
 
+def _optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("optional text value must be a string when provided")
+    stripped = value.strip()
+    return stripped or None
+
+
 def load_settings(config_path: str = "config.yaml") -> Settings:
     """Load YAML config plus environment overrides."""
 
@@ -131,6 +159,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
     google_raw = raw.get("google", {})
     sync_raw = raw.get("sync", {})
     raiderio_raw = raw.get("raiderio", {})
+    blizzard_raw = raw.get("blizzard", {})
     redis_raw = raw.get("redis", {})
     mongodb_raw = raw.get("mongodb", {})
     logging_raw = raw.get("logging", {})
@@ -140,6 +169,14 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
     ).upper()
     if not CELL_RE.match(output_start_cell):
         raise ValueError("google.output_start_cell must be in A1 format")
+
+    current_season = _optional_text(sync_raw.get("current_season"))
+    blizzard_enabled = _require_bool(
+        blizzard_raw.get("enabled", False),
+        name="blizzard.enabled",
+    )
+    if not blizzard_enabled and current_season is None:
+        raise ValueError("sync.current_season must be a non-empty string when blizzard.enabled is false")
 
     return Settings(
         google=GoogleSettings(
@@ -179,9 +216,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 minimum=0.0,
                 maximum=1.0,
             ),
-            current_season=_require_text(
-                sync_raw.get("current_season"), name="sync.current_season"
-            ),
+            current_season=current_season,
             max_players_per_cycle=_require_int(
                 sync_raw.get("max_players_per_cycle"),
                 name="sync.max_players_per_cycle",
@@ -228,6 +263,56 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             circuit_breaker_cooldown_seconds=_require_int(
                 raiderio_raw.get("circuit_breaker_cooldown_seconds", 300),
                 name="raiderio.circuit_breaker_cooldown_seconds",
+            ),
+        ),
+        blizzard=BlizzardSettings(
+            enabled=blizzard_enabled,
+            base_url=_require_text(
+                blizzard_raw.get("base_url", "https://us.api.blizzard.com"),
+                name="blizzard.base_url",
+            ),
+            oauth_url=_require_text(
+                blizzard_raw.get("oauth_url", "https://oauth.battle.net/token"),
+                name="blizzard.oauth_url",
+            ),
+            client_id=os.getenv("BLIZZARD_CLIENT_ID") or None,
+            client_secret=os.getenv("BLIZZARD_CLIENT_SECRET") or None,
+            requests_per_hour_cap=_require_int(
+                blizzard_raw.get("requests_per_hour_cap", 36_000),
+                name="blizzard.requests_per_hour_cap",
+            ),
+            requests_per_second_cap=_require_int(
+                blizzard_raw.get("requests_per_second_cap", 100),
+                name="blizzard.requests_per_second_cap",
+            ),
+            timeout_seconds=_require_int(
+                blizzard_raw.get("timeout_seconds", 30),
+                name="blizzard.timeout_seconds",
+            ),
+            retry_attempts=_require_int(
+                blizzard_raw.get("retry_attempts", 4),
+                name="blizzard.retry_attempts",
+            ),
+            backoff_seconds=_require_float(
+                blizzard_raw.get("backoff_seconds", 2.0),
+                name="blizzard.backoff_seconds",
+                minimum=0.1,
+            ),
+            locale=_require_text(
+                blizzard_raw.get("locale", "en_US"),
+                name="blizzard.locale",
+            ),
+            namespace_profile=_require_text(
+                blizzard_raw.get("namespace_profile", "profile-us"),
+                name="blizzard.namespace_profile",
+            ),
+            namespace_dynamic=_require_text(
+                blizzard_raw.get("namespace_dynamic", "dynamic-us"),
+                name="blizzard.namespace_dynamic",
+            ),
+            run_fingerprint_fuzz_seconds=_require_int(
+                blizzard_raw.get("run_fingerprint_fuzz_seconds", 2),
+                name="blizzard.run_fingerprint_fuzz_seconds",
             ),
         ),
         redis=RedisSettings(

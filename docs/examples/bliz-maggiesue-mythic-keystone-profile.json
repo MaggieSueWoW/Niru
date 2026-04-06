@@ -1,0 +1,2295 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile?namespace=profile-us"
+    }
+  },
+  "current_period": {
+    "period": {
+      "key": {
+        "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/period/1057?namespace=dynamic-us"
+      },
+      "id": 1057
+    },
+    "best_runs": [
+      {
+        "completed_timestamp": 1775437678000,
+        "duration": 1660394,
+        "keystone_level": 11,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Lyvinia",
+              "id": 225823655,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+                },
+                "id": 1566,
+                "slug": "area-52"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 105
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/8?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Troll",
+              "id": 8
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Eviltiger",
+              "id": 29502278,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/4?namespace=dynamic-us"
+                },
+                "id": 4,
+                "slug": "kilrogg"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Marksmanship",
+              "id": 254
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Night Elf",
+              "id": 4
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Monkyz",
+              "id": 190845305,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1263?namespace=dynamic-us"
+                },
+                "id": 1263,
+                "slug": "thrall"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/268?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Brewmaster",
+              "id": 268
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 273
+          },
+          {
+            "character": {
+              "name": "Hotes",
+              "id": 244597656,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+                },
+                "id": 11,
+                "slug": "tichondrius"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Fury",
+              "id": 72
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Void Elf",
+              "id": 29
+            },
+            "equipped_item_level": 270
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/560?namespace=dynamic-us"
+          },
+          "name": "Maisara Caverns",
+          "id": 560
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 341.05313
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 341.05313
+        }
+      },
+      {
+        "completed_timestamp": 1775192131000,
+        "duration": 1460738,
+        "keystone_level": 12,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Guile",
+            "id": 147
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Smolbeanz",
+              "id": 182562039,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1365?namespace=dynamic-us"
+                },
+                "id": 1365,
+                "slug": "moon-guard"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/270?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Mistweaver",
+              "id": 270
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/7?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Gnome",
+              "id": 7
+            },
+            "equipped_item_level": 265
+          },
+          {
+            "character": {
+              "name": "Holybozo",
+              "id": 245273988,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/66?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Protection",
+              "id": 66
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 268
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Quinnfreeze",
+              "id": 244665639,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Frost",
+              "id": 64
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Night Elf",
+              "id": 4
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Khalanøs",
+              "id": 234387307,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+                },
+                "id": 57,
+                "slug": "illidan"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Devourer",
+              "id": 1480
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 272
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/161?namespace=dynamic-us"
+          },
+          "name": "Skyreach",
+          "id": 161
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 369.89423
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 369.89423
+        }
+      },
+      {
+        "completed_timestamp": 1775187298000,
+        "duration": 1783334,
+        "keystone_level": 12,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Guile",
+            "id": 147
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Sard",
+              "id": 246437191,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Fury",
+              "id": 72
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 270
+          },
+          {
+            "character": {
+              "name": "Thirtyfell",
+              "id": 238507462,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Devourer",
+              "id": 1480
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Void Elf",
+              "id": 29
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Grrif",
+              "id": 238857549,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Guardian",
+              "id": 104
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Nyph",
+              "id": 239322498,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 105
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 273
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/402?namespace=dynamic-us"
+          },
+          "name": "Algeth'ar Academy",
+          "id": 402
+        },
+        "is_completed_within_time": false,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 319.06607
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 331.772
+        }
+      },
+      {
+        "completed_timestamp": 1775190483000,
+        "duration": 1193779,
+        "keystone_level": 10,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Dinorian",
+              "id": 179577183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Marksmanship",
+              "id": 254
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/34?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Dark Iron Dwarf",
+              "id": 34
+            },
+            "equipped_item_level": 263
+          },
+          {
+            "character": {
+              "name": "Sard",
+              "id": 246437191,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Fury",
+              "id": 72
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 270
+          },
+          {
+            "character": {
+              "name": "Grrif",
+              "id": 238857549,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Guardian",
+              "id": 104
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Nyph",
+              "id": 239322498,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 105
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 273
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/402?namespace=dynamic-us"
+          },
+          "name": "Algeth'ar Academy",
+          "id": 402
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 331.772
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 331.772
+        }
+      },
+      {
+        "completed_timestamp": 1775269214000,
+        "duration": 1894047,
+        "keystone_level": 11,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Wylda",
+              "id": 174848716,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/76?namespace=dynamic-us"
+                },
+                "id": 76,
+                "slug": "sargeras"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Frost",
+              "id": 64
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Danielaulter",
+              "id": 235471358,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+                },
+                "id": 57,
+                "slug": "illidan"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/70?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Retribution",
+              "id": 70
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 265
+          },
+          {
+            "character": {
+              "name": "Onlydanns",
+              "id": 235538454,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/59?namespace=dynamic-us"
+                },
+                "id": 59,
+                "slug": "malganis"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/250?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood",
+              "id": 250
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 254
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Tyleloth",
+              "id": 232201285,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+                },
+                "id": 1566,
+                "slug": "area-52"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/65?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Holy",
+              "id": 65
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 264
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/556?namespace=dynamic-us"
+          },
+          "name": "Pit of Saron",
+          "id": 556
+        },
+        "is_completed_within_time": false,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 303.04068
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 347.71512
+        }
+      },
+      {
+        "completed_timestamp": 1775188906000,
+        "duration": 1189674,
+        "keystone_level": 11,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Grrif",
+              "id": 238857549,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Guardian",
+              "id": 104
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 269
+          },
+          {
+            "character": {
+              "name": "Dinorian",
+              "id": 179577183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/254?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Marksmanship",
+              "id": 254
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/34?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Dark Iron Dwarf",
+              "id": 34
+            },
+            "equipped_item_level": 263
+          },
+          {
+            "character": {
+              "name": "Nyph",
+              "id": 239322498,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 105
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 273
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Sard",
+              "id": 246437191,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Fury",
+              "id": 72
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 270
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/556?namespace=dynamic-us"
+          },
+          "name": "Pit of Saron",
+          "id": 556
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 347.71512
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 347.71512
+        }
+      },
+      {
+        "completed_timestamp": 1775271268000,
+        "duration": 1446663,
+        "keystone_level": 10,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Plaguesin",
+              "id": 238956043,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Frost",
+              "id": 64
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/29?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Void Elf",
+              "id": 29
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Sard",
+              "id": 246437191,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/72?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Fury",
+              "id": 72
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 271
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 272
+          },
+          {
+            "character": {
+              "name": "Demeteros",
+              "id": 181851606,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/10?namespace=dynamic-us"
+                },
+                "id": 10,
+                "slug": "blackrock"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/270?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Mistweaver",
+              "id": 270
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Night Elf",
+              "id": 4
+            },
+            "equipped_item_level": 264
+          },
+          {
+            "character": {
+              "name": "Goltan",
+              "id": 223732994,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+                },
+                "id": 57,
+                "slug": "illidan"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/250?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood",
+              "id": 250
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 268
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/557?namespace=dynamic-us"
+          },
+          "name": "Windrunner Spire",
+          "id": 557
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 330.10107
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 335.59958
+        }
+      },
+      {
+        "completed_timestamp": 1775364364000,
+        "duration": 2102731,
+        "keystone_level": 11,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Mumra",
+              "id": 240721063,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/100?namespace=dynamic-us"
+                },
+                "id": 100,
+                "slug": "earthen-ring"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/66?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Protection",
+              "id": 66
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/3?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Dwarf",
+              "id": 3
+            },
+            "equipped_item_level": 264
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 273
+          },
+          {
+            "character": {
+              "name": "Kevdot",
+              "id": 225075527,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/57?namespace=dynamic-us"
+                },
+                "id": 57,
+                "slug": "illidan"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/266?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Demonology",
+              "id": 266
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/2?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Orc",
+              "id": 2
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Projectone",
+              "id": 215355475,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1427?namespace=dynamic-us"
+                },
+                "id": 1427,
+                "slug": "ragnaros"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/263?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Enhancement",
+              "id": 263
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/6?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Tauren",
+              "id": 6
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Jámsap",
+              "id": 240735753,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/100?namespace=dynamic-us"
+                },
+                "id": 100,
+                "slug": "earthen-ring"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1468?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Preservation",
+              "id": 1468
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/52?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Dracthyr",
+              "id": 52
+            },
+            "equipped_item_level": 261
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/558?namespace=dynamic-us"
+          },
+          "name": "Magisters' Terrace",
+          "id": 558
+        },
+        "is_completed_within_time": false,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 303.84686
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 344.52078
+        }
+      },
+      {
+        "completed_timestamp": 1775080895000,
+        "duration": 1522070,
+        "keystone_level": 11,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Ravoren",
+              "id": 156459299,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1566?namespace=dynamic-us"
+                },
+                "id": 1566,
+                "slug": "area-52"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/268?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Brewmaster",
+              "id": 268
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 266
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 271
+          },
+          {
+            "character": {
+              "name": "Solyz",
+              "id": 237401993,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+                },
+                "id": 11,
+                "slug": "tichondrius"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/65?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Holy",
+              "id": 65
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Gengargy",
+              "id": 249179936,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/59?namespace=dynamic-us"
+                },
+                "id": 59,
+                "slug": "malganis"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/266?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Demonology",
+              "id": 266
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/8?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Troll",
+              "id": 8
+            },
+            "equipped_item_level": 271
+          },
+          {
+            "character": {
+              "name": "Morpheusyee",
+              "id": 246636861,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/11?namespace=dynamic-us"
+                },
+                "id": 11,
+                "slug": "tichondrius"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1480?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Devourer",
+              "id": 1480
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/10?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Blood Elf",
+              "id": 10
+            },
+            "equipped_item_level": 266
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/558?namespace=dynamic-us"
+          },
+          "name": "Magisters' Terrace",
+          "id": 558
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 344.52078
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 344.52078
+        }
+      },
+      {
+        "completed_timestamp": 1775440878000,
+        "duration": 1648158,
+        "keystone_level": 13,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/147?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Guile",
+            "id": 147
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Grrif",
+              "id": 238857549,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Guardian",
+              "id": 104
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 270
+          },
+          {
+            "character": {
+              "name": "Quinnfreeze",
+              "id": 244665639,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/64?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Frost",
+              "id": 64
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/4?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Night Elf",
+              "id": 4
+            },
+            "equipped_item_level": 270
+          },
+          {
+            "character": {
+              "name": "Nyph",
+              "id": 239322498,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/105?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 105
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 274
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 273
+          },
+          {
+            "character": {
+              "name": "Mapleglen",
+              "id": 224302961,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/1263?namespace=dynamic-us"
+                },
+                "id": 1263,
+                "slug": "thrall"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/1473?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Augmentation",
+              "id": 1473
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/70?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Dracthyr",
+              "id": 70
+            },
+            "equipped_item_level": 267
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/239?namespace=dynamic-us"
+          },
+          "name": "Seat of the Triumvirate",
+          "id": 239
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 387.20297
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 387.20297
+        }
+      },
+      {
+        "completed_timestamp": 1774994680000,
+        "duration": 1395745,
+        "keystone_level": 10,
+        "keystone_affixes": [
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/158?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Xal'atath's Bargain: Voidbound",
+            "id": 158
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/9?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Tyrannical",
+            "id": 9
+          },
+          {
+            "key": {
+              "href": "https://us.api.blizzard.com/data/wow/keystone-affix/10?namespace=static-12.0.1_65617-us"
+            },
+            "name": "Fortified",
+            "id": 10
+          }
+        ],
+        "members": [
+          {
+            "character": {
+              "name": "Rickk",
+              "id": 184952701,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/70?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Retribution",
+              "id": 70
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 256
+          },
+          {
+            "character": {
+              "name": "Melishioux",
+              "id": 196115039,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/60?namespace=dynamic-us"
+                },
+                "id": 60,
+                "slug": "stormrage"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/262?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Elemental",
+              "id": 262
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/11?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Draenei",
+              "id": 11
+            },
+            "equipped_item_level": 261
+          },
+          {
+            "character": {
+              "name": "Feywren",
+              "id": 260552839,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/60?namespace=dynamic-us"
+                },
+                "id": 60,
+                "slug": "stormrage"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/264?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Restoration",
+              "id": 264
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 264
+          },
+          {
+            "character": {
+              "name": "Maggiesue",
+              "id": 142558183,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/259?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Assassination",
+              "id": 259
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/1?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Human",
+              "id": 1
+            },
+            "equipped_item_level": 267
+          },
+          {
+            "character": {
+              "name": "Tröxz",
+              "id": 242922488,
+              "realm": {
+                "key": {
+                  "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+                },
+                "id": 5,
+                "slug": "proudmoore"
+              }
+            },
+            "specialization": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-specialization/104?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Guardian",
+              "id": 104
+            },
+            "race": {
+              "key": {
+                "href": "https://us.api.blizzard.com/data/wow/playable-race/86?namespace=static-12.0.1_65617-us"
+              },
+              "name": "Haranir",
+              "id": 86
+            },
+            "equipped_item_level": 268
+          }
+        ],
+        "dungeon": {
+          "key": {
+            "href": "https://us.api.blizzard.com/data/wow/mythic-keystone/dungeon/559?namespace=dynamic-us"
+          },
+          "name": "Nexus-Point Xenas",
+          "id": 559
+        },
+        "is_completed_within_time": true,
+        "mythic_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 328.42197
+        },
+        "map_rating": {
+          "color": {
+            "r": 255,
+            "g": 128,
+            "b": 0,
+            "a": 1.0
+          },
+          "rating": 331.58905
+        }
+      }
+    ]
+  },
+  "seasons": [
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/6?namespace=profile-us"
+      },
+      "id": 6
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/11?namespace=profile-us"
+      },
+      "id": 11
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/13?namespace=profile-us"
+      },
+      "id": 13
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/12?namespace=profile-us"
+      },
+      "id": 12
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/4?namespace=profile-us"
+      },
+      "id": 4
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/5?namespace=profile-us"
+      },
+      "id": 5
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/9?namespace=profile-us"
+      },
+      "id": 9
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/17?namespace=profile-us"
+      },
+      "id": 17
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/2?namespace=profile-us"
+      },
+      "id": 2
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/8?namespace=profile-us"
+      },
+      "id": 8
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/14?namespace=profile-us"
+      },
+      "id": 14
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/1?namespace=profile-us"
+      },
+      "id": 1
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/15?namespace=profile-us"
+      },
+      "id": 15
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/10?namespace=profile-us"
+      },
+      "id": 10
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/7?namespace=profile-us"
+      },
+      "id": 7
+    },
+    {
+      "key": {
+        "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue/mythic-keystone-profile/season/3?namespace=profile-us"
+      },
+      "id": 3
+    }
+  ],
+  "character": {
+    "key": {
+      "href": "https://us.api.blizzard.com/profile/wow/character/proudmoore/maggiesue?namespace=profile-us"
+    },
+    "name": "Maggiesue",
+    "id": 142558183,
+    "realm": {
+      "key": {
+        "href": "https://us.api.blizzard.com/data/wow/realm/5?namespace=dynamic-us"
+      },
+      "name": "Proudmoore",
+      "id": 5,
+      "slug": "proudmoore"
+    }
+  },
+  "current_mythic_rating": {
+    "color": {
+      "r": 255,
+      "g": 128,
+      "b": 0,
+      "a": 1.0
+    },
+    "rating": 2789.347
+  }
+}
