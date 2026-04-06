@@ -620,9 +620,10 @@ class MongoRepository:
             "clear_time_ms": candidate.clear_time_ms,
             "score": candidate.score,
             "is_completed_within_time": candidate.is_completed_within_time,
-            "participants": participants,
             "last_seen_at": synced_at,
         }
+        if participants:
+            update_doc["participants"] = participants
         if short_name is not None:
             update_doc["short_name"] = short_name
         if candidate.num_keystone_upgrades is not None:

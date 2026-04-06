@@ -236,6 +236,8 @@ class FakeRepo:
                         "season": season,
                     }
                 )
+                if candidate.participants:
+                    run["participants"] = candidate.participants
                 if short_name:
                     run["short_name"] = short_name
                 if candidate.num_keystone_upgrades is not None:
@@ -1140,6 +1142,22 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(base_keys, {"us/area-52/mythics"})
         self.assertEqual(hot_keys, set())
 
+    def test_run_cycle_force_sync_all_ignores_due_selection(self) -> None:
+        settings = make_settings()
+        repo = FakeRepo()
+        now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
+        sheets = FakeSheets(["us/area-52/Readyone", "us/area-52/Readytwo"])
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        service.run_cycle(force_sync_all=True)
+
+        self.assertEqual(repo.sync_docs[0]["base_due_players_synced"], 2)
+
     def test_predictive_hot_queue_enqueues_player_for_current_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
         profile = build_play_profile(completed_at_values=[now], now=now)
@@ -1678,6 +1696,54 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertFalse(inserted)
         self.assertEqual(repo.runs[0]["short_name"], "DFC")
+
+    def test_empty_participants_do_not_overwrite_existing_participants(self) -> None:
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": None,
+                "dungeon": "Seat of the Triumvirate",
+                "short_name": "SOTT",
+                "score": 319.9,
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1900000,
+                "dungeon_id": 239,
+                "map_challenge_mode_id": 239,
+                "season": "season-mn-1",
+                "sources": ["blizzard"],
+                "participants": [{"player_key": "us/proudmoore/test", "name": "Test"}],
+            }
+        ]
+
+        inserted = repo.upsert_normalized_run(
+            NormalizedRunCandidate(
+                source="raiderio",
+                keystone_run_id=123,
+                completed_at=datetime(2026, 4, 3, 20, 0, 1, tzinfo=UTC),
+                clear_time_ms=1901000,
+                dungeon_id=239,
+                dungeon="Seat of the Triumvirate",
+                short_name="SOTT",
+                mythic_level=12,
+                num_keystone_upgrades=1,
+                score=319.9154,
+                is_completed_within_time=True,
+                participants=[],
+                raw_payload={},
+            ),
+            player_key="us/proudmoore/test",
+            season="season-mn-1",
+            synced_at=datetime(2026, 4, 6, tzinfo=UTC),
+            fuzz_seconds=2,
+        )
+
+        self.assertFalse(inserted)
+        self.assertEqual(
+            repo.runs[0]["participants"],
+            [{"player_key": "us/proudmoore/test", "name": "Test"}],
+        )
 
     def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(self) -> None:
         settings = make_settings()

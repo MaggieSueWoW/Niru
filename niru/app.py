@@ -56,7 +56,7 @@ def main() -> None:
     try:
         if args.mode == "once":
             service.install_signal_handlers()
-            service.run_cycle()
+            service.run_cycle(force_sync_all=True)
         else:
             service.run_forever()
     except Exception:

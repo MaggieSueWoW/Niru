@@ -726,7 +726,7 @@ class SyncService:
                 if self._wait_for_stop(remaining):
                     break
 
-    def run_cycle(self) -> None:
+    def run_cycle(self, *, force_sync_all: bool = False) -> None:
         """Run one full sync cycle."""
 
         started_at = utc_now()
@@ -766,9 +766,16 @@ class SyncService:
             if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                 refreshed_players = active_players
             else:
-                players_to_sync, _, hot_due_keys = self._select_players_for_sync(
-                    now=started_at
-                )
+                if force_sync_all:
+                    players_to_sync = [
+                        player for player in active_players if player.get("is_valid")
+                    ]
+                    base_due_keys = {player["player_key"] for player in players_to_sync}
+                    hot_due_keys: set[str] = set()
+                else:
+                    players_to_sync, base_due_keys, hot_due_keys = self._select_players_for_sync(
+                        now=started_at
+                    )
                 required_regions = {
                     str(player.get("region", "")).lower()
                     for player in active_players
@@ -809,7 +816,7 @@ class SyncService:
                                     "hot_ready_at": hot_ready_at.isoformat(),
                                 },
                             )
-                    else:
+                    elif player_key in base_due_keys:
                         stats.base_due_players_synced += 1
                     self._sync_player(
                         player=player,
