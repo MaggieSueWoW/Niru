@@ -731,7 +731,10 @@ class SyncService:
 
         started_at = utc_now()
         stats = SyncStats()
-        initial_api_calls = self._raiderio_client.api_calls
+        initial_raiderio_api_calls = self._raiderio_client.api_calls
+        initial_blizzard_api_calls = (
+            self._blizzard_client.api_calls if self._blizzard_client is not None else 0
+        )
         LOGGER.info("Starting sync cycle", extra={"started_at": started_at.isoformat()})
 
         try:
@@ -845,7 +848,14 @@ class SyncService:
             raise
         finally:
             finished_at = utc_now()
-            stats.api_calls = self._raiderio_client.api_calls - initial_api_calls
+            stats.raiderio_api_calls = (
+                self._raiderio_client.api_calls - initial_raiderio_api_calls
+            )
+            stats.blizzard_api_calls = (
+                (self._blizzard_client.api_calls if self._blizzard_client is not None else 0)
+                - initial_blizzard_api_calls
+            )
+            stats.api_calls = stats.raiderio_api_calls + stats.blizzard_api_calls
             self._repository.store_sync_cycle(
                 stats.to_document(started_at=started_at, finished_at=finished_at)
             )
@@ -854,6 +864,8 @@ class SyncService:
                 extra={
                     "finished_at": finished_at.isoformat(),
                     "api_calls": stats.api_calls,
+                    "raiderio_api_calls": stats.raiderio_api_calls,
+                    "blizzard_api_calls": stats.blizzard_api_calls,
                     "base_due_players_synced": stats.base_due_players_synced,
                     "hot_players_synced": stats.hot_players_synced,
                     "predictive_hot_players_queued": stats.predictive_hot_players_queued,

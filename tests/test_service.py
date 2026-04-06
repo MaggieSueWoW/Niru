@@ -655,6 +655,8 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][9], 2)
         self.assertEqual(sheets.last_metadata_rows[0], ("unique_runs", 2))
         self.assertEqual(repo.sync_docs[0]["api_calls"], 3)
+        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 3)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 0)
         self.assertEqual(
             repo.sync_docs[0]["weekly_periods"]["us"],
             {
@@ -1364,6 +1366,9 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(sheets.last_rows[0][3], 400.2)
         self.assertEqual(repo.players[0]["score_source"], "blizzard")
+        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 9)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 10)
 
     def test_raiderio_scores_used_when_blizzard_fails(self) -> None:
         settings = make_settings()
@@ -1463,6 +1468,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(repo.sync_docs[0]["weekly_periods"]["us"]["period"], 1056)
         self.assertEqual(blizzard.season_index_calls, 1)
         self.assertEqual(blizzard.season_detail_calls, 1)
+        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 5)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 6)
 
     def test_blizzard_enrichment_does_not_clear_raiderio_upgrade_count(self) -> None:
         settings = make_settings()
