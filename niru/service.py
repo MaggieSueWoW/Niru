@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 import hashlib
 import logging
@@ -422,6 +423,31 @@ def collect_blizzard_run_candidates(
             )
             merged[candidate_key] = candidate
     return list(merged.values())
+
+
+def _infer_num_keystone_upgrades(
+    dungeon_payload: dict[str, Any],
+    *,
+    clear_time_ms: int | None,
+) -> int | None:
+    """Infer num_keystone_upgrades from Blizzard dungeon timing thresholds."""
+
+    if clear_time_ms is None:
+        return None
+    upgrades = dungeon_payload.get("keystone_upgrades", []) or []
+    qualifying_durations: dict[int, int] = {}
+    for upgrade in upgrades:
+        upgrade_level = upgrade.get("upgrade_level")
+        qualifying_duration = upgrade.get("qualifying_duration")
+        if upgrade_level is None or qualifying_duration is None:
+            continue
+        qualifying_durations[int(upgrade_level)] = int(qualifying_duration)
+    if not qualifying_durations:
+        return None
+    for upgrade_level in sorted(qualifying_durations, reverse=True):
+        if int(clear_time_ms) <= qualifying_durations[upgrade_level]:
+            return upgrade_level
+    return 0
 
 
 def _last_attempted_sync_at(player: dict[str, Any]) -> datetime | None:
@@ -883,6 +909,7 @@ class SyncService:
                         extra={"player_key": player_key},
                     )
                     return
+                candidate = self._enrich_blizzard_candidate_num_keystone_upgrades(candidate)
                 inserted = self._repository.upsert_normalized_run(
                     candidate,
                     player_key=player_key,
@@ -1026,6 +1053,48 @@ class SyncService:
         )
 
         return candidates
+
+    def _enrich_blizzard_candidate_num_keystone_upgrades(
+        self,
+        candidate: NormalizedRunCandidate,
+    ) -> NormalizedRunCandidate:
+        if candidate.source != "blizzard" or candidate.num_keystone_upgrades is not None:
+            return candidate
+
+        existing = self._repository.find_run_by_fuzzy_fields(
+            dungeon_id=candidate.dungeon_id,
+            mythic_level=candidate.mythic_level,
+            completed_at=candidate.completed_at,
+            clear_time_ms=candidate.clear_time_ms,
+            fuzz_seconds=self._settings.blizzard.run_fingerprint_fuzz_seconds,
+        )
+        if existing is not None:
+            if existing.get("keystone_run_id") is not None:
+                return candidate
+            existing_upgrades = existing.get("num_keystone_upgrades")
+            if existing_upgrades is not None:
+                return replace(candidate, num_keystone_upgrades=int(existing_upgrades))
+
+        try:
+            dungeon_payload = self._blizzard_client.get_mythic_keystone_dungeon(candidate.dungeon_id).payload
+        except (BlizzardError, BlizzardNotFoundError) as exc:
+            LOGGER.warning(
+                "Failed to load Blizzard dungeon timing metadata for upgrade inference",
+                extra={
+                    "dungeon_id": candidate.dungeon_id,
+                    "candidate_source": candidate.source,
+                    "error": str(exc),
+                },
+            )
+            return candidate
+
+        inferred = _infer_num_keystone_upgrades(
+            dungeon_payload,
+            clear_time_ms=candidate.clear_time_ms,
+        )
+        if inferred is None:
+            return candidate
+        return replace(candidate, num_keystone_upgrades=int(inferred))
 
     def _resolved_storage_season(self) -> str:
         if self._settings.sync.current_season:

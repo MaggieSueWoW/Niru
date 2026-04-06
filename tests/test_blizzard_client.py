@@ -145,6 +145,57 @@ class BlizzardClientPathTests(unittest.TestCase):
         self.assertEqual(len(sleeps), 1)
         self.assertGreaterEqual(sleeps[0], 1.0)
 
+    def test_mythic_keystone_dungeon_detail_is_cached_for_one_day(self) -> None:
+        settings = type(
+            "BlizzardSettings",
+            (),
+            {
+                "enabled": True,
+                "base_url": "https://us.api.blizzard.com",
+                "oauth_url": "https://oauth.battle.net/token",
+                "client_id": "client-id",
+                "client_secret": "client-secret",
+                "requests_per_hour_cap": 36000,
+                "requests_per_second_cap": 100,
+                "timeout_seconds": 30,
+                "retry_attempts": 1,
+                "backoff_seconds": 1.0,
+                "locale": "en_US",
+                "namespace_profile": "profile-us",
+                "namespace_dynamic": "dynamic-us",
+            },
+        )()
+
+        class RecordingBlizzardClient(BlizzardClient):
+            def __init__(self, local_settings):
+                super().__init__(local_settings)
+                self.paths: list[str] = []
+
+            def _get_access_token(self) -> str:
+                return "token"
+
+            def _get_json(self, path: str, *, namespace: str):
+                self.paths.append(path)
+                return type("Result", (), {"payload": {"id": 239}, "request_url": path})()
+
+        client = RecordingBlizzardClient(settings)
+
+        with patch("niru.clients.blizzard.time.time", side_effect=[1000.0, 1000.0, 90000.0]):
+            first = client.get_mythic_keystone_dungeon(239)
+            second = client.get_mythic_keystone_dungeon(239)
+            third = client.get_mythic_keystone_dungeon(239)
+
+        self.assertEqual(first.payload["id"], 239)
+        self.assertEqual(second.payload["id"], 239)
+        self.assertEqual(third.payload["id"], 239)
+        self.assertEqual(
+            client.paths,
+            [
+                "/data/wow/mythic-keystone/dungeon/239",
+                "/data/wow/mythic-keystone/dungeon/239",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

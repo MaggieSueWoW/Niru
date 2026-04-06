@@ -40,6 +40,7 @@ class BlizzardClient:
     """Tiny Blizzard API client with cached client-credentials auth."""
 
     TOKEN_GRACE_SECONDS = 60
+    DUNGEON_DETAIL_CACHE_TTL_SECONDS = 24 * 60 * 60
     DEFAULT_HEADERS = {
         "Accept": "application/json",
         "User-Agent": "niru/0.1 (+https://blizzard.com)",
@@ -54,6 +55,8 @@ class BlizzardClient:
         self._rate_lock = threading.Lock()
         self._second_timestamps: deque[float] = deque()
         self._hour_timestamps: deque[float] = deque()
+        self._dungeon_detail_lock = threading.Lock()
+        self._dungeon_detail_cache: dict[int, tuple[float, BlizzardResult]] = {}
 
     def get_current_season_index(self) -> BlizzardResult:
         """Fetch the current season index."""
@@ -70,6 +73,29 @@ class BlizzardClient:
             f"/data/wow/mythic-keystone/season/{int(season_id)}",
             namespace=self._settings.namespace_dynamic,
         )
+
+    def get_mythic_keystone_dungeon(self, dungeon_id: int) -> BlizzardResult:
+        """Fetch cached Mythic Keystone dungeon timing metadata."""
+
+        normalized_dungeon_id = int(dungeon_id)
+        now = time.time()
+        with self._dungeon_detail_lock:
+            cached = self._dungeon_detail_cache.get(normalized_dungeon_id)
+            if cached is not None:
+                expires_at, result = cached
+                if now < expires_at:
+                    return result
+
+        result = self._get_json(
+            f"/data/wow/mythic-keystone/dungeon/{normalized_dungeon_id}",
+            namespace=self._settings.namespace_dynamic,
+        )
+        with self._dungeon_detail_lock:
+            self._dungeon_detail_cache[normalized_dungeon_id] = (
+                now + self.DUNGEON_DETAIL_CACHE_TTL_SECONDS,
+                result,
+            )
+        return result
 
     def get_character_mythic_keystone_profile(self, player: PlayerIdentity) -> BlizzardResult:
         """Fetch a character's current Mythic Keystone profile."""

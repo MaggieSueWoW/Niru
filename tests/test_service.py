@@ -270,6 +270,32 @@ class FakeRepo:
         )
         return True
 
+    def find_run_by_fuzzy_fields(
+        self,
+        *,
+        dungeon_id,
+        mythic_level,
+        completed_at,
+        clear_time_ms,
+        fuzz_seconds,
+    ):
+        for run in self.runs:
+            run_dungeon_id = (
+                run.get("map_challenge_mode_id") or run.get("dungeon_id") or run.get("zone_id")
+            )
+            if (
+                run_dungeon_id == dungeon_id
+                and run.get("mythic_level") == mythic_level
+                and run.get("completed_at") is not None
+                and completed_at is not None
+                and abs((run["completed_at"] - completed_at).total_seconds()) <= fuzz_seconds
+                and run.get("clear_time_ms") is not None
+                and clear_time_ms is not None
+                and abs(int(run["clear_time_ms"]) - int(clear_time_ms)) <= fuzz_seconds * 1000
+            ):
+                return run
+        return None
+
     def update_run_details(self, *, run_id, payload, player_key, synced_at):
         return None
 
@@ -561,6 +587,17 @@ class FakeBlizzard:
                 }
             ],
         }
+        self.dungeon_detail_payloads = {
+            101: {
+                "id": 101,
+                "keystone_upgrades": [
+                    {"upgrade_level": 1, "qualifying_duration": 1800000},
+                    {"upgrade_level": 2, "qualifying_duration": 1440000},
+                    {"upgrade_level": 3, "qualifying_duration": 1080000},
+                ],
+            }
+        }
+        self.dungeon_detail_calls = 0
 
     def get_current_season_index(self):
         self.api_calls += 1
@@ -583,6 +620,12 @@ class FakeBlizzard:
         if self.raise_error:
             raise BlizzardError("blizzard failed")
         return type("Result", (), {"payload": self.season_profile_payload})()
+
+    def get_mythic_keystone_dungeon(self, dungeon_id):
+        self.api_calls += 1
+        self.dungeon_detail_calls += 1
+        payload = self.dungeon_detail_payloads[int(dungeon_id)]
+        return type("Result", (), {"payload": payload})()
 
 
 class SyncServiceTests(unittest.TestCase):
@@ -1627,6 +1670,172 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertFalse(inserted)
         self.assertEqual(repo.runs[0]["short_name"], "DFC")
+
+    def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(self) -> None:
+        settings = make_settings()
+        settings.blizzard.enabled = True
+        repo = FakeRepo()
+        repo.season_dungeons = [
+            {
+                "season": "season-mn-1",
+                "dungeon_id": 101,
+                "challenge_mode_id": 101,
+                "slug": "darkflame-cleft",
+                "name": "Darkflame Cleft",
+                "short_name": "DFC",
+            }
+        ]
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.profile_payload["mythic_plus_best_runs"] = []
+        raider.profile_payload["mythic_plus_alternate_runs"] = []
+        blizzard = FakeBlizzard()
+        blizzard.current_profile_payload["current_period"]["best_runs"] = [
+            {
+                "completed_timestamp": int(
+                    datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000
+                ),
+                "duration": 1400000,
+                "keystone_level": 12,
+                "is_completed_within_time": True,
+                "dungeon": {"id": 101, "name": {"en_US": "Darkflame Cleft"}},
+                "map_rating": {"rating": 200.1},
+                "mythic_rating": {"rating": 200.1},
+                "members": [],
+            }
+        ]
+        blizzard.season_profile_payload["best_runs"] = []
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=raider,
+            blizzard_client=blizzard,
+        )
+        stats = type(
+            "Stats",
+            (),
+            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
+        )()
+
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=datetime(2026, 3, 26, tzinfo=UTC),
+            sync_kind="base",
+        )
+
+        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 2)
+        self.assertEqual(blizzard.dungeon_detail_calls, 1)
+
+    def test_blizzard_matched_raiderio_run_skips_upgrade_inference(self) -> None:
+        settings = make_settings()
+        settings.blizzard.enabled = True
+        repo = FakeRepo()
+        repo.season_dungeons = [
+            {
+                "season": "season-mn-1",
+                "dungeon_id": 101,
+                "challenge_mode_id": 101,
+                "slug": "darkflame-cleft",
+                "name": "Darkflame Cleft",
+                "short_name": "DFC",
+            }
+        ]
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+            }
+        ]
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.1,
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": datetime(2026, 3, 25, 12, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1400000,
+                "dungeon_id": 101,
+                "map_challenge_mode_id": 101,
+                "season": "season-mn-1",
+                "sources": ["raiderio"],
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.profile_payload["mythic_plus_recent_runs"] = []
+        raider.profile_payload["mythic_plus_best_runs"] = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.1,
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": "2026-03-25T12:00:00+00:00",
+                "clear_time_ms": 1400000,
+                "map_challenge_mode_id": 101,
+                "zone_id": 999,
+            }
+        ]
+        raider.profile_payload["mythic_plus_alternate_runs"] = []
+        blizzard = FakeBlizzard()
+        blizzard.current_profile_payload["current_period"]["best_runs"] = [
+            {
+                "completed_timestamp": int(
+                    datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000
+                ),
+                "duration": 1400000,
+                "keystone_level": 12,
+                "is_completed_within_time": True,
+                "dungeon": {"id": 101, "name": {"en_US": "Darkflame Cleft"}},
+                "map_rating": {"rating": 200.1},
+                "mythic_rating": {"rating": 200.1},
+                "members": [],
+            }
+        ]
+        blizzard.season_profile_payload["best_runs"] = []
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=raider,
+            blizzard_client=blizzard,
+        )
+        stats = type(
+            "Stats",
+            (),
+            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
+        )()
+
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=datetime(2026, 3, 26, tzinfo=UTC),
+            sync_kind="base",
+        )
+
+        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 1)
+        self.assertEqual(blizzard.dungeon_detail_calls, 0)
 
     def test_surprising_run_differences_include_large_score_and_name_changes(self) -> None:
         differences = _summarize_run_differences(
