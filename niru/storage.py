@@ -54,6 +54,50 @@ def _candidate_short_name_for_update(
     return None
 
 
+def _resolved_score_source(existing_run: dict[str, Any] | None) -> str | None:
+    """Return the authoritative score source for an existing run document."""
+
+    if not existing_run:
+        return None
+    explicit = str(existing_run.get("score_source", "") or "").strip().lower()
+    if explicit in {"blizzard", "raiderio"}:
+        return explicit
+
+    sources = {
+        str(source).strip().lower()
+        for source in existing_run.get("sources", []) or []
+        if str(source).strip()
+    }
+    if "blizzard" in sources:
+        return "blizzard"
+    if "raiderio" in sources:
+        return "raiderio"
+    return None
+
+
+def _should_update_run_score(
+    *,
+    existing_run: dict[str, Any] | None,
+    incoming_source: str,
+    incoming_score: float | None,
+) -> bool:
+    """Decide whether an incoming run score should replace the stored value."""
+
+    if incoming_score is None:
+        return False
+    if not existing_run:
+        return True
+    if existing_run.get("score") is None:
+        return True
+
+    existing_source = _resolved_score_source(existing_run)
+    if existing_source is None:
+        return True
+    if existing_source == incoming_source:
+        return True
+    return existing_source == "raiderio" and incoming_source == "blizzard"
+
+
 def _summarize_run_differences(
     existing_run: dict[str, Any],
     candidate: NormalizedRunCandidate,
@@ -101,12 +145,17 @@ def _summarize_run_differences(
 
     existing_score = existing_run.get("score")
     if existing_score is not None and candidate.score is not None:
-        score_delta = abs(float(existing_score) - float(candidate.score))
-        if score_delta > 1.0:
-            warnings.append(
-                f"score_delta={round(score_delta, 3)} existing={float(existing_score)} "
-                f"candidate={float(candidate.score)}"
-            )
+        if _should_update_run_score(
+            existing_run=existing_run,
+            incoming_source=candidate.source,
+            incoming_score=candidate.score,
+        ):
+            score_delta = abs(float(existing_score) - float(candidate.score))
+            if score_delta > 1.0:
+                warnings.append(
+                    f"score_delta={round(score_delta, 3)} existing={float(existing_score)} "
+                    f"candidate={float(candidate.score)}"
+                )
 
     existing_dungeon_name = str(existing_run.get("dungeon", "") or "").strip()
     candidate_dungeon_name = str(candidate.dungeon or "").strip()
@@ -577,7 +626,9 @@ class MongoRepository:
                     "completed_at": 1,
                     "clear_time_ms": 1,
                     "score": 1,
+                    "score_source": 1,
                     "is_completed_within_time": 1,
+                    "sources": 1,
                 },
             )
             if existing:
@@ -618,10 +669,16 @@ class MongoRepository:
             "mythic_level": candidate.mythic_level,
             "completed_at": candidate.completed_at,
             "clear_time_ms": candidate.clear_time_ms,
-            "score": candidate.score,
             "is_completed_within_time": candidate.is_completed_within_time,
             "last_seen_at": synced_at,
         }
+        if _should_update_run_score(
+            existing_run=existing,
+            incoming_source=candidate.source,
+            incoming_score=candidate.score,
+        ):
+            update_doc["score"] = candidate.score
+            update_doc["score_source"] = candidate.source
         if participants:
             update_doc["participants"] = participants
         if short_name is not None:
@@ -698,7 +755,9 @@ class MongoRepository:
                     "completed_at": 1,
                     "clear_time_ms": 1,
                     "score": 1,
+                    "score_source": 1,
                     "is_completed_within_time": 1,
+                    "sources": 1,
                 },
             )
         )
@@ -756,11 +815,16 @@ class MongoRepository:
             "detail_loaded": False,
             "last_seen_at": synced_at,
         }
+        if stub["score"] is not None:
+            stub["score_source"] = "raiderio"
         self.runs.update_one(
             {"keystone_run_id": run_id},
             {
                 "$set": stub,
-                "$addToSet": {"discovered_from_player_keys": player_key},
+                "$addToSet": {
+                    "discovered_from_player_keys": player_key,
+                    "sources": "raiderio",
+                },
                 "$setOnInsert": {"created_at": synced_at, "participants": []},
             },
             upsert=True,
@@ -817,30 +881,45 @@ class MongoRepository:
                 f"completed_at={completed_at}, clear_time_ms={clear_time_ms}"
             )
 
+        existing = self.runs.find_one(
+            {"keystone_run_id": run_id},
+            {"_id": 1, "score": 1, "score_source": 1, "sources": 1},
+        )
+        update_doc = {
+            "keystone_run_id": run_id,
+            "season": season,
+            "dungeon": dungeon.get("name", ""),
+            "short_name": dungeon.get("short_name", ""),
+            "mythic_level": mythic_level,
+            "clear_time_ms": clear_time_ms,
+            "par_time_ms": payload.get("keystone_time_ms"),
+            "num_keystone_upgrades": payload.get("num_chests"),
+            "map_challenge_mode_id": dungeon.get("map_challenge_mode_id") or dungeon_id,
+            "zone_id": dungeon.get("id"),
+            "zone_expansion_id": dungeon.get("expansion_id"),
+            "icon_url": dungeon.get("icon_url"),
+            "detail_loaded": True,
+            "detail_payload": payload,
+            "participants": participants,
+            "last_seen_at": synced_at,
+            "completed_at": completed_at,
+        }
+        if _should_update_run_score(
+            existing_run=existing,
+            incoming_source="raiderio",
+            incoming_score=payload.get("score"),
+        ):
+            update_doc["score"] = payload.get("score")
+            update_doc["score_source"] = "raiderio"
+
         self.runs.update_one(
             {"keystone_run_id": run_id},
             {
-                "$set": {
-                    "keystone_run_id": run_id,
-                    "season": season,
-                    "dungeon": dungeon.get("name", ""),
-                    "short_name": dungeon.get("short_name", ""),
-                    "mythic_level": mythic_level,
-                    "score": payload.get("score"),
-                    "clear_time_ms": clear_time_ms,
-                    "par_time_ms": payload.get("keystone_time_ms"),
-                    "num_keystone_upgrades": payload.get("num_chests"),
-                    "map_challenge_mode_id": dungeon.get("map_challenge_mode_id") or dungeon_id,
-                    "zone_id": dungeon.get("id"),
-                    "zone_expansion_id": dungeon.get("expansion_id"),
-                    "icon_url": dungeon.get("icon_url"),
-                    "detail_loaded": True,
-                    "detail_payload": payload,
-                    "participants": participants,
-                    "last_seen_at": synced_at,
-                    "completed_at": completed_at,
+                "$set": update_doc,
+                "$addToSet": {
+                    "discovered_from_player_keys": player_key,
+                    "sources": "raiderio",
                 },
-                "$addToSet": {"discovered_from_player_keys": player_key},
                 "$setOnInsert": {"created_at": synced_at},
             },
             upsert=True,

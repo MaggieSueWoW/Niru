@@ -10,7 +10,7 @@ from niru.play_profile import (
     current_week_hour_key,
 )
 from niru.service import SyncService, build_summary_header
-from niru.storage import _summarize_run_differences
+from niru.storage import _should_update_run_score, _summarize_run_differences
 
 
 def _current_batch_start(now, *, interval_minutes):
@@ -228,7 +228,6 @@ class FakeRepo:
                 run.update(
                     {
                         "dungeon": candidate.dungeon,
-                        "score": candidate.score,
                         "mythic_level": candidate.mythic_level,
                         "completed_at": candidate.completed_at,
                         "clear_time_ms": candidate.clear_time_ms,
@@ -236,6 +235,13 @@ class FakeRepo:
                         "season": season,
                     }
                 )
+                if _should_update_run_score(
+                    existing_run=run,
+                    incoming_source=candidate.source,
+                    incoming_score=candidate.score,
+                ):
+                    run["score"] = candidate.score
+                    run["score_source"] = candidate.source
                 if candidate.participants:
                     run["participants"] = candidate.participants
                 if short_name:
@@ -270,6 +276,8 @@ class FakeRepo:
                 "sources": [candidate.source],
             }
         )
+        if candidate.score is not None:
+            self.runs[-1]["score_source"] = candidate.source
         return True
 
     def find_run_by_fuzzy_fields(
@@ -1744,6 +1752,100 @@ class SyncServiceTests(unittest.TestCase):
             repo.runs[0]["participants"],
             [{"player_key": "us/proudmoore/test", "name": "Test"}],
         )
+
+    def test_blizzard_score_replaces_existing_raiderio_score_once(self) -> None:
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Seat of the Triumvirate",
+                "short_name": "SOTT",
+                "score": 319.9,
+                "score_source": "raiderio",
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1900000,
+                "dungeon_id": 239,
+                "map_challenge_mode_id": 239,
+                "season": "season-mn-1",
+                "sources": ["raiderio"],
+                "participants": [],
+            }
+        ]
+
+        inserted = repo.upsert_normalized_run(
+            NormalizedRunCandidate(
+                source="blizzard",
+                keystone_run_id=123,
+                completed_at=datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                clear_time_ms=1900000,
+                dungeon_id=239,
+                dungeon="Seat of the Triumvirate",
+                short_name="SOTT",
+                mythic_level=12,
+                num_keystone_upgrades=1,
+                score=319.9154,
+                is_completed_within_time=True,
+                participants=[],
+                raw_payload={},
+            ),
+            player_key="us/proudmoore/test",
+            season="season-mn-1",
+            synced_at=datetime(2026, 4, 6, tzinfo=UTC),
+            fuzz_seconds=2,
+        )
+
+        self.assertFalse(inserted)
+        self.assertEqual(repo.runs[0]["score"], 319.9154)
+        self.assertEqual(repo.runs[0]["score_source"], "blizzard")
+
+    def test_raiderio_score_does_not_replace_existing_blizzard_score(self) -> None:
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Seat of the Triumvirate",
+                "short_name": "SOTT",
+                "score": 319.9154,
+                "score_source": "blizzard",
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1900000,
+                "dungeon_id": 239,
+                "map_challenge_mode_id": 239,
+                "season": "season-mn-1",
+                "sources": ["blizzard"],
+                "participants": [],
+            }
+        ]
+
+        inserted = repo.upsert_normalized_run(
+            NormalizedRunCandidate(
+                source="raiderio",
+                keystone_run_id=123,
+                completed_at=datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                clear_time_ms=1900000,
+                dungeon_id=239,
+                dungeon="Seat of the Triumvirate",
+                short_name="SOTT",
+                mythic_level=12,
+                num_keystone_upgrades=1,
+                score=319.9,
+                is_completed_within_time=True,
+                participants=[],
+                raw_payload={},
+            ),
+            player_key="us/proudmoore/test",
+            season="season-mn-1",
+            synced_at=datetime(2026, 4, 6, tzinfo=UTC),
+            fuzz_seconds=2,
+        )
+
+        self.assertFalse(inserted)
+        self.assertEqual(repo.runs[0]["score"], 319.9154)
+        self.assertEqual(repo.runs[0]["score_source"], "blizzard")
 
     def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(self) -> None:
         settings = make_settings()

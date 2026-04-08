@@ -291,3 +291,6 @@ pyrightconfig.json
 
 service-account.json
 .DS_Store
+.env.*
+m1.*
+*.archive.gz
