@@ -93,26 +93,22 @@ def _normalize_weekly_periods(periods_payload: dict[str, Any]) -> dict[str, dict
     return periods_by_region
 
 
-def _normalize_blizzard_weekly_periods(periods_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    periods = periods_payload.get("periods", []) or []
-    if not periods:
-        return {}
-    current = max((period for period in periods if period.get("id") is not None), key=lambda item: int(item["id"]))
-    start = _safe_datetime((current.get("start_timestamp")))
-    end = _safe_datetime((current.get("end_timestamp")))
+def _normalize_blizzard_weekly_period(period_payload: dict[str, Any]) -> dict[str, Any] | None:
+    period_id = period_payload.get("id")
+    if period_id is None:
+        return None
+    start = _safe_datetime(period_payload.get("start_timestamp"))
+    end = _safe_datetime(period_payload.get("end_timestamp"))
     if start is None:
-        start = _safe_datetime(current.get("start"))
+        start = _safe_datetime(period_payload.get("start"))
     if end is None:
-        end = _safe_datetime(current.get("end"))
+        end = _safe_datetime(period_payload.get("end"))
     if start is None or end is None:
-        return {}
+        return None
     return {
-        region: {
-            "period": int(current["id"]),
-            "start": start,
-            "end": end,
-        }
-        for region in ("us", "eu", "kr", "tw")
+        "period": int(period_id),
+        "start": start,
+        "end": end,
     }
 
 
@@ -1142,7 +1138,14 @@ class SyncService:
             raise BlizzardError("Blizzard season index did not include usable season ids")
         season_id = max(season_ids)
         season_detail = self._blizzard_client.get_season_detail(season_id).payload
-        periods_by_region = _normalize_blizzard_weekly_periods(season_detail)
+        current_period_index = self._blizzard_client.get_current_period_index().payload
+        current_period = current_period_index.get("current_period") or {}
+        period_id = current_period.get("id")
+        if period_id is None:
+            raise BlizzardError("Blizzard period index did not include a current period id")
+        current_period_detail = self._blizzard_client.get_period_detail(int(period_id)).payload
+        current_us_period = _normalize_blizzard_weekly_period(current_period_detail)
+        periods_by_region = {"us": current_us_period} if current_us_period is not None else {}
         refresh_at = min(
             (period["end"] for period in periods_by_region.values()),
             default=current_time + timedelta(hours=1),

@@ -536,6 +536,8 @@ class FakeBlizzard:
         self.raise_error = False
         self.season_index_calls = 0
         self.season_detail_calls = 0
+        self.current_period_index_calls = 0
+        self.period_detail_calls = 0
         self.current_profile_payload = {
             "current_mythic_rating": {"rating": 400.2},
             "current_period": {
@@ -579,15 +581,18 @@ class FakeBlizzard:
             ],
         }
         self.season_index_payload = {"seasons": [{"id": 17}]}
+        self.current_period_index_payload = {
+            "current_period": {
+                "id": 1058,
+            }
+        }
+        self.period_detail_payload = {
+            "id": 1058,
+            "start_timestamp": int(datetime(2026, 4, 7, 15, 0, tzinfo=UTC).timestamp() * 1000),
+            "end_timestamp": int(datetime(2026, 4, 14, 15, 0, tzinfo=UTC).timestamp() * 1000),
+        }
         self.season_detail_payload = {
             "id": 17,
-            "periods": [
-                {
-                    "id": 1056,
-                    "start_timestamp": int(datetime(2026, 3, 24, 15, 0, tzinfo=UTC).timestamp() * 1000),
-                    "end_timestamp": int(datetime(2026, 3, 31, 15, 0, tzinfo=UTC).timestamp() * 1000),
-                }
-            ],
             "dungeons": [
                 {
                     "id": 101,
@@ -618,6 +623,16 @@ class FakeBlizzard:
         self.api_calls += 1
         self.season_detail_calls += 1
         return type("Result", (), {"payload": self.season_detail_payload})()
+
+    def get_current_period_index(self):
+        self.api_calls += 1
+        self.current_period_index_calls += 1
+        return type("Result", (), {"payload": self.current_period_index_payload})()
+
+    def get_period_detail(self, period_id):
+        self.api_calls += 1
+        self.period_detail_calls += 1
+        return type("Result", (), {"payload": self.period_detail_payload})()
 
     def get_character_mythic_keystone_profile(self, player):
         self.api_calls += 1
@@ -1393,8 +1408,8 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][3], 400.2)
         self.assertEqual(repo.players[0]["score_source"], "blizzard")
         self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 9)
-        self.assertEqual(repo.sync_docs[0]["api_calls"], 10)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 8)
 
     def test_raiderio_scores_used_when_blizzard_fails(self) -> None:
         settings = make_settings()
@@ -1475,11 +1490,11 @@ class SyncServiceTests(unittest.TestCase):
         repo = FakeRepo()
         sheets = FakeSheets(["us/area-52/Mythics"])
         blizzard = FakeBlizzard()
-        blizzard.season_detail_payload["periods"][0]["start_timestamp"] = int(
+        blizzard.period_detail_payload["start_timestamp"] = int(
             datetime(2026, 4, 1, 15, 0, tzinfo=UTC).timestamp() * 1000
         )
-        blizzard.season_detail_payload["periods"][0]["end_timestamp"] = int(
-            datetime(2026, 4, 8, 15, 0, tzinfo=UTC).timestamp() * 1000
+        blizzard.period_detail_payload["end_timestamp"] = int(
+            datetime(2026, 4, 15, 15, 0, tzinfo=UTC).timestamp() * 1000
         )
         service = SyncService(
             settings=settings,
@@ -1491,12 +1506,12 @@ class SyncServiceTests(unittest.TestCase):
 
         service.run_cycle()
 
-        self.assertEqual(repo.sync_docs[0]["weekly_periods"]["us"]["period"], 1056)
+        self.assertEqual(repo.sync_docs[0]["weekly_periods"]["us"]["period"], 1058)
         self.assertEqual(blizzard.season_index_calls, 1)
         self.assertEqual(blizzard.season_detail_calls, 1)
         self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 5)
-        self.assertEqual(repo.sync_docs[0]["api_calls"], 6)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 8)
 
     def test_blizzard_enrichment_does_not_clear_raiderio_upgrade_count(self) -> None:
         settings = make_settings()
@@ -2056,11 +2071,11 @@ class SyncServiceTests(unittest.TestCase):
         repo = FakeRepo()
         sheets = FakeSheets(["us/area-52/Mythics"])
         blizzard = FakeBlizzard()
-        blizzard.season_detail_payload["periods"][0]["start_timestamp"] = int(
+        blizzard.period_detail_payload["start_timestamp"] = int(
             datetime(2026, 4, 1, 15, 0, tzinfo=UTC).timestamp() * 1000
         )
-        blizzard.season_detail_payload["periods"][0]["end_timestamp"] = int(
-            datetime(2026, 4, 8, 15, 0, tzinfo=UTC).timestamp() * 1000
+        blizzard.period_detail_payload["end_timestamp"] = int(
+            datetime(2026, 4, 15, 15, 0, tzinfo=UTC).timestamp() * 1000
         )
         raider = FakeRaiderIO()
         service = SyncService(

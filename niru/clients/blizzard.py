@@ -74,6 +74,22 @@ class BlizzardClient:
             namespace=self._settings.namespace_dynamic,
         )
 
+    def get_current_period_index(self) -> BlizzardResult:
+        """Fetch the Mythic Keystone period index including the current period id."""
+
+        return self._get_json(
+            "/data/wow/mythic-keystone/period/",
+            namespace=self._settings.namespace_dynamic,
+        )
+
+    def get_period_detail(self, period_id: int) -> BlizzardResult:
+        """Fetch one Mythic Keystone period detail payload."""
+
+        return self._get_json(
+            f"/data/wow/mythic-keystone/period/{int(period_id)}",
+            namespace=self._settings.namespace_dynamic,
+        )
+
     def get_mythic_keystone_dungeon(self, dungeon_id: int) -> BlizzardResult:
         """Fetch cached Mythic Keystone dungeon timing metadata."""
 

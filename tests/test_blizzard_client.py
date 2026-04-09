@@ -196,6 +196,52 @@ class BlizzardClientPathTests(unittest.TestCase):
             ],
         )
 
+    def test_period_paths_use_dynamic_namespace_endpoints(self) -> None:
+        settings = type(
+            "BlizzardSettings",
+            (),
+            {
+                "enabled": True,
+                "base_url": "https://us.api.blizzard.com",
+                "oauth_url": "https://oauth.battle.net/token",
+                "client_id": "client-id",
+                "client_secret": "client-secret",
+                "requests_per_hour_cap": 36000,
+                "requests_per_second_cap": 100,
+                "timeout_seconds": 30,
+                "retry_attempts": 1,
+                "backoff_seconds": 1.0,
+                "locale": "en_US",
+                "namespace_profile": "profile-us",
+                "namespace_dynamic": "dynamic-us",
+            },
+        )()
+
+        class RecordingBlizzardClient(BlizzardClient):
+            def __init__(self, local_settings):
+                super().__init__(local_settings)
+                self.paths: list[str] = []
+
+            def _get_access_token(self) -> str:
+                return "token"
+
+            def _get_json(self, path: str, *, namespace: str):
+                self.paths.append(path)
+                return type("Result", (), {"payload": {}, "request_url": path})()
+
+        client = RecordingBlizzardClient(settings)
+
+        client.get_current_period_index()
+        client.get_period_detail(1058)
+
+        self.assertEqual(
+            client.paths,
+            [
+                "/data/wow/mythic-keystone/period/",
+                "/data/wow/mythic-keystone/period/1058",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
