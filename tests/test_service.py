@@ -10,7 +10,7 @@ from niru.play_profile import (
     current_week_hour_key,
 )
 from niru.service import SyncService, build_summary_header
-from niru.storage import _should_update_run_score, _summarize_run_differences
+from niru.storage import _build_key_run_metric_updates, _summarize_run_differences
 
 
 def _current_batch_start(now, *, interval_minutes):
@@ -186,21 +186,6 @@ class FakeRepo:
             if run["keystone_run_id"] == run_id:
                 run.setdefault("discovered_from_player_keys", []).append(player_key)
 
-    def upsert_run_stub(self, run, *, player_key, season, synced_at):
-        self.runs.append(
-            {
-                "keystone_run_id": run["keystone_run_id"],
-                "dungeon": run["dungeon"],
-                "short_name": run.get("short_name", ""),
-                "score": run["score"],
-                "mythic_level": run["mythic_level"],
-                "num_keystone_upgrades": run["num_keystone_upgrades"],
-                "completed_at": datetime(2026, 3, 25, 12, 0, tzinfo=UTC),
-                "discovered_from_player_keys": [player_key],
-                "participants": [],
-            }
-        )
-
     def upsert_normalized_run(self, candidate, *, player_key, season, synced_at, fuzz_seconds):
         for run in self.runs:
             if (
@@ -230,24 +215,25 @@ class FakeRepo:
                         "dungeon": candidate.dungeon,
                         "mythic_level": candidate.mythic_level,
                         "completed_at": candidate.completed_at,
-                        "clear_time_ms": candidate.clear_time_ms,
-                        "is_completed_within_time": candidate.is_completed_within_time,
                         "season": season,
                     }
                 )
-                if _should_update_run_score(
-                    existing_run=run,
-                    incoming_source=candidate.source,
-                    incoming_score=candidate.score,
-                ):
-                    run["score"] = candidate.score
-                    run["score_source"] = candidate.source
+                run.update(
+                    _build_key_run_metric_updates(
+                        existing_run=run,
+                        incoming_source=candidate.source,
+                        metric_values={
+                            "score": candidate.score,
+                            "clear_time_ms": candidate.clear_time_ms,
+                            "num_keystone_upgrades": candidate.num_keystone_upgrades,
+                            "is_completed_within_time": candidate.is_completed_within_time,
+                        },
+                    )
+                )
                 if candidate.participants:
                     run["participants"] = candidate.participants
                 if short_name:
                     run["short_name"] = short_name
-                if candidate.num_keystone_upgrades is not None:
-                    run["num_keystone_upgrades"] = candidate.num_keystone_upgrades
                 if candidate.keystone_run_id is not None:
                     run["keystone_run_id"] = candidate.keystone_run_id
                 run.setdefault("sources", [])
@@ -276,8 +262,18 @@ class FakeRepo:
                 "sources": [candidate.source],
             }
         )
-        if candidate.score is not None:
-            self.runs[-1]["score_source"] = candidate.source
+        self.runs[-1].update(
+            _build_key_run_metric_updates(
+                existing_run=None,
+                incoming_source=candidate.source,
+                metric_values={
+                    "score": candidate.score,
+                    "clear_time_ms": candidate.clear_time_ms,
+                    "num_keystone_upgrades": candidate.num_keystone_upgrades,
+                    "is_completed_within_time": candidate.is_completed_within_time,
+                },
+            )
+        )
         return True
 
     def find_run_by_fuzzy_fields(
@@ -1776,7 +1772,7 @@ class SyncServiceTests(unittest.TestCase):
                 "dungeon": "Seat of the Triumvirate",
                 "short_name": "SOTT",
                 "score": 319.9,
-                "score_source": "raiderio",
+                "run_metrics_source": "raiderio",
                 "mythic_level": 12,
                 "num_keystone_upgrades": 1,
                 "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
@@ -1813,7 +1809,7 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertFalse(inserted)
         self.assertEqual(repo.runs[0]["score"], 319.9154)
-        self.assertEqual(repo.runs[0]["score_source"], "blizzard")
+        self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
 
     def test_raiderio_score_does_not_replace_existing_blizzard_score(self) -> None:
         repo = FakeRepo()
@@ -1823,7 +1819,7 @@ class SyncServiceTests(unittest.TestCase):
                 "dungeon": "Seat of the Triumvirate",
                 "short_name": "SOTT",
                 "score": 319.9154,
-                "score_source": "blizzard",
+                "run_metrics_source": "blizzard",
                 "mythic_level": 12,
                 "num_keystone_upgrades": 1,
                 "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
@@ -1860,7 +1856,108 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertFalse(inserted)
         self.assertEqual(repo.runs[0]["score"], 319.9154)
-        self.assertEqual(repo.runs[0]["score_source"], "blizzard")
+        self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
+
+    def test_raiderio_does_not_replace_existing_blizzard_key_metrics(self) -> None:
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Seat of the Triumvirate",
+                "short_name": "SOTT",
+                "score": 319.9154,
+                "run_metrics_source": "blizzard",
+                "mythic_level": 12,
+                "num_keystone_upgrades": 1,
+                "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1900000,
+                "dungeon_id": 239,
+                "map_challenge_mode_id": 239,
+                "is_completed_within_time": True,
+                "season": "season-mn-1",
+                "sources": ["blizzard"],
+                "participants": [],
+            }
+        ]
+
+        inserted = repo.upsert_normalized_run(
+            NormalizedRunCandidate(
+                source="raiderio",
+                keystone_run_id=123,
+                completed_at=datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                clear_time_ms=1905000,
+                dungeon_id=239,
+                dungeon="Seat of the Triumvirate",
+                short_name="SOTT",
+                mythic_level=12,
+                num_keystone_upgrades=0,
+                score=319.9,
+                is_completed_within_time=False,
+                participants=[],
+                raw_payload={},
+            ),
+            player_key="us/proudmoore/test",
+            season="season-mn-1",
+            synced_at=datetime(2026, 4, 6, tzinfo=UTC),
+            fuzz_seconds=600,
+        )
+
+        self.assertFalse(inserted)
+        self.assertEqual(repo.runs[0]["score"], 319.9154)
+        self.assertEqual(repo.runs[0]["clear_time_ms"], 1900000)
+        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 1)
+        self.assertTrue(repo.runs[0]["is_completed_within_time"])
+        self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
+
+    def test_raiderio_can_fill_missing_blizzard_owned_key_metrics(self) -> None:
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Seat of the Triumvirate",
+                "short_name": "SOTT",
+                "score": 319.9154,
+                "run_metrics_source": "blizzard",
+                "mythic_level": 12,
+                "num_keystone_upgrades": None,
+                "completed_at": datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1900000,
+                "dungeon_id": 239,
+                "map_challenge_mode_id": 239,
+                "is_completed_within_time": True,
+                "season": "season-mn-1",
+                "sources": ["blizzard"],
+                "participants": [],
+            }
+        ]
+
+        inserted = repo.upsert_normalized_run(
+            NormalizedRunCandidate(
+                source="raiderio",
+                keystone_run_id=123,
+                completed_at=datetime(2026, 4, 3, 20, 0, 0, tzinfo=UTC),
+                clear_time_ms=1905000,
+                dungeon_id=239,
+                dungeon="Seat of the Triumvirate",
+                short_name="SOTT",
+                mythic_level=12,
+                num_keystone_upgrades=0,
+                score=319.9,
+                is_completed_within_time=False,
+                participants=[],
+                raw_payload={},
+            ),
+            player_key="us/proudmoore/test",
+            season="season-mn-1",
+            synced_at=datetime(2026, 4, 6, tzinfo=UTC),
+            fuzz_seconds=600,
+        )
+
+        self.assertFalse(inserted)
+        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 0)
+        self.assertEqual(repo.runs[0]["clear_time_ms"], 1900000)
+        self.assertTrue(repo.runs[0]["is_completed_within_time"])
+        self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
 
     def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(self) -> None:
         settings = make_settings()
@@ -2064,6 +2161,43 @@ class SyncServiceTests(unittest.TestCase):
         self.assertTrue(any("dungeon_name" in difference for difference in differences))
         self.assertTrue(any("short_name" in difference for difference in differences))
         self.assertTrue(any("is_completed_within_time" in difference for difference in differences))
+
+    def test_surprising_run_differences_ignore_blocked_key_metric_changes(self) -> None:
+        differences = _summarize_run_differences(
+            {
+                "_id": "abc123",
+                "keystone_run_id": 123,
+                "map_challenge_mode_id": 101,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "mythic_level": 10,
+                "completed_at": datetime(2026, 3, 25, 12, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1500000,
+                "score": 300.0,
+                "run_metrics_source": "blizzard",
+                "is_completed_within_time": True,
+            },
+            NormalizedRunCandidate(
+                source="raiderio",
+                keystone_run_id=None,
+                completed_at=datetime(2026, 3, 25, 12, 0, 0, tzinfo=UTC),
+                clear_time_ms=1510000,
+                dungeon_id=101,
+                dungeon="Darkflame Cleft",
+                short_name="DFC",
+                mythic_level=10,
+                num_keystone_upgrades=None,
+                score=306.5,
+                is_completed_within_time=False,
+                participants=[],
+                raw_payload={},
+            ),
+            fuzz_seconds=2,
+        )
+
+        self.assertFalse(any("score_delta=" in difference for difference in differences))
+        self.assertFalse(any("clear_time_delta_ms" in difference for difference in differences))
+        self.assertFalse(any("is_completed_within_time" in difference for difference in differences))
 
     def test_blizzard_season_context_is_cached_across_cycles_until_period_changes(self) -> None:
         settings = make_settings()

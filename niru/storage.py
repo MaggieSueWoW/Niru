@@ -18,6 +18,13 @@ from niru.models import (
 )
 
 LOGGER = logging.getLogger(__name__)
+KEY_RUN_METRIC_FIELDS = (
+    "score",
+    "clear_time_ms",
+    "par_time_ms",
+    "num_keystone_upgrades",
+    "is_completed_within_time",
+)
 
 
 def _safe_isoformat(value: Any) -> datetime | None:
@@ -54,15 +61,14 @@ def _candidate_short_name_for_update(
     return None
 
 
-def _resolved_score_source(existing_run: dict[str, Any] | None) -> str | None:
-    """Return the authoritative score source for an existing run document."""
+def _resolved_run_metrics_source(existing_run: dict[str, Any] | None) -> str | None:
+    """Return the authoritative source for key run metrics on a run document."""
 
     if not existing_run:
         return None
-    explicit = str(existing_run.get("score_source", "") or "").strip().lower()
+    explicit = str(existing_run.get("run_metrics_source", "") or "").strip().lower()
     if explicit in {"blizzard", "raiderio"}:
         return explicit
-
     sources = {
         str(source).strip().lower()
         for source in existing_run.get("sources", []) or []
@@ -75,27 +81,61 @@ def _resolved_score_source(existing_run: dict[str, Any] | None) -> str | None:
     return None
 
 
-def _should_update_run_score(
+def _should_update_key_run_metric(
     *,
     existing_run: dict[str, Any] | None,
     incoming_source: str,
-    incoming_score: float | None,
+    field_name: str,
+    incoming_value: Any,
 ) -> bool:
-    """Decide whether an incoming run score should replace the stored value."""
+    """Decide whether an incoming key run metric should replace the stored value."""
 
-    if incoming_score is None:
+    if incoming_value is None:
         return False
     if not existing_run:
         return True
-    if existing_run.get("score") is None:
+    if existing_run.get(field_name) is None:
         return True
 
-    existing_source = _resolved_score_source(existing_run)
+    existing_source = _resolved_run_metrics_source(existing_run)
     if existing_source is None:
         return True
     if existing_source == incoming_source:
         return True
     return existing_source == "raiderio" and incoming_source == "blizzard"
+
+
+def _build_key_run_metric_updates(
+    *,
+    existing_run: dict[str, Any] | None,
+    incoming_source: str,
+    metric_values: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the allowed key run metric updates for an incoming source."""
+
+    updates: dict[str, Any] = {}
+    wrote_metric = False
+    for field_name, incoming_value in metric_values.items():
+        if _should_update_key_run_metric(
+            existing_run=existing_run,
+            incoming_source=incoming_source,
+            field_name=field_name,
+            incoming_value=incoming_value,
+        ):
+            updates[field_name] = incoming_value
+            wrote_metric = True
+
+    if not wrote_metric:
+        return updates
+
+    existing_source = _resolved_run_metrics_source(existing_run)
+    if (
+        existing_source is None
+        or existing_source == incoming_source
+        or (existing_source == "raiderio" and incoming_source == "blizzard")
+    ):
+        updates["run_metrics_source"] = incoming_source
+    return updates
 
 
 def _summarize_run_differences(
@@ -136,19 +176,26 @@ def _summarize_run_differences(
 
     existing_clear_time_ms = existing_run.get("clear_time_ms")
     if existing_clear_time_ms is not None:
-        duration_delta_ms = abs(int(existing_clear_time_ms) - int(candidate.clear_time_ms))
-        if duration_delta_ms > max(fuzz_seconds, 0) * 1000:
-            warnings.append(
-                "clear_time_delta_ms="
-                f"{duration_delta_ms} exceeds fuzz={max(fuzz_seconds, 0) * 1000}"
-            )
+        if _should_update_key_run_metric(
+            existing_run=existing_run,
+            incoming_source=candidate.source,
+            field_name="clear_time_ms",
+            incoming_value=candidate.clear_time_ms,
+        ):
+            duration_delta_ms = abs(int(existing_clear_time_ms) - int(candidate.clear_time_ms))
+            if duration_delta_ms > max(fuzz_seconds, 0) * 1000:
+                warnings.append(
+                    "clear_time_delta_ms="
+                    f"{duration_delta_ms} exceeds fuzz={max(fuzz_seconds, 0) * 1000}"
+                )
 
     existing_score = existing_run.get("score")
     if existing_score is not None and candidate.score is not None:
-        if _should_update_run_score(
+        if _should_update_key_run_metric(
             existing_run=existing_run,
             incoming_source=candidate.source,
-            incoming_score=candidate.score,
+            field_name="score",
+            incoming_value=candidate.score,
         ):
             score_delta = abs(float(existing_score) - float(candidate.score))
             if score_delta > 1.0:
@@ -184,6 +231,12 @@ def _summarize_run_differences(
     if (
         existing_within_time is not None
         and candidate.is_completed_within_time is not None
+        and _should_update_key_run_metric(
+            existing_run=existing_run,
+            incoming_source=candidate.source,
+            field_name="is_completed_within_time",
+            incoming_value=candidate.is_completed_within_time,
+        )
         and bool(existing_within_time) != bool(candidate.is_completed_within_time)
     ):
         warnings.append(
@@ -625,8 +678,10 @@ class MongoRepository:
                     "mythic_level": 1,
                     "completed_at": 1,
                     "clear_time_ms": 1,
+                    "par_time_ms": 1,
                     "score": 1,
-                    "score_source": 1,
+                    "run_metrics_source": 1,
+                    "num_keystone_upgrades": 1,
                     "is_completed_within_time": 1,
                     "sources": 1,
                 },
@@ -668,23 +723,24 @@ class MongoRepository:
             "dungeon": candidate.dungeon,
             "mythic_level": candidate.mythic_level,
             "completed_at": candidate.completed_at,
-            "clear_time_ms": candidate.clear_time_ms,
-            "is_completed_within_time": candidate.is_completed_within_time,
             "last_seen_at": synced_at,
         }
-        if _should_update_run_score(
-            existing_run=existing,
-            incoming_source=candidate.source,
-            incoming_score=candidate.score,
-        ):
-            update_doc["score"] = candidate.score
-            update_doc["score_source"] = candidate.source
+        update_doc.update(
+            _build_key_run_metric_updates(
+                existing_run=existing,
+                incoming_source=candidate.source,
+                metric_values={
+                    "score": candidate.score,
+                    "clear_time_ms": candidate.clear_time_ms,
+                    "num_keystone_upgrades": candidate.num_keystone_upgrades,
+                    "is_completed_within_time": candidate.is_completed_within_time,
+                },
+            )
+        )
         if participants:
             update_doc["participants"] = participants
         if short_name is not None:
             update_doc["short_name"] = short_name
-        if candidate.num_keystone_upgrades is not None:
-            update_doc["num_keystone_upgrades"] = candidate.num_keystone_upgrades
         if candidate.dungeon_id is not None:
             update_doc["dungeon_id"] = candidate.dungeon_id
             update_doc["map_challenge_mode_id"] = candidate.dungeon_id
@@ -754,8 +810,10 @@ class MongoRepository:
                     "mythic_level": 1,
                     "completed_at": 1,
                     "clear_time_ms": 1,
+                    "par_time_ms": 1,
                     "score": 1,
-                    "score_source": 1,
+                    "run_metrics_source": 1,
+                    "num_keystone_upgrades": 1,
                     "is_completed_within_time": 1,
                     "sources": 1,
                 },
@@ -770,65 +828,6 @@ class MongoRepository:
                 f"completed_at={completed_at.isoformat()}, clear_time_ms={clear_time_ms}"
             )
         return matches[0]
-
-    def upsert_run_stub(
-        self,
-        run: dict[str, Any],
-        *,
-        player_key: str,
-        season: str,
-        synced_at: datetime,
-    ) -> None:
-        """Store a run stub discovered from a character profile."""
-
-        run_id = int(run["keystone_run_id"])
-        completed_at = _safe_isoformat(run.get("completed_at"))
-        clear_time_ms = run.get("clear_time_ms")
-        dungeon_id = run.get("map_challenge_mode_id") or run.get("zone_id")
-        mythic_level = run.get("mythic_level")
-        if completed_at is None or clear_time_ms is None or dungeon_id is None or mythic_level is None:
-            raise ValueError(
-                f"Raider.IO run stub {run_id} missing required UID fields: "
-                f"map_challenge_mode_id/zone_id={dungeon_id}, mythic_level={mythic_level}, "
-                f"completed_at={completed_at}, clear_time_ms={clear_time_ms}"
-            )
-        stub = {
-            "keystone_run_id": run_id,
-            "season": season,
-            "dungeon": run.get("dungeon", ""),
-            "short_name": run.get("short_name", ""),
-            "mythic_level": run.get("mythic_level"),
-            "completed_at": completed_at,
-            "clear_time_ms": clear_time_ms,
-            "par_time_ms": run.get("par_time_ms"),
-            "num_keystone_upgrades": run.get("num_keystone_upgrades"),
-            "map_challenge_mode_id": run.get("map_challenge_mode_id"),
-            "zone_id": run.get("zone_id"),
-            "zone_expansion_id": run.get("zone_expansion_id"),
-            "icon_url": run.get("icon_url"),
-            "background_image_url": run.get("background_image_url"),
-            "score": run.get("score"),
-            "url": run.get("url"),
-            "affixes": run.get("affixes", []),
-            "spec": run.get("spec"),
-            "role": run.get("role"),
-            "detail_loaded": False,
-            "last_seen_at": synced_at,
-        }
-        if stub["score"] is not None:
-            stub["score_source"] = "raiderio"
-        self.runs.update_one(
-            {"keystone_run_id": run_id},
-            {
-                "$set": stub,
-                "$addToSet": {
-                    "discovered_from_player_keys": player_key,
-                    "sources": "raiderio",
-                },
-                "$setOnInsert": {"created_at": synced_at, "participants": []},
-            },
-            upsert=True,
-        )
 
     def update_run_details(
         self,
@@ -883,7 +882,16 @@ class MongoRepository:
 
         existing = self.runs.find_one(
             {"keystone_run_id": run_id},
-            {"_id": 1, "score": 1, "score_source": 1, "sources": 1},
+            {
+                "_id": 1,
+                "score": 1,
+                "clear_time_ms": 1,
+                "par_time_ms": 1,
+                "num_keystone_upgrades": 1,
+                "is_completed_within_time": 1,
+                "run_metrics_source": 1,
+                "sources": 1,
+            },
         )
         update_doc = {
             "keystone_run_id": run_id,
@@ -891,9 +899,6 @@ class MongoRepository:
             "dungeon": dungeon.get("name", ""),
             "short_name": dungeon.get("short_name", ""),
             "mythic_level": mythic_level,
-            "clear_time_ms": clear_time_ms,
-            "par_time_ms": payload.get("keystone_time_ms"),
-            "num_keystone_upgrades": payload.get("num_chests"),
             "map_challenge_mode_id": dungeon.get("map_challenge_mode_id") or dungeon_id,
             "zone_id": dungeon.get("id"),
             "zone_expansion_id": dungeon.get("expansion_id"),
@@ -904,13 +909,19 @@ class MongoRepository:
             "last_seen_at": synced_at,
             "completed_at": completed_at,
         }
-        if _should_update_run_score(
-            existing_run=existing,
-            incoming_source="raiderio",
-            incoming_score=payload.get("score"),
-        ):
-            update_doc["score"] = payload.get("score")
-            update_doc["score_source"] = "raiderio"
+        update_doc.update(
+            _build_key_run_metric_updates(
+                existing_run=existing,
+                incoming_source="raiderio",
+                metric_values={
+                    "score": payload.get("score"),
+                    "clear_time_ms": clear_time_ms,
+                    "par_time_ms": payload.get("keystone_time_ms"),
+                    "num_keystone_upgrades": payload.get("num_chests"),
+                    "is_completed_within_time": payload.get("is_completed_within_time"),
+                },
+            )
+        )
 
         self.runs.update_one(
             {"keystone_run_id": run_id},
