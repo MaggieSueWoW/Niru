@@ -2050,7 +2050,7 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 2)
         self.assertEqual(blizzard.dungeon_detail_calls, 1)
 
-    def test_blizzard_matched_raiderio_run_skips_upgrade_inference(self) -> None:
+    def test_blizzard_matched_raiderio_run_infers_and_replaces_upgrade_count(self) -> None:
         settings = make_settings()
         settings.blizzard.enabled = True
         repo = FakeRepo()
@@ -2145,7 +2145,58 @@ class SyncServiceTests(unittest.TestCase):
             sync_kind="base",
         )
 
-        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 1)
+        self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 2)
+        self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
+        self.assertEqual(blizzard.dungeon_detail_calls, 1)
+
+    def test_blizzard_matched_blizzard_owned_run_reuses_upgrade_count(self) -> None:
+        settings = make_settings()
+        settings.blizzard.enabled = True
+        repo = FakeRepo()
+        repo.runs = [
+            {
+                "keystone_run_id": 123,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.1,
+                "run_metrics_source": "blizzard",
+                "mythic_level": 12,
+                "num_keystone_upgrades": 2,
+                "completed_at": datetime(2026, 3, 25, 12, 0, 0, tzinfo=UTC),
+                "clear_time_ms": 1400000,
+                "dungeon_id": 101,
+                "map_challenge_mode_id": 101,
+                "season": "season-mn-1",
+            }
+        ]
+        blizzard = FakeBlizzard()
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+            blizzard_client=blizzard,
+        )
+
+        enriched = service._enrich_blizzard_candidate_num_keystone_upgrades(
+            NormalizedRunCandidate(
+                source="blizzard",
+                keystone_run_id=None,
+                completed_at=datetime(2026, 3, 25, 12, 0, 0, tzinfo=UTC),
+                clear_time_ms=1400000,
+                dungeon_id=101,
+                dungeon="Darkflame Cleft",
+                short_name="DFC",
+                mythic_level=12,
+                num_keystone_upgrades=None,
+                score=200.1,
+                is_completed_within_time=True,
+                participants=[],
+                raw_payload={},
+            )
+        )
+
+        self.assertEqual(enriched.num_keystone_upgrades, 2)
         self.assertEqual(blizzard.dungeon_detail_calls, 0)
 
     def test_surprising_run_differences_include_large_score_and_name_changes(self) -> None:

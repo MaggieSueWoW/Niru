@@ -1109,10 +1109,11 @@ class SyncService:
             fuzz_seconds=self._settings.blizzard.run_fingerprint_fuzz_seconds,
         )
         if existing is not None:
-            if existing.get("keystone_run_id") is not None:
-                return candidate
             existing_upgrades = existing.get("num_keystone_upgrades")
-            if existing_upgrades is not None:
+            existing_metrics_source = str(
+                existing.get("run_metrics_source") or ""
+            ).strip().lower()
+            if existing_upgrades is not None and existing_metrics_source == "blizzard":
                 return replace(candidate, num_keystone_upgrades=int(existing_upgrades))
 
         try:
