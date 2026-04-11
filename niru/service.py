@@ -44,6 +44,8 @@ from niru.storage import MongoRepository
 
 LOGGER = logging.getLogger(__name__)
 PACIFIC_DAY_START_HOUR = 0
+TEAM_ACTIVITY_TIMEZONE = "America/Los_Angeles"
+TEAM_ACTIVITY_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 PLAYER_COLUMNS = [
     "region",
@@ -234,6 +236,22 @@ def _pacific_day_bounds(now: datetime) -> tuple[datetime, datetime]:
     return day_start_pacific.astimezone(UTC), pacific_now.astimezone(UTC)
 
 
+def _pacific_slot_components(value: datetime) -> tuple[int, int]:
+    pacific_value = ensure_utc(value).astimezone(PACIFIC_TZ)
+    day_index = (pacific_value.weekday() + 1) % 7
+    return day_index, pacific_value.hour
+
+
+def _ordered_pacific_hours(*, start_hour: int) -> list[int]:
+    return [((start_hour + offset) % 24) for offset in range(24)]
+
+
+def _format_hour_label(hour: int) -> str:
+    display_hour = hour % 12 or 12
+    meridiem = "AM" if hour < 12 else "PM"
+    return f"{display_hour} {meridiem}"
+
+
 def _unique_runs_by_id(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     unique_runs: dict[str, dict[str, Any]] = {}
     for run in runs:
@@ -242,6 +260,99 @@ def _unique_runs_by_id(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             continue
         unique_runs[key] = run
     return unique_runs
+
+
+def _team_activity_hour_window(
+    *,
+    now: datetime,
+    window_weeks: int,
+) -> tuple[datetime, datetime]:
+    window_end = pacific_hour_start(now)
+    window_start = window_end - timedelta(weeks=window_weeks)
+    return window_start, window_end
+
+
+def _team_activity_occurrence_counts(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[tuple[int, int], int]:
+    counts = {(day_index, hour): 0 for day_index in range(7) for hour in range(24)}
+    current = ensure_utc(window_start)
+    cutoff = ensure_utc(window_end)
+    while current < cutoff:
+        slot_key = _pacific_slot_components(current)
+        counts[slot_key] += 1
+        current += timedelta(hours=1)
+    return counts
+
+
+def build_team_activity_table(
+    *,
+    players: list[dict[str, Any]],
+    runs: list[dict[str, Any]],
+    now: datetime,
+    window_weeks: int,
+    start_hour: int,
+) -> tuple[list[str], list[list[object]], list[tuple[object, object]]]:
+    """Build a team activity heatmap table and metadata."""
+
+    window_start, window_end = _team_activity_hour_window(now=now, window_weeks=window_weeks)
+    active_player_keys = {
+        str(player.get("player_key", ""))
+        for player in players
+        if player.get("is_active", True) and player.get("player_key")
+    }
+    hourly_player_sets: dict[datetime, set[str]] = defaultdict(set)
+    for run in _unique_runs_by_id(runs).values():
+        completed_at = _safe_datetime(run.get("completed_at"))
+        if completed_at is None or not (window_start <= completed_at < window_end):
+            continue
+        rostered_player_keys = {
+            str(player_key)
+            for player_key in run.get("discovered_from_player_keys", []) or []
+            if isinstance(player_key, str) and player_key
+        }
+        for participant in run.get("participants", []) or []:
+            player_key = participant.get("player_key")
+            if isinstance(player_key, str) and player_key:
+                rostered_player_keys.add(player_key)
+        rostered_player_keys &= active_player_keys
+        if not rostered_player_keys:
+            continue
+        hourly_player_sets[pacific_hour_start(completed_at)].update(rostered_player_keys)
+
+    occurrence_counts = _team_activity_occurrence_counts(
+        window_start=window_start,
+        window_end=window_end,
+    )
+    slot_totals = {(day_index, hour): 0 for day_index in range(7) for hour in range(24)}
+    for hour_start, player_keys in hourly_player_sets.items():
+        slot_key = _pacific_slot_components(hour_start)
+        slot_totals[slot_key] += len(player_keys)
+
+    header = ["hour_pacific", *TEAM_ACTIVITY_DAY_NAMES]
+    ordered_hours = _ordered_pacific_hours(start_hour=start_hour)
+    rows: list[list[object]] = []
+    for hour in ordered_hours:
+        row: list[object] = [_format_hour_label(hour)]
+        for day_index in range(7):
+            denominator = occurrence_counts[(day_index, hour)]
+            if denominator <= 0:
+                row.append(0.0)
+                continue
+            row.append(round(slot_totals[(day_index, hour)] / denominator, 2))
+        rows.append(row)
+
+    metadata_rows = [
+        ("team_activity_timezone", TEAM_ACTIVITY_TIMEZONE),
+        ("team_activity_window_weeks", window_weeks),
+        ("team_activity_window_start_pacific", to_pacific_datetime(window_start)),
+        ("team_activity_window_end_pacific", to_pacific_datetime(window_end)),
+        ("team_activity_count_rule", "unique rostered players per hour"),
+        ("team_activity_coverage", "best_effort"),
+    ]
+    return header, rows, metadata_rows
 
 
 def _build_total_score(profile_payload: dict[str, Any], *, season: str | None) -> float | None:
@@ -849,6 +960,24 @@ class SyncService:
                 [row.to_sheet_row() for row in summary_rows],
                 metadata_rows=metadata_rows,
             )
+            if self._settings.team_activity.enabled:
+                (
+                    team_activity_header,
+                    team_activity_rows,
+                    team_activity_metadata_rows,
+                ) = build_team_activity_table(
+                    players=refreshed_players,
+                    runs=runs,
+                    now=started_at,
+                    window_weeks=self._settings.team_activity.window_weeks,
+                    start_hour=self._settings.team_activity.start_hour,
+                )
+                self._sheets_client.write_table(
+                    start_cell=self._settings.google.team_activity_output_start_cell,
+                    header=team_activity_header,
+                    rows=team_activity_rows,
+                    metadata_rows=team_activity_metadata_rows,
+                )
         except Exception:
             LOGGER.exception("Sync cycle failed")
             stats.partial = True

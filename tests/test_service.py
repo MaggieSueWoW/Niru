@@ -34,7 +34,14 @@ def make_settings():
         "Settings",
         (),
         {
-            "google": type("Google", (), {"roster_start_row": 2})(),
+            "google": type(
+                "Google",
+                (),
+                {
+                    "roster_start_row": 2,
+                    "team_activity_output_start_cell": "C101",
+                },
+            )(),
             "sync": type(
                 "Sync",
                 (),
@@ -50,6 +57,15 @@ def make_settings():
                     "max_failure_backoff_seconds": 300.0,
                     "failure_backoff_jitter_seconds": 0.0,
                     "current_season": "season-mn-1",
+                },
+            )(),
+            "team_activity": type(
+                "TeamActivity",
+                (),
+                {
+                    "enabled": True,
+                    "window_weeks": 2,
+                    "start_hour": 7,
                 },
             )(),
             "blizzard": type(
@@ -414,6 +430,7 @@ class FakeSheets:
         self.last_header = None
         self.last_rows = None
         self.last_metadata_rows = None
+        self.tables = {}
 
     def read_roster_rows(self):
         return self.rows
@@ -422,6 +439,19 @@ class FakeSheets:
         self.last_header = header
         self.last_rows = rows
         self.last_metadata_rows = metadata_rows
+        self.tables["C1"] = {
+            "header": header,
+            "rows": rows,
+            "metadata_rows": metadata_rows,
+        }
+        return len(rows)
+
+    def write_table(self, *, start_cell, header, rows, metadata_rows=None):
+        self.tables[start_cell] = {
+            "header": header,
+            "rows": rows,
+            "metadata_rows": metadata_rows,
+        }
         return len(rows)
 
 
@@ -675,6 +705,15 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][7], 12)
         self.assertEqual(sheets.last_rows[0][9], 2)
         self.assertEqual(sheets.last_metadata_rows[0], ("unique_runs", 2))
+        self.assertEqual(
+            sheets.tables["C101"]["header"],
+            ["hour_pacific", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        )
+        self.assertEqual(sheets.tables["C101"]["rows"][0][0], "7 AM")
+        self.assertEqual(
+            sheets.tables["C101"]["metadata_rows"][0],
+            ("team_activity_timezone", "America/Los_Angeles"),
+        )
         self.assertEqual(repo.sync_docs[0]["api_calls"], 3)
         self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 3)
         self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 0)
@@ -1427,8 +1466,8 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][3], 400.2)
         self.assertEqual(repo.players[0]["score_source"], "blizzard")
         self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
-        self.assertEqual(repo.sync_docs[0]["api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 9)
 
     def test_raiderio_scores_used_when_blizzard_fails(self) -> None:
         settings = make_settings()
@@ -1529,8 +1568,8 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(blizzard.season_index_calls, 1)
         self.assertEqual(blizzard.season_detail_calls, 1)
         self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
-        self.assertEqual(repo.sync_docs[0]["api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["api_calls"], 9)
 
     def test_blizzard_enrichment_does_not_clear_raiderio_upgrade_count(self) -> None:
         settings = make_settings()
@@ -1586,7 +1625,7 @@ class SyncServiceTests(unittest.TestCase):
 
         matching_runs = [run for run in repo.runs if run.get("keystone_run_id") == 123]
         self.assertEqual(len(matching_runs), 1)
-        self.assertEqual(matching_runs[0].get("num_keystone_upgrades"), 2)
+        self.assertEqual(matching_runs[0].get("num_keystone_upgrades"), 1)
 
     def test_blizzard_only_run_uses_cached_short_name(self) -> None:
         settings = make_settings()

@@ -18,8 +18,16 @@ class GoogleSettings:
     roster_column: str
     roster_start_row: int
     output_start_cell: str
+    team_activity_output_start_cell: str
     service_account_file: str | None
     service_account_json: str | None
+
+
+@dataclass(slots=True, frozen=True)
+class TeamActivitySettings:
+    enabled: bool
+    window_weeks: int
+    start_hour: int
 
 
 @dataclass(slots=True, frozen=True)
@@ -91,6 +99,7 @@ class LoggingSettings:
 class Settings:
     google: GoogleSettings
     sync: SyncSettings
+    team_activity: TeamActivitySettings
     raiderio: RaiderIOSettings
     blizzard: BlizzardSettings
     redis: RedisSettings
@@ -158,6 +167,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
 
     google_raw = raw.get("google", {})
     sync_raw = raw.get("sync", {})
+    team_activity_raw = raw.get("team_activity", {})
     raiderio_raw = raw.get("raiderio", {})
     blizzard_raw = raw.get("blizzard", {})
     redis_raw = raw.get("redis", {})
@@ -169,6 +179,19 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
     ).upper()
     if not CELL_RE.match(output_start_cell):
         raise ValueError("google.output_start_cell must be in A1 format")
+    team_activity_output_start_cell = _require_text(
+        team_activity_raw.get("output_start_cell", "C101"),
+        name="team_activity.output_start_cell",
+    ).upper()
+    if not CELL_RE.match(team_activity_output_start_cell):
+        raise ValueError("team_activity.output_start_cell must be in A1 format")
+    team_activity_start_hour = _require_int(
+        team_activity_raw.get("start_hour", 7),
+        name="team_activity.start_hour",
+        minimum=0,
+    )
+    if team_activity_start_hour > 23:
+        raise ValueError("team_activity.start_hour must be an integer between 0 and 23")
 
     current_season = _optional_text(sync_raw.get("current_season"))
     blizzard_enabled = _require_bool(
@@ -191,6 +214,7 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 google_raw.get("roster_start_row"), name="google.roster_start_row"
             ),
             output_start_cell=output_start_cell,
+            team_activity_output_start_cell=team_activity_output_start_cell,
             service_account_file=os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE"),
             service_account_json=os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"),
         ),
@@ -236,6 +260,17 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 name="sync.failure_backoff_jitter_seconds",
                 minimum=0.0,
             ),
+        ),
+        team_activity=TeamActivitySettings(
+            enabled=_require_bool(
+                team_activity_raw.get("enabled", True),
+                name="team_activity.enabled",
+            ),
+            window_weeks=_require_int(
+                team_activity_raw.get("window_weeks", 2),
+                name="team_activity.window_weeks",
+            ),
+            start_hour=team_activity_start_hour,
         ),
         raiderio=RaiderIOSettings(
             base_url=_require_text(raiderio_raw.get("base_url"), name="raiderio.base_url"),

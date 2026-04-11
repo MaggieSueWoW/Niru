@@ -15,6 +15,12 @@ google:
   roster_start_row: 2
   output_start_cell: "C1"
 
+team_activity:
+  enabled: true
+  window_weeks: 2
+  start_hour: 7
+  output_start_cell: "C101"
+
 sync:
   interval_minutes: 15
   active_interval_minutes: 5
@@ -93,6 +99,10 @@ logging:
         self.assertEqual(settings.blizzard.run_fingerprint_fuzz_seconds, 2)
         self.assertEqual(settings.blizzard.requests_per_hour_cap, 36000)
         self.assertEqual(settings.blizzard.requests_per_second_cap, 100)
+        self.assertTrue(settings.team_activity.enabled)
+        self.assertEqual(settings.team_activity.window_weeks, 2)
+        self.assertEqual(settings.team_activity.start_hour, 7)
+        self.assertEqual(settings.google.team_activity_output_start_cell, "C101")
 
     def test_load_settings_allows_missing_current_season_when_blizzard_enabled(self) -> None:
         config_text = """
@@ -101,6 +111,12 @@ google:
   roster_column: "A"
   roster_start_row: 2
   output_start_cell: "C1"
+
+team_activity:
+  enabled: true
+  window_weeks: 2
+  start_hour: 7
+  output_start_cell: "C101"
 
 sync:
   interval_minutes: 15

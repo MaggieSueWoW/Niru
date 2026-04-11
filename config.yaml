@@ -4,6 +4,12 @@ google:
   roster_start_row: 2
   output_start_cell: "C1"
 
+team_activity:
+  enabled: true
+  window_weeks: 2
+  start_hour: 7
+  output_start_cell: "C101"
+
 sync:
   interval_minutes: 15
   active_interval_minutes: 5

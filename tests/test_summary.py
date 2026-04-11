@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 import unittest
 
 from niru.service import (
+    build_team_activity_table,
     build_summary_header,
     build_summary_metadata_rows,
     build_summary_rows,
@@ -511,3 +512,74 @@ class SummaryBuilderTests(unittest.TestCase):
                 ("raiderio_lag_today_run_count", 0),
             ],
         )
+
+    def test_build_team_activity_table_dedupes_players_within_hour_and_uses_union_sources(self) -> None:
+        players = [
+            {"player_key": "us/proudmoore/alpha", "is_active": True},
+            {"player_key": "us/proudmoore/bravo", "is_active": True},
+            {"player_key": "us/proudmoore/charlie", "is_active": True},
+            {"player_key": "us/proudmoore/delta", "is_active": True},
+            {"player_key": "us/proudmoore/echo", "is_active": True},
+        ]
+        runs = [
+            {
+                "keystone_run_id": 1001,
+                "completed_at": datetime(2026, 4, 6, 2, 15, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/proudmoore/alpha"],
+                "participants": [
+                    {"player_key": "us/proudmoore/bravo"},
+                    {"player_key": "us/proudmoore/charlie"},
+                    {"player_key": "us/proudmoore/delta"},
+                    {"player_key": "us/proudmoore/echo"},
+                    {"player_key": "us/proudmoore/outsider"},
+                ],
+            },
+            {
+                "keystone_run_id": 1002,
+                "completed_at": datetime(2026, 4, 6, 2, 45, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/proudmoore/alpha"],
+                "participants": [{"player_key": "us/proudmoore/outsider"}],
+            },
+        ]
+
+        header, rows, metadata_rows = build_team_activity_table(
+            players=players,
+            runs=runs,
+            now=datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
+            window_weeks=2,
+            start_hour=7,
+        )
+
+        self.assertEqual(header, ["hour_pacific", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
+        self.assertEqual(rows[12], ["7 PM", 2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        self.assertEqual(metadata_rows[0], ("team_activity_timezone", "America/Los_Angeles"))
+        self.assertEqual(metadata_rows[1], ("team_activity_window_weeks", 2))
+
+    def test_build_team_activity_table_dedupes_duplicate_runs_and_wraps_hours(self) -> None:
+        players = [{"player_key": "us/proudmoore/alpha", "is_active": True}]
+        runs = [
+            {
+                "keystone_run_id": 2001,
+                "completed_at": datetime(2026, 4, 6, 21, 15, tzinfo=UTC),
+                "discovered_from_player_keys": ["us/proudmoore/alpha"],
+                "participants": [],
+            },
+            {
+                "keystone_run_id": 2001,
+                "completed_at": datetime(2026, 4, 6, 21, 15, tzinfo=UTC),
+                "discovered_from_player_keys": [],
+                "participants": [{"player_key": "us/proudmoore/alpha"}],
+            },
+        ]
+
+        _, rows, _ = build_team_activity_table(
+            players=players,
+            runs=runs,
+            now=datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
+            window_weeks=2,
+            start_hour=7,
+        )
+
+        self.assertEqual(rows[0][0], "7 AM")
+        self.assertEqual(rows[-1][0], "6 AM")
+        self.assertEqual(rows[7], ["2 PM", 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0])

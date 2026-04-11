@@ -39,7 +39,23 @@ class GoogleSheetsClient:
     ) -> int:
         """Update only changed output cells in the configured tab."""
 
-        start_cell = self._settings.output_start_cell
+        return self.write_table(
+            start_cell=self._settings.output_start_cell,
+            header=header,
+            rows=rows,
+            metadata_rows=metadata_rows,
+        )
+
+    def write_table(
+        self,
+        *,
+        start_cell: str,
+        header: list[str],
+        rows: list[list[object]],
+        metadata_rows: list[tuple[object, object]] | None = None,
+    ) -> int:
+        """Update only changed cells for one output block."""
+
         tab_name = self._settings.raw_tab_name
         start_column = "".join(ch for ch in start_cell if ch.isalpha())
         timestamp_column = _find_timestamp_column(header=header, start_column=start_column)
