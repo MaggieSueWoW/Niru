@@ -40,6 +40,15 @@ def build_invalid_key(row_number: int, raw_value: str) -> str:
     return f"invalid/{row_number}/{digest}"
 
 
+def parse_player_key(raw_value: str) -> str:
+    """Parse and normalize a canonical player key from a roster-style value."""
+
+    entry = parse_roster_value(0, raw_value)
+    if not entry.is_valid or entry.identity is None:
+        raise ValueError(entry.status_message or "Invalid player key.")
+    return entry.identity.player_key
+
+
 def parse_roster_value(row_number: int, raw_value: str) -> RosterEntry:
     """Parse one raw roster value into a structured entry."""
 

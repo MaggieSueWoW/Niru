@@ -722,7 +722,7 @@ class SyncService:
                 if self._wait_for_stop(remaining):
                     break
 
-    def run_cycle(self, *, force_sync_all: bool = False) -> None:
+    def run_cycle(self, *, force_sync_all: bool = False, player_key: str | None = None) -> None:
         """Run one full sync cycle."""
 
         started_at = utc_now()
@@ -747,9 +747,13 @@ class SyncService:
             active_players = self._repository.list_active_players(
                 limit=self._settings.sync.max_players_per_cycle
             )
-            self._expire_hot_windows(active_players=active_players, now=started_at)
-            self._queue_predictive_hot_players(
+            scoped_active_players = self._scope_active_players(
                 active_players=active_players,
+                player_key=player_key,
+            )
+            self._expire_hot_windows(active_players=scoped_active_players, now=started_at)
+            self._queue_predictive_hot_players(
+                active_players=scoped_active_players,
                 now=started_at,
                 stats=stats,
             )
@@ -764,7 +768,7 @@ class SyncService:
             else:
                 if force_sync_all:
                     players_to_sync = [
-                        player for player in active_players if player.get("is_valid")
+                        player for player in scoped_active_players if player.get("is_valid")
                     ]
                     base_due_keys = {player["player_key"] for player in players_to_sync}
                     hot_due_keys: set[str] = set()
@@ -875,8 +879,29 @@ class SyncService:
                     "new_runs": stats.new_runs,
                     "sheet_rows_written": stats.sheet_rows_written,
                     "partial": stats.partial,
+                    "player_key": player_key,
                 },
             )
+
+    def _scope_active_players(
+        self,
+        *,
+        active_players: list[dict[str, Any]],
+        player_key: str | None,
+    ) -> list[dict[str, Any]]:
+        """Restrict cycle work to one active roster player when requested."""
+
+        if player_key is None:
+            return active_players
+
+        for player in active_players:
+            if player["player_key"] != player_key:
+                continue
+            if not player.get("is_valid", False):
+                message = str(player.get("status_message") or "Roster entry is invalid.")
+                raise ValueError(f"Requested player {player_key} is invalid: {message}")
+            return [player]
+        raise ValueError(f"Requested player {player_key} was not found in the active roster.")
 
     def _sync_player(
         self,

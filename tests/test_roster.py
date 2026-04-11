@@ -1,7 +1,7 @@
 import unittest
 
 from niru.models import PlayerDataStatus
-from niru.roster import parse_roster_rows
+from niru.roster import parse_player_key, parse_roster_rows
 
 
 class RosterParsingTests(unittest.TestCase):
@@ -29,3 +29,9 @@ class RosterParsingTests(unittest.TestCase):
         self.assertFalse(rows[1].is_valid)
         self.assertEqual(rows[1].status, PlayerDataStatus.INVALID_PLAYER)
         self.assertIn("Duplicate", rows[1].status_message)
+
+    def test_parse_player_key_normalizes_roster_style_value(self) -> None:
+        self.assertEqual(
+            parse_player_key("US/Proudmoore/Quinnfreeze"),
+            "us/proudmoore/quinnfreeze",
+        )

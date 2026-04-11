@@ -1177,6 +1177,29 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(repo.sync_docs[0]["base_due_players_synced"], 2)
 
+    def test_run_cycle_force_sync_all_can_target_single_player(self) -> None:
+        settings = make_settings()
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/area-52/Readyone", "us/area-52/Readytwo"])
+        raiderio = FakeRaiderIO()
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=raiderio,
+        )
+
+        service.run_cycle(force_sync_all=True, player_key="us/area-52/readytwo")
+
+        self.assertEqual(repo.sync_docs[0]["base_due_players_synced"], 1)
+        self.assertEqual(raiderio.api_calls, 3)
+        synced_players = [
+            player["player_key"]
+            for player in repo.players
+            if player.get("last_successful_sync_at") is not None
+        ]
+        self.assertEqual(synced_players, ["us/area-52/readytwo"])
+
     def test_predictive_hot_queue_enqueues_player_for_current_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
         profile = build_play_profile(completed_at_values=[now], now=now)
