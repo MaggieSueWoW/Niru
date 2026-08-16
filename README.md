@@ -1,50 +1,122 @@
 # Niru
 
-`Niru` is a small Python service that watches season-specific Google Sheet rosters, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites the active season's summary table on a bucketed base cadence with optional bucketed hot-player polling.
+Niru is a season-aware World of Warcraft Mythic+ roster service. It reads a roster
+from Google Sheets, combines official Blizzard profile data with
+[Raider.IO](https://raider.io) data, stores player and run state in MongoDB, and
+publishes current-season summaries back to the roster's sheet tab.
+
+Each configured season has its own roster and output tab. Niru resolves the active
+season from a UTC activation schedule, switches tabs at the configured cutoff without
+a redeploy, and stops writing to prior-season tabs. A future tab can be populated in
+advance with its roster, headers, and zero-state values.
 
 The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Datagear), the mechagnome tinkerer from Rustbolt.
 
-This bot is intentionally conservative:
+## How Niru Works
 
-- It uses Raider.IO's public API only.
-- It stores every run it can positively identify by `keystone_run_id`.
-- It does not scrape.
+1. Resolve the active season and its Google Sheets tab from `google.season_tabs`.
+2. Read that tab's roster from column `A`, beginning at `A2`.
+3. Fetch player profiles from Blizzard and Raider.IO using the configured season
+   identifiers for players whose base or hot polling window is due.
+4. Merge summary scores field by field, normalize newly discovered runs, and persist
+   the results in MongoDB.
+5. Rebuild the active-season player summary from MongoDB and incrementally update the
+   output beginning at `C1` without touching the roster column.
+6. Publish the configured-window team-activity heatmap beginning at `C101` when
+   enabled.
 
-## What It Does
+Niru runs continuously by default. Ordinary roster players use the configured base
+cadence. Players who recently completed runs, or whose stored play profile predicts
+activity, can be polled on the faster hot cadence. Redis preserves Raider.IO request
+windows and cooldown state across restarts.
 
-- Selects the active season and Google Sheets tab from a config schedule
-- Reads that season's roster from column `A`, starting at `A2`
-- Expects roster cells in `region/realm/name` format, for example `us/area-52/Mythics`
-- Syncs current-season Raider.IO Mythic+ profile data for each valid player
-- Uses bucketed base polling plus predictive hot polling to decide which players to refresh from Raider.IO
-- Stores player state, normalized runs, and sync cycle metadata in MongoDB
-- Caches current-season dungeon metadata, including Raider.IO short names, in MongoDB
-- Persists Raider.IO cooldown and rolling rate-limit state in Redis so restarts do not reset protections
-- Rewrites a summary table starting at `C1` on the active season tab
-- Prepares headers on configured future-season tabs without writing player rows
+## Data-Source Rules
 
-## Output Columns
+Niru uses both sources deliberately; it does not treat either payload as a wholesale
+replacement for the other.
 
-The summary table now contains one row per player.
+- Blizzard supplies the preferred total Mythic+ rating when it is present.
+- An explicit Blizzard per-dungeon `map_rating` is preferred for that dungeon.
+- Raider.IO fills only per-dungeon scores that Blizzard omitted.
+- Conflicting values are never averaged or added across sources.
+- Both sources are filtered to the configured active-season dungeon catalog before
+  their scores or runs are accepted.
+- Mixed score provenance is recorded as `blizzard+raiderio` in MongoDB.
+- Run observations from the two sources are normalized and matched separately from
+  the player-score merge. Raider.IO `keystone_run_id` values remain the stable run
+  identifiers when available.
 
-Fixed player columns:
+The service uses Blizzard's configured numeric season ID and Raider.IO's configured
+season slug rather than asking either provider for an implicit “current” season. A run
+must also be completed on or after the configured season activation and belong to the
+season's dungeon catalog. These checks prevent stale transition-day responses from
+being stored under the new season.
+
+Niru is intentionally conservative: it uses supported Blizzard and Raider.IO APIs,
+does not scrape, limits and retries upstream requests, and publishes cached MongoDB
+state when Raider.IO is in cooldown.
+
+## Google Sheets Output
+
+Each season tab combines input and output:
+
+- Column `A`, starting at `A2`: roster input in `region/realm/name` format.
+- `C1` onward: one summary row per rostered player.
+- `C101` onward: team-activity heatmap when `team_activity.enabled` is true.
+- Columns `A` and `B` are never rewritten by Niru.
+
+The summary's fixed player columns are:
 
 - `region`
 - `realm`
 - `name`
 - `current_total_mythic_plus_rating`
 - `last_successful_sync_time_pacific`
+- `weekly_10_plus_run_count`
 
-For each current-season dungeon, the bot adds four columns using the Raider.IO dungeon short name:
+For each current-season dungeon, Niru adds four columns using the configured Raider.IO
+short name:
 
 - `{short_name}_current_score`
 - `{short_name}_best_key_level`
 - `{short_name}_best_upgrade_level`
 - `{short_name}_total_runs`
 
-## Important Limitation
+Valid players with no current-season rating or run data are published with numeric
+zeroes. Missing upstream data caused by an actual sync failure remains blank so that a
+failure is not disguised as a real zero.
 
-Raider.IO's public character endpoints expose recent runs plus season scoring views such as best and alternate runs. That is enough to discover many runs and keep current summaries fresh, but Raider.IO does not guarantee complete historical coverage through these public endpoints alone.
+The weekly 10+ count uses the current reset window for each player's region and stored
+run completion times. It remains blank when Niru cannot determine that region's weekly
+window. The activity table reports the average number of unique rostered players seen
+per Pacific hour and weekday across `team_activity.window_weeks`.
+
+## Important Limitations
+
+Raider.IO's public character endpoints expose recent runs plus scoring-oriented best
+and alternate views. Blizzard character profiles provide another view of season and
+weekly runs. Together they discover many runs and keep summaries fresh, but neither
+source guarantees a complete historical ledger through these endpoints. Niru stores
+every run it can positively identify and treats `total_runs` and the activity heatmap
+as best-effort views of the runs it has observed.
+
+## Stored State
+
+MongoDB is the source of truth for published data:
+
+- `players` holds canonical identities, current score state, sync status, and polling
+  metadata.
+- `season_rosters` preserves membership and row order separately for each season.
+- `runs` stores normalized observations and source payloads, with Raider.IO run IDs
+  unique within a season rather than globally.
+- `season_dungeons` caches the dungeon catalog and output abbreviations for each
+  season.
+- `weekly_periods` caches region-specific reset windows used for weekly counts.
+- `sync_cycles` records operational counts, warnings, partial status, resolved season,
+  and destination tab.
+
+Redis contains only ephemeral Raider.IO throttling and cooldown state. It is not a
+business-data store and can be rebuilt.
 
 ## Configuration
 
@@ -63,6 +135,8 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SERVICE_ACCOUNT_FILE` or `GOOGLE_SERVICE_ACCOUNT_JSON`
 - `RAIDERIO_ACCESS_KEY` optional
+- `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET` when `blizzard.enabled` is
+  true
 
 ### `config.yaml`
 
@@ -72,6 +146,10 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `google.roster_column`
 - `google.roster_start_row`
 - `google.output_start_cell`
+- `team_activity.enabled`
+- `team_activity.window_weeks`
+- `team_activity.start_hour`
+- `team_activity.output_start_cell`
 - `sync.interval_minutes`
 - `sync.active_interval_minutes`
 - `sync.active_idle_minutes`
@@ -84,8 +162,16 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `raiderio.requests_per_minute_cap`
 - `raiderio.circuit_breaker_threshold`
 - `raiderio.circuit_breaker_cooldown_seconds`
+- `blizzard.enabled`
+- `blizzard.requests_per_hour_cap`
+- `blizzard.requests_per_second_cap`
+- `blizzard.run_fingerprint_fuzz_seconds`
 - `redis.key_prefix`
 - `mongodb.database`
+- `mongodb.players_collection`
+- `mongodb.runs_collection`
+- `mongodb.sync_cycles_collection`
+- `mongodb.season_rosters_collection`
 - `logging.level`
 
 ## Google Sheets Setup
@@ -132,19 +218,30 @@ python -m venv .venv
 pip install -e .
 ```
 
+For development and tests, install the optional development tools instead:
+
+```bash
+pip install -e '.[dev]'
+```
+
 Start the bot:
 
 ```bash
 python main.py
 ```
 
-The service now expects Redis to be reachable via `REDIS_URL` and uses it for restart-safe request throttling and Raider.IO cooldown state.
+The service expects MongoDB, Redis, Google credentials, and—when enabled—Blizzard API
+credentials to be available before startup.
 
 Run a single sync cycle:
 
 ```bash
 python main.py --mode once
 ```
+
+`--mode once` deliberately refreshes every valid roster player rather than applying
+the ordinary due-time selection. Use `--player region/realm/name` with it to limit the
+cycle to one active player.
 
 Prepare a configured season tab's roster-based zero-state output without running a
 player sync:
@@ -189,7 +286,9 @@ Or use the helper script:
 ./scripts/docker.sh loop
 ```
 
-`./scripts/docker.sh loop` now starts the container detached by default and uses Docker's `on-failure:5` restart policy. The app handles ordinary retry/backoff internally, and Docker only steps in if the process actually dies.
+`./scripts/docker.sh loop` starts the container detached by default and uses Docker's
+`on-failure:5` restart policy. The app handles ordinary retry/backoff internally, and
+Docker only steps in if the process actually dies.
 
 The helper script does three important things for local runs:
 
@@ -222,10 +321,13 @@ Notes:
 
 ## Testing
 
-The included unit tests cover roster parsing, summary generation, and incremental sync behavior:
+The unit suite covers roster parsing, season resolution and rollover, source-specific
+normalization and merging, run deduplication, summary generation, polling selection,
+and future-season preparation:
 
 ```bash
-PYTHONPATH=. python -m unittest discover -s tests
+python -m pytest -q
+ruff check .
 ```
 
 ## Logging
@@ -236,7 +338,10 @@ Logs are written to stdout and include:
 - new run discovery
 - bucketed base and hot polling outcomes
 - predictive hot-poll queueing
+- active season and destination sheet tab
 - invalid roster rows
+- Blizzard and Raider.IO API call counts
+- cross-source run differences
 - Raider.IO SSL and network failures
 - Raider.IO retries
 - Raider.IO cooldown activation and cached-data fallback
