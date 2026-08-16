@@ -16,12 +16,12 @@ class GoogleSheetsClient:
         self._settings = settings
         self._service = self._build_service()
 
-    def read_roster_rows(self) -> list[str]:
-        """Read the configured roster column from the raw_data tab."""
+    def read_roster_rows(self, *, tab_name: str) -> list[str]:
+        """Read the configured roster column from a season tab."""
 
         start = self._settings.roster_start_row
         column = self._settings.roster_column
-        range_name = f"{self._settings.raw_tab_name}!{column}{start}:{column}"
+        range_name = f"{tab_name}!{column}{start}:{column}"
         response = (
             self._service.spreadsheets()
             .values()
@@ -33,6 +33,8 @@ class GoogleSheetsClient:
 
     def write_output_rows(
         self,
+        *,
+        tab_name: str,
         header: list[str],
         rows: list[list[object]],
         metadata_rows: list[tuple[object, object]] | None = None,
@@ -40,6 +42,7 @@ class GoogleSheetsClient:
         """Update only changed output cells in the configured tab."""
 
         return self.write_table(
+            tab_name=tab_name,
             start_cell=self._settings.output_start_cell,
             header=header,
             rows=rows,
@@ -49,6 +52,7 @@ class GoogleSheetsClient:
     def write_table(
         self,
         *,
+        tab_name: str,
         start_cell: str,
         header: list[str],
         rows: list[list[object]],
@@ -56,14 +60,17 @@ class GoogleSheetsClient:
     ) -> int:
         """Update only changed cells for one output block."""
 
-        tab_name = self._settings.raw_tab_name
         start_column = "".join(ch for ch in start_cell if ch.isalpha())
-        timestamp_column = _find_timestamp_column(header=header, start_column=start_column)
+        timestamp_column = _find_timestamp_column(
+            header=header, start_column=start_column
+        )
         metadata = _build_metadata_rows(
             timestamp_column=timestamp_column,
             extra_metadata_rows=metadata_rows,
         )
-        target_values = _build_sheet_values(header=header, rows=rows, metadata_rows=metadata)
+        target_values = _build_sheet_values(
+            header=header, rows=rows, metadata_rows=metadata
+        )
         sheet_size = self._get_sheet_size(tab_name=tab_name)
         existing_values = self._read_output_values(
             tab_name=tab_name,
@@ -91,6 +98,65 @@ class GoogleSheetsClient:
                 .execute()
             )
         return len(rows)
+
+    def list_tab_names(self) -> set[str]:
+        """Return the titles of all tabs in the configured workbook."""
+
+        response = (
+            self._service.spreadsheets()
+            .get(
+                spreadsheetId=self._settings.sheet_id,
+                fields="sheets(properties(title))",
+            )
+            .execute()
+        )
+        return {
+            str((sheet.get("properties") or {}).get("title"))
+            for sheet in response.get("sheets", [])
+            if (sheet.get("properties") or {}).get("title")
+        }
+
+    def write_header(
+        self,
+        *,
+        tab_name: str,
+        start_cell: str,
+        header: list[str],
+    ) -> None:
+        """Write one output header row without clearing any season data rows."""
+
+        if not header:
+            return
+        start_column, start_row = _split_a1_cell(start_cell)
+        end_column_number = _column_number(start_column) + len(header) - 1
+        end_column = _column_name(end_column_number)
+        range_name = f"{tab_name}!{start_cell}:{end_column}{start_row}"
+        header_values: list[object] = list(header)
+        normalized_header = _normalize_sheet_row(header_values)
+        response = (
+            self._service.spreadsheets()
+            .values()
+            .get(spreadsheetId=self._settings.sheet_id, range=range_name)
+            .execute()
+        )
+        existing = [
+            _normalize_sheet_value(value)
+            for value in (response.get("values", [[]]) or [[]])[0]
+        ]
+        existing.extend([""] * (len(normalized_header) - len(existing)))
+        if existing[: len(normalized_header)] == normalized_header:
+            return
+        (
+            self._service.spreadsheets()
+            .values()
+            .update(
+                spreadsheetId=self._settings.sheet_id,
+                range=range_name,
+                valueInputOption="USER_ENTERED",
+                body={"values": [normalized_header]},
+            )
+            .execute()
+        )
 
     def _get_sheet_size(self, *, tab_name: str) -> tuple[int, int]:
         response = (
@@ -233,7 +299,9 @@ def _build_sheet_values(
 ) -> list[list[object]]:
     include_metadata_columns = bool(metadata_rows)
     values = [
-        _normalize_sheet_row(list(header), include_metadata_columns=include_metadata_columns)
+        _normalize_sheet_row(
+            list(header), include_metadata_columns=include_metadata_columns
+        )
     ]
     values.extend(
         _normalize_sheet_row(row, include_metadata_columns=include_metadata_columns)
@@ -268,8 +336,12 @@ def _build_output_updates(
     if row_count == 0 or column_count == 0:
         return []
 
-    existing_matrix = _pad_matrix(existing_values, row_count=row_count, column_count=column_count)
-    target_matrix = _pad_matrix(target_values, row_count=row_count, column_count=column_count)
+    existing_matrix = _pad_matrix(
+        existing_values, row_count=row_count, column_count=column_count
+    )
+    target_matrix = _pad_matrix(
+        target_values, row_count=row_count, column_count=column_count
+    )
     updates: list[dict[str, object]] = []
     for row_offset in range(row_count):
         row_updates = _build_row_updates(

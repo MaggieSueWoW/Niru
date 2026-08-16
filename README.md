@@ -1,6 +1,6 @@
 # Niru
 
-`Niru` is a small Python service that watches a Google Sheet roster, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites a raw summary table on a bucketed base cadence with optional bucketed hot-player polling.
+`Niru` is a small Python service that watches season-specific Google Sheet rosters, pulls current-season Mythic+ run data from [Raider.IO](https://raider.io), stores normalized run data in MongoDB, uses Redis for restart-safe rate-limit control state, and rewrites the active season's summary table on a bucketed base cadence with optional bucketed hot-player polling.
 
 The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Datagear), the mechagnome tinkerer from Rustbolt.
 
@@ -12,14 +12,16 @@ This bot is intentionally conservative:
 
 ## What It Does
 
-- Reads roster entries from the `raw_data` tab, column `A`, starting at `A2`
+- Selects the active season and Google Sheets tab from a config schedule
+- Reads that season's roster from column `A`, starting at `A2`
 - Expects roster cells in `region/realm/name` format, for example `us/area-52/Mythics`
 - Syncs current-season Raider.IO Mythic+ profile data for each valid player
 - Uses bucketed base polling plus predictive hot polling to decide which players to refresh from Raider.IO
 - Stores player state, normalized runs, and sync cycle metadata in MongoDB
 - Caches current-season dungeon metadata, including Raider.IO short names, in MongoDB
 - Persists Raider.IO cooldown and rolling rate-limit state in Redis so restarts do not reset protections
-- Rewrites a summary table starting at `raw_data!C1`
+- Rewrites a summary table starting at `C1` on the active season tab
+- Prepares headers on configured future-season tabs without writing player rows
 
 ## Output Columns
 
@@ -64,7 +66,9 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 
 ### `config.yaml`
 
-- `google.raw_tab_name`
+- `google.season_tabs.<season_slug>.tab_name`
+- `google.season_tabs.<season_slug>.activates_at`
+- `google.season_tabs.<season_slug>.blizzard_season_id`
 - `google.roster_column`
 - `google.roster_start_row`
 - `google.output_start_cell`
@@ -73,7 +77,6 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `sync.active_idle_minutes`
 - `sync.predictive_hot_enabled`
 - `sync.predictive_hot_threshold`
-- `sync.current_season`
 - `sync.max_players_per_cycle`
 - `sync.failure_backoff_seconds`
 - `sync.max_failure_backoff_seconds`
@@ -88,10 +91,36 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 ## Google Sheets Setup
 
 1. Create or choose a Google Sheet.
-2. Add a tab named `raw_data`.
-3. Put roster entries in column `A`, starting at `A2`.
+2. Create every tab named in `google.season_tabs`.
+3. Put each season's roster in column `A` of its own tab, starting at `A2`.
 4. Share the sheet with the Google service account email.
-5. Leave columns `C` onward available for bot output.
+5. Leave columns `C` onward available for Niru output on each season tab.
+
+The current config preserves Midnight S1 on `niru_raw_data` and uses `niru_raw_data_s2` for Midnight S2. Niru switches to S2 at `2026-08-18T15:00:00Z` (Tuesday at 8:00 a.m. Pacific) without a redeploy. Prior season tabs are no longer written after their configured cutoff.
+
+Midnight S2 uses these Raider.IO abbreviations, in header order:
+
+- `AOF` — Altar of Fangs
+- `BV` — The Blinding Vale
+- `DON` — Den of Nalorakk
+- `KR` — Kings' Rest
+- `MR` — Murder Row
+- `RLP` — Ruby Life Pools
+- `TOS` — Temple of Sethraliss
+- `VSA` — Voidscar Arena
+
+After creating `niru_raw_data_s2` and adding its roster in column `A`, populate its
+complete zero-state output immediately with:
+
+```bash
+python main.py --prepare-season season-mn-2
+```
+
+The preparation command reads (but does not rewrite) the season roster in column `A`,
+joins it to existing player records in MongoDB, and writes player fields plus zeroes for
+unsynced S2 rating/run values starting at `C1`. It does not call player APIs or activate
+the future roster early. Normal sync cycles also prepare headers automatically when
+they see an existing future-season tab.
 
 ## Local Run
 
@@ -115,6 +144,13 @@ Run a single sync cycle:
 
 ```bash
 python main.py --mode once
+```
+
+Prepare a configured season tab's roster-based zero-state output without running a
+player sync:
+
+```bash
+python main.py --prepare-season season-mn-2
 ```
 
 Run continuously:

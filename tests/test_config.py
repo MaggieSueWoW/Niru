@@ -3,17 +3,27 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from niru.config import load_settings
+from datetime import UTC, datetime
+
+from niru.config import load_settings, resolve_active_season
 
 
 class ConfigTests(unittest.TestCase):
     def test_load_settings_reads_active_polling_config(self) -> None:
         config_text = """
 google:
-  raw_tab_name: "raw_data"
   roster_column: "A"
   roster_start_row: 2
   output_start_cell: "C1"
+  season_tabs:
+    season-mn-1:
+      tab_name: "raw_data"
+      activates_at: "2026-03-24T15:00:00Z"
+      blizzard_season_id: 17
+    season-mn-2:
+      tab_name: "raw_data_s2"
+      activates_at: "2026-08-18T15:00:00Z"
+      blizzard_season_id: 18
 
 team_activity:
   enabled: true
@@ -27,7 +37,6 @@ sync:
   active_idle_minutes: 40
   predictive_hot_enabled: true
   predictive_hot_threshold: 0.5
-  current_season: "season-mn-1"
   max_players_per_cycle: 250
   failure_backoff_seconds: 30
   max_failure_backoff_seconds: 900
@@ -103,14 +112,31 @@ logging:
         self.assertEqual(settings.team_activity.window_weeks, 2)
         self.assertEqual(settings.team_activity.start_hour, 7)
         self.assertEqual(settings.google.team_activity_output_start_cell, "C101")
+        self.assertEqual(
+            [season.slug for season in settings.google.season_tabs],
+            ["season-mn-1", "season-mn-2"],
+        )
+        self.assertEqual(
+            resolve_active_season(
+                settings.google.season_tabs,
+                now=datetime(2026, 8, 18, 15, 0, tzinfo=UTC),
+            ).tab_name,
+            "raw_data_s2",
+        )
 
-    def test_load_settings_allows_missing_current_season_when_blizzard_enabled(self) -> None:
+    def test_load_settings_supports_scheduled_seasons_without_global_current_season(
+        self,
+    ) -> None:
         config_text = """
 google:
-  raw_tab_name: "raw_data"
   roster_column: "A"
   roster_start_row: 2
   output_start_cell: "C1"
+  season_tabs:
+    season-mn-1:
+      tab_name: "raw_data"
+      activates_at: "2026-03-24T15:00:00Z"
+      blizzard_season_id: 17
 
 team_activity:
   enabled: true
@@ -187,7 +213,7 @@ logging:
                     else:
                         os.environ[key] = value
 
-        self.assertIsNone(settings.sync.current_season)
+        self.assertEqual(settings.google.season_tabs[0].slug, "season-mn-1")
 
 
 if __name__ == "__main__":

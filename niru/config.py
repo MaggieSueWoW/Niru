@@ -3,18 +3,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 import os
 import re
 
 
 CELL_RE = re.compile(r"^[A-Z]+[1-9][0-9]*$")
+SEASON_SLUG_RE = re.compile(r"^season-[a-z0-9-]+$")
+
+
+@dataclass(slots=True, frozen=True)
+class SeasonTabSettings:
+    """One scheduled season and its Google Sheets destination."""
+
+    slug: str
+    tab_name: str
+    activates_at: datetime
+    blizzard_season_id: int | None
 
 
 @dataclass(slots=True, frozen=True)
 class GoogleSettings:
     sheet_id: str
-    raw_tab_name: str
+    season_tabs: tuple[SeasonTabSettings, ...]
     roster_column: str
     roster_start_row: int
     output_start_cell: str
@@ -37,7 +49,6 @@ class SyncSettings:
     active_idle_minutes: int
     predictive_hot_enabled: bool
     predictive_hot_threshold: float
-    current_season: str | None
     max_players_per_cycle: int
     failure_backoff_seconds: float
     max_failure_backoff_seconds: float
@@ -87,6 +98,7 @@ class MongoSettings:
     players_collection: str
     runs_collection: str
     sync_cycles_collection: str
+    season_rosters_collection: str
     uri: str
 
 
@@ -146,13 +158,100 @@ def _require_bool(value: object, *, name: str) -> bool:
     return value
 
 
-def _optional_text(value: object) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError("optional text value must be a string when provided")
-    stripped = value.strip()
-    return stripped or None
+def _require_datetime(value: object, *, name: str) -> datetime:
+    text = _require_text(value, name=name)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise ValueError(f"{name} must include a timezone")
+    return parsed.astimezone(UTC)
+
+
+def _load_season_tabs(raw: object) -> tuple[SeasonTabSettings, ...]:
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("google.season_tabs must be a non-empty mapping")
+
+    season_tabs: list[SeasonTabSettings] = []
+    tab_names: set[str] = set()
+    activation_times: set[datetime] = set()
+    for raw_slug, raw_settings in raw.items():
+        slug = _require_text(raw_slug, name="google.season_tabs key")
+        if not SEASON_SLUG_RE.match(slug):
+            raise ValueError(f"Invalid season slug in google.season_tabs: {slug}")
+        if not isinstance(raw_settings, dict):
+            raise ValueError(f"google.season_tabs.{slug} must be a mapping")
+        tab_name = _require_text(
+            raw_settings.get("tab_name"),
+            name=f"google.season_tabs.{slug}.tab_name",
+        )
+        activates_at = _require_datetime(
+            raw_settings.get("activates_at"),
+            name=f"google.season_tabs.{slug}.activates_at",
+        )
+        raw_blizzard_season_id = raw_settings.get("blizzard_season_id")
+        blizzard_season_id = (
+            None
+            if raw_blizzard_season_id is None
+            else _require_int(
+                raw_blizzard_season_id,
+                name=f"google.season_tabs.{slug}.blizzard_season_id",
+            )
+        )
+        if tab_name in tab_names:
+            raise ValueError(f"Duplicate season tab name: {tab_name}")
+        if activates_at in activation_times:
+            raise ValueError(
+                f"Duplicate season activation time: {activates_at.isoformat()}"
+            )
+        tab_names.add(tab_name)
+        activation_times.add(activates_at)
+        season_tabs.append(
+            SeasonTabSettings(
+                slug=slug,
+                tab_name=tab_name,
+                activates_at=activates_at,
+                blizzard_season_id=blizzard_season_id,
+            )
+        )
+    return tuple(sorted(season_tabs, key=lambda season: season.activates_at))
+
+
+def resolve_active_season(
+    season_tabs: tuple[SeasonTabSettings, ...],
+    *,
+    now: datetime,
+) -> SeasonTabSettings:
+    """Return the configured season active at ``now``."""
+
+    current_time = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+    current_time = current_time.astimezone(UTC)
+    active = [season for season in season_tabs if season.activates_at <= current_time]
+    if not active:
+        first = min(season_tabs, key=lambda season: season.activates_at)
+        raise ValueError(
+            "No configured season is active yet; first activation is "
+            f"{first.activates_at.isoformat()}"
+        )
+    return max(active, key=lambda season: season.activates_at)
+
+
+def next_season_transition(
+    season_tabs: tuple[SeasonTabSettings, ...],
+    *,
+    now: datetime,
+) -> datetime | None:
+    """Return the next configured season activation after ``now``."""
+
+    current_time = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+    current_time = current_time.astimezone(UTC)
+    future = [
+        season.activates_at
+        for season in season_tabs
+        if season.activates_at > current_time
+    ]
+    return min(future) if future else None
 
 
 def load_settings(config_path: str = "config.yaml") -> Settings:
@@ -193,20 +292,27 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
     if team_activity_start_hour > 23:
         raise ValueError("team_activity.start_hour must be an integer between 0 and 23")
 
-    current_season = _optional_text(sync_raw.get("current_season"))
+    season_tabs = _load_season_tabs(google_raw.get("season_tabs"))
     blizzard_enabled = _require_bool(
         blizzard_raw.get("enabled", False),
         name="blizzard.enabled",
     )
-    if not blizzard_enabled and current_season is None:
-        raise ValueError("sync.current_season must be a non-empty string when blizzard.enabled is false")
+    if blizzard_enabled:
+        missing_blizzard_ids = [
+            season.slug for season in season_tabs if season.blizzard_season_id is None
+        ]
+        if missing_blizzard_ids:
+            raise ValueError(
+                "blizzard_season_id is required for configured seasons when Blizzard is enabled: "
+                + ", ".join(missing_blizzard_ids)
+            )
 
     return Settings(
         google=GoogleSettings(
-            sheet_id=_require_text(os.getenv("GOOGLE_SHEET_ID"), name="GOOGLE_SHEET_ID"),
-            raw_tab_name=_require_text(
-                google_raw.get("raw_tab_name"), name="google.raw_tab_name"
+            sheet_id=_require_text(
+                os.getenv("GOOGLE_SHEET_ID"), name="GOOGLE_SHEET_ID"
             ),
+            season_tabs=season_tabs,
             roster_column=_require_text(
                 google_raw.get("roster_column"), name="google.roster_column"
             ).upper(),
@@ -240,7 +346,6 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 minimum=0.0,
                 maximum=1.0,
             ),
-            current_season=current_season,
             max_players_per_cycle=_require_int(
                 sync_raw.get("max_players_per_cycle"),
                 name="sync.max_players_per_cycle",
@@ -273,7 +378,9 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             start_hour=team_activity_start_hour,
         ),
         raiderio=RaiderIOSettings(
-            base_url=_require_text(raiderio_raw.get("base_url"), name="raiderio.base_url"),
+            base_url=_require_text(
+                raiderio_raw.get("base_url"), name="raiderio.base_url"
+            ),
             access_key_enabled=bool(raiderio_raw.get("access_key_enabled", False)),
             access_key=os.getenv("RAIDERIO_ACCESS_KEY") or None,
             requests_per_minute_cap=_require_int(
@@ -351,14 +458,18 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             ),
         ),
         redis=RedisSettings(
-            url=_require_text(os.getenv("REDIS_URL", "redis://localhost:6379/0"), name="REDIS_URL"),
+            url=_require_text(
+                os.getenv("REDIS_URL", "redis://localhost:6379/0"), name="REDIS_URL"
+            ),
             key_prefix=_require_text(
                 redis_raw.get("key_prefix", "niru"),
                 name="redis.key_prefix",
             ),
         ),
         mongodb=MongoSettings(
-            database=_require_text(mongodb_raw.get("database"), name="mongodb.database"),
+            database=_require_text(
+                mongodb_raw.get("database"), name="mongodb.database"
+            ),
             players_collection=_require_text(
                 mongodb_raw.get("players_collection"),
                 name="mongodb.players_collection",
@@ -369,6 +480,10 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             sync_cycles_collection=_require_text(
                 mongodb_raw.get("sync_cycles_collection"),
                 name="mongodb.sync_cycles_collection",
+            ),
+            season_rosters_collection=_require_text(
+                mongodb_raw.get("season_rosters_collection", "season_rosters"),
+                name="mongodb.season_rosters_collection",
             ),
             uri=_require_text(os.getenv("MONGODB_URI"), name="MONGODB_URI"),
         ),

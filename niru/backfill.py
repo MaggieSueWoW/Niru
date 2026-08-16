@@ -9,7 +9,7 @@ from typing import Any
 
 from niru.clients.raiderio import RaiderIOClient, RaiderIOError
 from niru.clients.raiderio_internal import RaiderIOInternalClient
-from niru.config import Settings, load_settings
+from niru.config import Settings, load_settings, resolve_active_season
 from niru.control_state import RedisControlState
 from niru.logging_utils import configure_logging
 from niru.models import PlayerIdentity, SeasonDungeon, utc_now
@@ -80,14 +80,23 @@ class BackfillService:
                 )
                 all_discovered_run_ids.update(player_run_ids)
 
-                known_run_ids = self._repository.get_known_run_ids(sorted(player_run_ids))
+                known_run_ids = self._repository.get_known_run_ids(
+                    sorted(player_run_ids),
+                    season=season,
+                )
                 if not dry_run:
                     for run_id in player_run_ids:
                         if run_id in known_run_ids:
-                            self._repository.attach_player_to_run(run_id, player.player_key)
+                            self._repository.attach_player_to_run(
+                                run_id,
+                                player.player_key,
+                                season=season,
+                            )
 
                 missing_run_ids = [
-                    run_id for run_id in sorted(player_run_ids) if run_id not in known_run_ids
+                    run_id
+                    for run_id in sorted(player_run_ids)
+                    if run_id not in known_run_ids
                 ]
                 if remaining_limit is not None:
                     missing_run_ids = missing_run_ids[:remaining_limit]
@@ -110,9 +119,13 @@ class BackfillService:
                     continue
 
                 for run_id in missing_run_ids:
-                    result = self._public_client.get_run_details(season=season, run_id=run_id)
+                    result = self._public_client.get_run_details(
+                        season=season, run_id=run_id
+                    )
                     payload = result.payload
-                    canonical_payload = payload.get("mythic_plus_run") or payload.get("run") or payload
+                    canonical_payload = (
+                        payload.get("mythic_plus_run") or payload.get("run") or payload
+                    )
                     discovered_players = self._extract_player_keys(canonical_payload)
                     player_key = discovered_players[0] if discovered_players else ""
                     self._repository.update_run_details(
@@ -128,12 +141,17 @@ class BackfillService:
                     if remaining_limit == 0:
                         LOGGER.info(
                             "Backfill run limit reached",
-                            extra={"limit_runs": limit_runs, "player_key": player.player_key},
+                            extra={
+                                "limit_runs": limit_runs,
+                                "player_key": player.player_key,
+                            },
                         )
                         break
             except RaiderIOError as exc:
                 message = f"{player.player_key}: {exc}"
-                LOGGER.warning("Backfill discovery failed for %s: %s", player.player_key, exc)
+                LOGGER.warning(
+                    "Backfill discovery failed for %s: %s", player.player_key, exc
+                )
                 stats.warnings.append(message)
 
         stats.discovered_run_ids = len(all_discovered_run_ids)
@@ -223,15 +241,23 @@ class BackfillService:
 
     def _ensure_season_dungeons(self, *, season: str, now: Any) -> list[dict[str, Any]]:
         season_dungeons = self._repository.list_season_dungeons(season=season)
-        if season_dungeons and all(dungeon.get("dungeon_id") is not None for dungeon in season_dungeons):
+        if season_dungeons and all(
+            dungeon.get("dungeon_id") is not None for dungeon in season_dungeons
+        ):
             return season_dungeons
 
         expansion_id = _season_slug_to_expansion_id(season)
-        payload = self._public_client.get_mythic_plus_static_data(expansion_id=expansion_id).payload
+        payload = self._public_client.get_mythic_plus_static_data(
+            expansion_id=expansion_id
+        ).payload
         seasons = payload.get("seasons", []) or []
-        season_payload = next((item for item in seasons if item.get("slug") == season), None)
+        season_payload = next(
+            (item for item in seasons if item.get("slug") == season), None
+        )
         if season_payload is None:
-            raise RaiderIOError(f"Raider.IO static data did not include season {season}")
+            raise RaiderIOError(
+                f"Raider.IO static data did not include season {season}"
+            )
 
         dungeons = [
             SeasonDungeon(
@@ -246,9 +272,13 @@ class BackfillService:
                 background_image_url=str(dungeon.get("background_image_url", "")),
             )
             for dungeon in season_payload.get("dungeons", []) or []
-            if dungeon.get("slug") and dungeon.get("short_name") and dungeon.get("id") is not None
+            if dungeon.get("slug")
+            and dungeon.get("short_name")
+            and dungeon.get("id") is not None
         ]
-        self._repository.replace_season_dungeons(season=season, dungeons=dungeons, synced_at=now)
+        self._repository.replace_season_dungeons(
+            season=season, dungeons=dungeons, synced_at=now
+        )
         return self._repository.list_season_dungeons(season=season)
 
     @staticmethod
@@ -261,18 +291,28 @@ class BackfillService:
                 or character.get("region")
                 or ""
             )
-            realm = ((character.get("realm") or {}).get("slug")) or character.get("realm") or ""
+            realm = (
+                ((character.get("realm") or {}).get("slug"))
+                or character.get("realm")
+                or ""
+            )
             name = character.get("name", "")
             if region and realm and name:
-                keys.append(f"{str(region).lower()}/{str(realm).lower()}/{str(name).lower()}")
+                keys.append(
+                    f"{str(region).lower()}/{str(realm).lower()}/{str(name).lower()}"
+                )
         return keys
 
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments for manual backfill."""
 
-    parser = argparse.ArgumentParser(description="Manually backfill missing Mythic+ runs.")
-    parser.add_argument("--config", default="config.yaml", help="Path to the YAML config file.")
+    parser = argparse.ArgumentParser(
+        description="Manually backfill missing Mythic+ runs."
+    )
+    parser.add_argument(
+        "--config", default="config.yaml", help="Path to the YAML config file."
+    )
     source_group = parser.add_mutually_exclusive_group(required=True)
     source_group.add_argument(
         "--players",
@@ -287,7 +327,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--season",
         default=None,
-        help="Season slug to backfill. Defaults to sync.current_season from config.",
+        help="Season slug to backfill. Defaults to the scheduled active season.",
     )
     parser.add_argument(
         "--dry-run",
@@ -308,7 +348,9 @@ def _parse_players(raw_players: list[str]) -> list[PlayerIdentity]:
     for index, raw_player in enumerate(raw_players, start=2):
         entry = parse_roster_value(index, raw_player)
         if not entry.is_valid or entry.identity is None:
-            raise ValueError(f"Invalid --players entry '{raw_player}': {entry.status_message}")
+            raise ValueError(
+                f"Invalid --players entry '{raw_player}': {entry.status_message}"
+            )
         parsed.append(entry.identity)
     return parsed
 
@@ -341,12 +383,20 @@ def main() -> None:
     args = parse_args()
     settings = load_settings(args.config)
     configure_logging(settings.logging.level)
-    season = args.season or settings.sync.current_season
+    season = (
+        args.season
+        or resolve_active_season(
+            settings.google.season_tabs,
+            now=utc_now(),
+        ).slug
+    )
 
     repository = MongoRepository(settings.mongodb)
     control_state = RedisControlState(settings.redis)
     public_client = RaiderIOClient(settings.raiderio, control_state=control_state)
-    internal_client = RaiderIOInternalClient(settings.raiderio, control_state=control_state)
+    internal_client = RaiderIOInternalClient(
+        settings.raiderio, control_state=control_state
+    )
     service = BackfillService(
         settings=settings,
         repository=repository,

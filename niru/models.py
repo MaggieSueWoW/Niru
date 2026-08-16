@@ -89,6 +89,7 @@ class NormalizedRunCandidate:
     is_completed_within_time: bool | None
     participants: list[dict[str, object]]
     raw_payload: dict[str, Any]
+    season: str | None = None
 
 
 @dataclass(slots=True)
@@ -115,6 +116,8 @@ def to_pacific_datetime(value: datetime | None) -> datetime | None:
 class SyncStats:
     """Per-cycle counters recorded in logs and MongoDB."""
 
+    season: str = ""
+    sheet_tab: str = ""
     roster_rows: int = 0
     active_players: int = 0
     valid_players: int = 0
@@ -132,13 +135,17 @@ class SyncStats:
     warnings: list[str] = field(default_factory=list)
     partial: bool = False
 
-    def to_document(self, *, started_at: datetime, finished_at: datetime) -> dict[str, Any]:
+    def to_document(
+        self, *, started_at: datetime, finished_at: datetime
+    ) -> dict[str, Any]:
         """Serialize stats for MongoDB."""
 
         return {
             "started_at": started_at,
             "finished_at": finished_at,
             "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
+            "season": self.season,
+            "sheet_tab": self.sheet_tab,
             "roster_rows": self.roster_rows,
             "active_players": self.active_players,
             "valid_players": self.valid_players,

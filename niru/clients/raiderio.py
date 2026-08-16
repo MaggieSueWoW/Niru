@@ -46,16 +46,15 @@ class RaiderIOClient:
         "Accept": "application/json, text/plain, */*",
         "User-Agent": "Mozilla/5.0 (compatible; niru/0.1; +https://raider.io)",
     }
-    PROFILE_FIELDS = ",".join(
-        [
-            "mythic_plus_scores_by_season:current",
-            "mythic_plus_recent_runs",
-            "mythic_plus_best_runs:all",
-            "mythic_plus_alternate_runs:all",
-        ]
+    RUN_PROFILE_FIELDS = (
+        "mythic_plus_recent_runs",
+        "mythic_plus_best_runs:all",
+        "mythic_plus_alternate_runs:all",
     )
 
-    def __init__(self, settings: RaiderIOSettings, *, control_state: RedisControlState) -> None:
+    def __init__(
+        self, settings: RaiderIOSettings, *, control_state: RedisControlState
+    ) -> None:
         self._settings = settings
         self._control_state = control_state
         self.api_calls = 0
@@ -71,28 +70,40 @@ class RaiderIOClient:
 
         return self._control_state.get_cooldown_reason()
 
-    def get_character_profile(self, player: PlayerIdentity) -> RaiderIOResult:
+    def get_character_profile(
+        self,
+        player: PlayerIdentity,
+        *,
+        season: str,
+    ) -> RaiderIOResult:
         """Fetch a character profile with Mythic+ fields."""
 
+        fields = ",".join(
+            (f"mythic_plus_scores_by_season:{season}", *self.RUN_PROFILE_FIELDS)
+        )
         return self._get_json(
             "/characters/profile",
             {
                 "region": player.region,
                 "realm": player.realm,
                 "name": player.name,
-                "fields": self.PROFILE_FIELDS,
+                "fields": fields,
             },
         )
 
     def get_run_details(self, *, season: str, run_id: int) -> RaiderIOResult:
         """Fetch detailed run information."""
 
-        return self._get_json("/mythic-plus/run-details", {"season": season, "id": run_id})
+        return self._get_json(
+            "/mythic-plus/run-details", {"season": season, "id": run_id}
+        )
 
     def get_mythic_plus_static_data(self, *, expansion_id: int) -> RaiderIOResult:
         """Fetch static Mythic+ season and dungeon metadata for an expansion."""
 
-        return self._get_json("/mythic-plus/static-data", {"expansion_id": expansion_id})
+        return self._get_json(
+            "/mythic-plus/static-data", {"expansion_id": expansion_id}
+        )
 
     def get_periods(self) -> RaiderIOResult:
         """Fetch current, previous, and next weekly period windows by region."""
@@ -108,7 +119,9 @@ class RaiderIOClient:
 
         cooldown_remaining = self._control_state.get_cooldown_remaining_seconds()
         if cooldown_remaining > 0:
-            reason = self._control_state.get_cooldown_reason() or "Raider.IO cooldown active"
+            reason = (
+                self._control_state.get_cooldown_reason() or "Raider.IO cooldown active"
+            )
             raise RaiderIOCooldownError(
                 f"{reason}. Retrying after {round(cooldown_remaining, 1)}s."
             )
@@ -130,7 +143,9 @@ class RaiderIOClient:
                     return RaiderIOResult(payload=payload, request_url=url)
             except HTTPError as exc:
                 status = exc.code
-                response_snippet = exc.read(400).decode("utf-8", errors="replace").strip()
+                response_snippet = (
+                    exc.read(400).decode("utf-8", errors="replace").strip()
+                )
                 if status == 404:
                     raise RaiderIONotFoundError(f"Not found: {url}") from exc
                 if status == 429:
@@ -138,7 +153,10 @@ class RaiderIOClient:
                         seconds=self._settings.circuit_breaker_cooldown_seconds,
                         reason="Raider.IO rate limit hit",
                     )
-                if status in {429, 500, 502, 503, 504} and attempt < self._settings.retry_attempts:
+                if (
+                    status in {429, 500, 502, 503, 504}
+                    and attempt < self._settings.retry_attempts
+                ):
                     wait = self._settings.backoff_seconds * attempt
                     LOGGER.warning(
                         "Retrying Raider.IO request after HTTP error %s for %s (attempt %s/%s, sleep %.1fs)",
@@ -194,7 +212,9 @@ class RaiderIOClient:
                         seconds=self._settings.circuit_breaker_cooldown_seconds,
                         reason=f"Raider.IO network errors reached streak {streak}",
                     )
-                raise RaiderIOError(f"Network error calling Raider.IO for {url}") from exc
+                raise RaiderIOError(
+                    f"Network error calling Raider.IO for {url}"
+                ) from exc
 
         raise RaiderIOError(f"Failed to fetch Raider.IO URL: {url}")
 

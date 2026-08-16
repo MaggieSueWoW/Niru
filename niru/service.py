@@ -5,23 +5,27 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-import hashlib
 import logging
 import random
 import signal
 import threading
-import time
 from typing import Any
 
 from niru.clients.blizzard import BlizzardClient, BlizzardError, BlizzardNotFoundError
 from niru.clients.raiderio import RaiderIOClient, RaiderIOError, RaiderIONotFoundError
 from niru.clients.sheets import GoogleSheetsClient
-from niru.config import Settings
+from niru.config import (
+    SeasonTabSettings,
+    Settings,
+    next_season_transition,
+    resolve_active_season,
+)
 from niru.models import (
     PACIFIC_TZ,
     NormalizedRunCandidate,
     PlayerDataStatus,
     PlayerIdentity,
+    RosterEntry,
     SeasonDungeon,
     SummaryRow,
     SyncStats,
@@ -77,7 +81,9 @@ def _safe_datetime(value: Any) -> datetime | None:
     return None
 
 
-def _normalize_weekly_periods(periods_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _normalize_weekly_periods(
+    periods_payload: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
     periods_by_region: dict[str, dict[str, Any]] = {}
     for period_entry in periods_payload.get("periods", []) or []:
         region = str(period_entry.get("region", "")).lower()
@@ -95,7 +101,9 @@ def _normalize_weekly_periods(periods_payload: dict[str, Any]) -> dict[str, dict
     return periods_by_region
 
 
-def _normalize_blizzard_weekly_period(period_payload: dict[str, Any]) -> dict[str, Any] | None:
+def _normalize_blizzard_weekly_period(
+    period_payload: dict[str, Any],
+) -> dict[str, Any] | None:
     period_id = period_payload.get("id")
     if period_id is None:
         return None
@@ -127,22 +135,42 @@ def _weekly_periods_for_metadata(
     }
 
 
-def _build_dungeon_scores(profile_payload: dict[str, Any]) -> dict[str, float]:
+def _build_dungeon_scores(
+    profile_payload: dict[str, Any],
+    *,
+    allowed_dungeons: set[str] | None = None,
+) -> dict[str, float]:
     best_by_dungeon: dict[str, dict[int, float]] = defaultdict(dict)
     for field in ("mythic_plus_best_runs", "mythic_plus_alternate_runs"):
         for run in profile_payload.get(field, []) or []:
             dungeon = run.get("dungeon")
             run_id = run.get("keystone_run_id")
             score = run.get("score")
-            if dungeon and run_id and score is not None:
+            if (
+                dungeon
+                and (allowed_dungeons is None or dungeon in allowed_dungeons)
+                and run_id
+                and score is not None
+            ):
                 best_by_dungeon[dungeon][int(run_id)] = float(score)
-    return {dungeon: round(sum(scores.values()), 1) for dungeon, scores in best_by_dungeon.items()}
+    return {
+        dungeon: round(sum(scores.values()), 1)
+        for dungeon, scores in best_by_dungeon.items()
+    }
 
 
 def normalize_raiderio_profile_scores(
-    profile_payload: dict[str, Any], *, season_slug: str | None
+    profile_payload: dict[str, Any],
+    *,
+    season_slug: str,
+    allowed_dungeons: set[str] | None = None,
 ) -> tuple[float | None, dict[str, float]]:
-    return _build_total_score(profile_payload, season=season_slug), _build_dungeon_scores(profile_payload)
+    return _build_total_score(
+        profile_payload, season=season_slug
+    ), _build_dungeon_scores(
+        profile_payload,
+        allowed_dungeons=allowed_dungeons,
+    )
 
 
 def _localized_name(value: Any) -> str:
@@ -180,26 +208,38 @@ def _safe_epoch_seconds(value: Any) -> int | None:
 def _run_identity_key(run: dict[str, Any]) -> str | None:
     keystone_run_id = run.get("keystone_run_id")
     if keystone_run_id is not None:
-        return f"raiderio:{int(keystone_run_id)}"
-    dungeon_id = run.get("map_challenge_mode_id") or run.get("dungeon_id") or run.get("zone_id")
+        season = str(run.get("season", "") or "unknown")
+        return f"raiderio:{season}:{int(keystone_run_id)}"
+    dungeon_id = (
+        run.get("map_challenge_mode_id") or run.get("dungeon_id") or run.get("zone_id")
+    )
     mythic_level = run.get("mythic_level")
     completed_at = _safe_datetime(run.get("completed_at"))
     clear_time_ms = run.get("clear_time_ms")
-    if dungeon_id is None or mythic_level is None or completed_at is None or clear_time_ms is None:
+    if (
+        dungeon_id is None
+        or mythic_level is None
+        or completed_at is None
+        or clear_time_ms is None
+    ):
         return None
     completed_seconds = int(completed_at.timestamp())
     duration_seconds = int(round(int(clear_time_ms) / 1000.0))
-    return f"{int(dungeon_id)}|{int(mythic_level)}|{completed_seconds}|{duration_seconds}"
+    return (
+        f"{int(dungeon_id)}|{int(mythic_level)}|{completed_seconds}|{duration_seconds}"
+    )
 
 
 def normalize_blizzard_profile_scores(
     current_profile: dict[str, Any],
     season_profile: dict[str, Any],
+    *,
+    allowed_dungeons: set[str] | None = None,
 ) -> tuple[float | None, dict[str, float]]:
     total = None
-    current_rating = current_profile.get("current_mythic_rating") or season_profile.get("mythic_rating") or {}
-    if current_rating.get("rating") is not None:
-        total = float(current_rating["rating"])
+    season_rating = season_profile.get("mythic_rating") or {}
+    if season_rating.get("rating") is not None:
+        total = float(season_rating["rating"])
 
     dungeon_scores: dict[str, float] = {}
     runs = list(current_profile.get("current_period", {}).get("best_runs", []) or [])
@@ -207,13 +247,43 @@ def normalize_blizzard_profile_scores(
     for run in runs:
         dungeon_name = _localized_name((run.get("dungeon") or {}).get("name"))
         rating = (run.get("map_rating") or {}).get("rating")
-        if not dungeon_name or rating is None:
+        if (
+            not dungeon_name
+            or (allowed_dungeons is not None and dungeon_name not in allowed_dungeons)
+            or rating is None
+        ):
             continue
         dungeon_scores[dungeon_name] = max(
             dungeon_scores.get(dungeon_name, 0.0),
             round(float(rating), 1),
         )
     return total, dungeon_scores
+
+
+def _merge_player_scores(
+    *,
+    raiderio_total: float | None,
+    raiderio_scores: dict[str, float],
+    blizzard_total: float | None,
+    blizzard_scores: dict[str, float],
+) -> tuple[float | None, dict[str, float], str]:
+    """Merge normalized score fields without blending individual values."""
+
+    total = blizzard_total if blizzard_total is not None else raiderio_total
+    scores = dict(raiderio_scores)
+    scores.update(blizzard_scores)
+
+    used_blizzard = blizzard_total is not None or bool(blizzard_scores)
+    used_raiderio = (blizzard_total is None and raiderio_total is not None) or any(
+        dungeon not in blizzard_scores for dungeon in raiderio_scores
+    )
+    if used_blizzard and used_raiderio:
+        source = "blizzard+raiderio"
+    elif used_blizzard:
+        source = "blizzard"
+    else:
+        source = "raiderio"
+    return total, scores, source
 
 
 def _lag_minutes_for_run(run: dict[str, Any]) -> float | None:
@@ -297,7 +367,9 @@ def build_team_activity_table(
 ) -> tuple[list[str], list[list[object]], list[tuple[object, object]]]:
     """Build a team activity heatmap table and metadata."""
 
-    window_start, window_end = _team_activity_hour_window(now=now, window_weeks=window_weeks)
+    window_start, window_end = _team_activity_hour_window(
+        now=now, window_weeks=window_weeks
+    )
     active_player_keys = {
         str(player.get("player_key", ""))
         for player in players
@@ -320,7 +392,9 @@ def build_team_activity_table(
         rostered_player_keys &= active_player_keys
         if not rostered_player_keys:
             continue
-        hourly_player_sets[pacific_hour_start(completed_at)].update(rostered_player_keys)
+        hourly_player_sets[pacific_hour_start(completed_at)].update(
+            rostered_player_keys
+        )
 
     occurrence_counts = _team_activity_occurrence_counts(
         window_start=window_start,
@@ -344,7 +418,7 @@ def build_team_activity_table(
             row.append(round(slot_totals[(day_index, hour)] / denominator, 2))
         rows.append(row)
 
-    metadata_rows = [
+    metadata_rows: list[tuple[object, object]] = [
         ("team_activity_timezone", TEAM_ACTIVITY_TIMEZONE),
         ("team_activity_window_weeks", window_weeks),
         ("team_activity_window_start_pacific", to_pacific_datetime(window_start)),
@@ -355,7 +429,9 @@ def build_team_activity_table(
     return header, rows, metadata_rows
 
 
-def _build_total_score(profile_payload: dict[str, Any], *, season: str | None) -> float | None:
+def _build_total_score(
+    profile_payload: dict[str, Any], *, season: str | None
+) -> float | None:
     seasons = profile_payload.get("mythic_plus_scores_by_season", []) or []
     for season_entry in seasons:
         if season and season_entry.get("season") != season:
@@ -367,7 +443,9 @@ def _build_total_score(profile_payload: dict[str, Any], *, season: str | None) -
     return None
 
 
-def _display_total_score(player: dict[str, Any], players: list[dict[str, Any]]) -> float | None:
+def _display_total_score(
+    player: dict[str, Any], players: list[dict[str, Any]]
+) -> float | None:
     score = player.get("current_total_score")
     if score is None:
         return None
@@ -389,7 +467,9 @@ def _display_total_score(player: dict[str, Any], players: list[dict[str, Any]]) 
     return round(numeric_score, 1)
 
 
-def _collect_profile_run_candidates(profile_payload: dict[str, Any]) -> dict[int, dict[str, Any]]:
+def _collect_profile_run_candidates(
+    profile_payload: dict[str, Any],
+) -> dict[int, dict[str, Any]]:
     candidates: dict[int, dict[str, Any]] = {}
     for field in (
         "mythic_plus_recent_runs",
@@ -404,6 +484,17 @@ def _collect_profile_run_candidates(profile_payload: dict[str, Any]) -> dict[int
     return candidates
 
 
+def _raiderio_run_season(run: dict[str, Any]) -> str | None:
+    """Extract the season slug embedded in a Raider.IO run URL."""
+
+    parts = str(run.get("url", "") or "").split("/")
+    try:
+        season = parts[parts.index("mythic-plus-runs") + 1]
+    except (ValueError, IndexError):
+        return None
+    return season if season.startswith("season-") else None
+
+
 def collect_raiderio_run_candidates(
     profile_payload: dict[str, Any],
     *,
@@ -415,7 +506,12 @@ def collect_raiderio_run_candidates(
         clear_time_ms = run.get("clear_time_ms")
         dungeon_id = run.get("map_challenge_mode_id") or run.get("zone_id")
         mythic_level = run.get("mythic_level")
-        if completed_at is None or clear_time_ms is None or dungeon_id is None or mythic_level is None:
+        if (
+            completed_at is None
+            or clear_time_ms is None
+            or dungeon_id is None
+            or mythic_level is None
+        ):
             raise ValueError(
                 f"Raider.IO run {run_id} is missing required UID fields: "
                 f"map_challenge_mode_id/zone_id={dungeon_id}, mythic_level={mythic_level}, "
@@ -444,12 +540,15 @@ def collect_raiderio_run_candidates(
                 ),
                 participants=[],
                 raw_payload=run,
+                season=_raiderio_run_season(run),
             )
         )
     return candidates
 
 
-def _normalize_blizzard_members(members: list[dict[str, Any]], region: str) -> list[dict[str, object]]:
+def _normalize_blizzard_members(
+    members: list[dict[str, Any]], region: str
+) -> list[dict[str, object]]:
     participants: list[dict[str, object]] = []
     for member in members:
         character = member.get("character") or {}
@@ -457,11 +556,15 @@ def _normalize_blizzard_members(members: list[dict[str, Any]], region: str) -> l
         name = str(character.get("name") or "")
         participants.append(
             {
-                "player_key": _normalize_player_key(region=region, realm=str(realm), name=name),
+                "player_key": _normalize_player_key(
+                    region=region, realm=str(realm), name=name
+                ),
                 "region": region.lower(),
                 "realm": str(realm).lower(),
                 "name": name,
-                "spec": _localized_name((member.get("specialization") or {}).get("name")),
+                "spec": _localized_name(
+                    (member.get("specialization") or {}).get("name")
+                ),
                 "raw": member,
             }
         )
@@ -474,6 +577,7 @@ def collect_blizzard_run_candidates(
     *,
     region: str,
     season_dungeons: list[dict[str, Any]],
+    season: str,
     fuzz_seconds: int,
 ) -> list[NormalizedRunCandidate]:
     merged: dict[str, NormalizedRunCandidate] = {}
@@ -482,9 +586,9 @@ def collect_blizzard_run_candidates(
         for dungeon in season_dungeons
         if dungeon.get("challenge_mode_id") is not None and dungeon.get("short_name")
     }
-    for source_runs in (
-        current_profile.get("current_period", {}).get("best_runs", []) or [],
-        season_profile.get("best_runs", []) or [],
+    for source_runs, source_season in (
+        (current_profile.get("current_period", {}).get("best_runs", []) or [], None),
+        (season_profile.get("best_runs", []) or [], season),
     ):
         for run in source_runs:
             completed_seconds = _safe_epoch_seconds(run.get("completed_timestamp"))
@@ -498,7 +602,12 @@ def collect_blizzard_run_candidates(
             dungeon_id = dungeon.get("id")
             mythic_level = run.get("keystone_level")
             dungeon_name = _localized_name(dungeon.get("name"))
-            if completed_at is None or clear_time_ms is None or dungeon_id is None or mythic_level is None:
+            if (
+                completed_at is None
+                or clear_time_ms is None
+                or dungeon_id is None
+                or mythic_level is None
+            ):
                 raise ValueError(
                     "Blizzard run is missing required UID fields: "
                     f"dungeon_id={dungeon_id}, mythic_level={mythic_level}, "
@@ -515,14 +624,21 @@ def collect_blizzard_run_candidates(
                 short_name=short_name_by_dungeon_id.get(int(dungeon_id), dungeon_name),
                 mythic_level=int(mythic_level),
                 num_keystone_upgrades=None,  # TODO: fix this, we want this!!!!
-                score=float(score_payload.get("rating")) if score_payload.get("rating") is not None else None,
+                score=(
+                    float(score_payload.get("rating"))
+                    if score_payload.get("rating") is not None
+                    else None
+                ),
                 is_completed_within_time=(
                     bool(run.get("is_completed_within_time"))
                     if run.get("is_completed_within_time") is not None
                     else None
                 ),
-                participants=_normalize_blizzard_members(run.get("members", []) or [], region),
+                participants=_normalize_blizzard_members(
+                    run.get("members", []) or [], region
+                ),
                 raw_payload=run,
+                season=source_season,
             )
             candidate_key = (
                 f"{int(dungeon_id)}|{int(mythic_level)}|{int(completed_at.timestamp())}|"
@@ -579,7 +695,9 @@ def _next_hot_batch_at_or_after(moment: datetime, *, interval_minutes: int) -> d
     """Return the next batch boundary at or after a timestamp."""
 
     normalized = ensure_utc(moment)
-    batch_start = _current_hot_batch_start(normalized, interval_minutes=interval_minutes)
+    batch_start = _current_hot_batch_start(
+        normalized, interval_minutes=interval_minutes
+    )
     if batch_start == normalized:
         return batch_start
     return batch_start + timedelta(minutes=interval_minutes)
@@ -624,12 +742,42 @@ def _season_slug_to_expansion_id(season: str) -> int:
     return mapping[prefix]
 
 
+def _candidate_belongs_to_season(
+    candidate: NormalizedRunCandidate,
+    *,
+    season: SeasonTabSettings,
+    season_dungeons: list[dict[str, Any]],
+) -> bool:
+    """Return whether a run can be safely assigned to a configured season."""
+
+    if candidate.season is not None and candidate.season != season.slug:
+        return False
+    if (
+        candidate.completed_at is None
+        or ensure_utc(candidate.completed_at) < season.activates_at
+    ):
+        return False
+    allowed_dungeon_ids = {
+        int(dungeon_id)
+        for dungeon in season_dungeons
+        for dungeon_id in (dungeon.get("dungeon_id"), dungeon.get("challenge_mode_id"))
+        if dungeon_id is not None
+    }
+    return (
+        candidate.dungeon_id is not None
+        and int(candidate.dungeon_id) in allowed_dungeon_ids
+    )
+
+
 def build_summary_rows(
     players: list[dict[str, Any]],
     runs: list[dict[str, Any]],
     season_dungeons: list[dict[str, Any]],
     *,
     weekly_periods: dict[str, dict[str, Any]] | None = None,
+    season: str | None = None,
+    empty_numeric_values_as_zero: bool = False,
+    empty_weekly_count_as_zero: bool = False,
 ) -> list[SummaryRow]:
     """Build Google Sheets summary rows from Mongo state."""
 
@@ -680,19 +828,42 @@ def build_summary_rows(
                 and int(run.get("mythic_level") or 0) >= 10
             )
 
-        current_scores: dict[str, float] = player.get("current_dungeon_scores", {})
+        score_matches_season = season is None or player.get("score_season") == season
+        player_status = player.get("status")
+        empty_numeric_value: int | None = (
+            0
+            if (
+                empty_numeric_values_as_zero
+                and player.get("is_valid", False)
+                and player_status in (None, "", PlayerDataStatus.OK.value)
+            )
+            else None
+        )
+        current_scores: dict[str, float] = (
+            player.get("current_dungeon_scores", {}) if score_matches_season else {}
+        )
+        total_score = (
+            _display_total_score(player, players) if score_matches_season else None
+        )
         values: list[object] = [
             player.get("region", ""),
             player.get("realm", ""),
             player.get("name", ""),
-            _display_total_score(player, players),
+            total_score if total_score is not None else empty_numeric_value,
             to_pacific_datetime(player.get("last_successful_sync_at")),
-            weekly_10_plus_run_count,
+            (
+                weekly_10_plus_run_count
+                if weekly_10_plus_run_count is not None
+                else (empty_numeric_value if empty_weekly_count_as_zero else None)
+            ),
         ]
         for dungeon in season_dungeons:
-            short_name = dungeon.get("short_name", "")
+            short_name = str(dungeon.get("short_name", "") or "")
+            dungeon_name = str(dungeon.get("name", "") or "")
             dungeon_runs = by_dungeon.get(short_name, [])
-            current_score = current_scores.get(dungeon.get("name")) or current_scores.get(short_name)
+            current_score = current_scores.get(dungeon_name) or current_scores.get(
+                short_name
+            )
             if dungeon_runs:
                 best_run = max(
                     dungeon_runs,
@@ -704,7 +875,11 @@ def build_summary_rows(
                 )
                 values.extend(
                     [
-                        None if current_score is None else round(float(current_score), 1),
+                        (
+                            None
+                            if current_score is None
+                            else round(float(current_score), 1)
+                        ),
                         best_run.get("mythic_level"),
                         best_run.get("num_keystone_upgrades"),
                         len(dungeon_runs),
@@ -713,9 +888,13 @@ def build_summary_rows(
                 continue
             values.extend(
                 [
-                    None if current_score is None else round(float(current_score), 1),
-                    None,
-                    None,
+                    (
+                        empty_numeric_value
+                        if current_score is None
+                        else round(float(current_score), 1)
+                    ),
+                    empty_numeric_value,
+                    empty_numeric_value,
                     0 if player.get("is_valid", False) else None,
                 ]
             )
@@ -724,11 +903,44 @@ def build_summary_rows(
     return rows
 
 
+def _players_for_roster_entries(
+    entries: list[RosterEntry],
+    existing_players: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Merge season roster order and identities with existing player state."""
+
+    players_by_key = {
+        str(player.get("player_key", "")): player for player in existing_players
+    }
+    players: list[dict[str, Any]] = []
+    for entry in entries:
+        player = dict(players_by_key.get(entry.player_key, {}))
+        player.update(
+            {
+                "player_key": entry.player_key,
+                "sheet_row_number": entry.row_number,
+                "region": entry.identity.region if entry.identity else "",
+                "realm": entry.identity.realm if entry.identity else "",
+                "name": entry.identity.name
+                if entry.identity
+                else entry.raw_value.strip(),
+                "is_valid": entry.is_valid,
+            }
+        )
+        player.setdefault("current_total_score", None)
+        player.setdefault("current_dungeon_scores", {})
+        player.setdefault("score_season", "")
+        player.setdefault("last_successful_sync_at", None)
+        players.append(player)
+    return players
+
+
 def build_summary_metadata_rows(
     *,
     header: list[str],
     runs: list[dict[str, Any]],
     now: datetime,
+    season: str | None = None,
 ) -> list[tuple[object, object]]:
     """Build top-right metadata rows for the summary sheet."""
 
@@ -736,9 +948,12 @@ def build_summary_metadata_rows(
         return []
 
     unique_runs = _unique_runs_by_id(runs)
-    metadata_rows: list[tuple[object, object]] = [("unique_runs", len(unique_runs))]
+    metadata_rows: list[tuple[object, object]] = []
+    if season is not None:
+        metadata_rows.append(("season", season))
+    metadata_rows.append(("unique_runs", len(unique_runs)))
 
-    lag_by_run_id: dict[int, tuple[datetime, float]] = {}
+    lag_by_run_id: dict[str, tuple[datetime, float]] = {}
     today_lags: list[float] = []
     today_start, today_end = _pacific_day_bounds(now)
     for run_id, run in unique_runs.items():
@@ -790,7 +1005,7 @@ class SyncService:
         self._blizzard_client = blizzard_client
         self._stop_requested = False
         self._stop_event = threading.Event()
-        self._blizzard_season_context: dict[str, Any] | None = None
+        self._blizzard_season_context: dict[int, dict[str, Any]] = {}
 
     def install_signal_handlers(self) -> None:
         """Install SIGTERM/SIGINT handlers for graceful shutdown."""
@@ -829,11 +1044,16 @@ class SyncService:
                 break
             remaining = self._next_cycle_delay_seconds()
             if remaining > 0 and not self._stop_requested:
-                LOGGER.info("Sleeping before next cycle", extra={"sleep_seconds": round(remaining, 1)})
+                LOGGER.info(
+                    "Sleeping before next cycle",
+                    extra={"sleep_seconds": round(remaining, 1)},
+                )
                 if self._wait_for_stop(remaining):
                     break
 
-    def run_cycle(self, *, force_sync_all: bool = False, player_key: str | None = None) -> None:
+    def run_cycle(
+        self, *, force_sync_all: bool = False, player_key: str | None = None
+    ) -> None:
         """Run one full sync cycle."""
 
         started_at = utc_now()
@@ -845,16 +1065,34 @@ class SyncService:
         LOGGER.info("Starting sync cycle", extra={"started_at": started_at.isoformat()})
 
         try:
-            season_dungeons = self._ensure_season_dungeons(now=started_at)
-            raw_roster_rows = self._sheets_client.read_roster_rows()
+            season = resolve_active_season(
+                self._settings.google.season_tabs,
+                now=started_at,
+            )
+            stats.season = season.slug
+            stats.sheet_tab = season.tab_name
+            self._prepare_future_season_headers(now=started_at, active_season=season)
+            season_dungeons = self._ensure_season_dungeons(
+                season=season.slug,
+                now=started_at,
+            )
+            raw_roster_rows = self._sheets_client.read_roster_rows(
+                tab_name=season.tab_name
+            )
             roster_entries = parse_roster_rows(
                 raw_roster_rows,
                 start_row=self._settings.google.roster_start_row,
             )
             stats.roster_rows = len(roster_entries)
-            stats.invalid_players = len([entry for entry in roster_entries if not entry.is_valid])
+            stats.invalid_players = len(
+                [entry for entry in roster_entries if not entry.is_valid]
+            )
 
-            self._repository.sync_roster(roster_entries, seen_at=started_at)
+            self._repository.sync_roster(
+                roster_entries,
+                season=season.slug,
+                seen_at=started_at,
+            )
             active_players = self._repository.list_active_players(
                 limit=self._settings.sync.max_players_per_cycle
             )
@@ -862,7 +1100,9 @@ class SyncService:
                 active_players=active_players,
                 player_key=player_key,
             )
-            self._expire_hot_windows(active_players=scoped_active_players, now=started_at)
+            self._expire_hot_windows(
+                active_players=scoped_active_players, now=started_at
+            )
             self._queue_predictive_hot_players(
                 active_players=scoped_active_players,
                 now=started_at,
@@ -872,20 +1112,28 @@ class SyncService:
                 limit=self._settings.sync.max_players_per_cycle
             )
             stats.active_players = len(active_players)
-            stats.valid_players = len([player for player in active_players if player.get("is_valid")])
+            stats.valid_players = len(
+                [player for player in active_players if player.get("is_valid")]
+            )
             weekly_periods: dict[str, dict[str, Any]] = {}
             if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                 refreshed_players = active_players
             else:
                 if force_sync_all:
                     players_to_sync = [
-                        player for player in scoped_active_players if player.get("is_valid")
+                        player
+                        for player in scoped_active_players
+                        if player.get("is_valid")
                     ]
                     base_due_keys = {player["player_key"] for player in players_to_sync}
                     hot_due_keys: set[str] = set()
                 else:
-                    players_to_sync, base_due_keys, hot_due_keys = self._select_players_for_sync(
-                        now=started_at
+                    players_to_sync, base_due_keys, hot_due_keys = (
+                        self._select_players_for_sync(
+                            now=started_at,
+                            active_players=active_players,
+                            season=season.slug,
+                        )
                     )
                 required_regions = {
                     str(player.get("region", "")).lower()
@@ -895,11 +1143,16 @@ class SyncService:
                 weekly_periods = self._load_current_weekly_periods(
                     now=started_at,
                     required_regions=required_regions,
+                    season=season,
                 )
                 stats.weekly_periods = _weekly_periods_for_metadata(weekly_periods)
                 for player in active_players:
                     player_region = str(player.get("region", "")).lower()
-                    if player.get("is_valid") and player_region and player_region not in weekly_periods:
+                    if (
+                        player.get("is_valid")
+                        and player_region
+                        and player_region not in weekly_periods
+                    ):
                         message = (
                             f"Missing Blizzard weekly period for region {player_region}; "
                             "weekly 10+ counts left blank."
@@ -909,7 +1162,9 @@ class SyncService:
                         stats.partial = True
                 for player in players_to_sync:
                     if self._stop_requested:
-                        LOGGER.info("Stop requested during player sync; ending cycle early")
+                        LOGGER.info(
+                            "Stop requested during player sync; ending cycle early"
+                        )
                         stats.partial = True
                         break
                     player_key = player["player_key"]
@@ -919,7 +1174,9 @@ class SyncService:
                         sync_kind = "hot"
                         hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
                         last_attempt = _last_attempted_sync_at(player)
-                        if hot_ready_at and (last_attempt is None or last_attempt < hot_ready_at):
+                        if hot_ready_at and (
+                            last_attempt is None or last_attempt < hot_ready_at
+                        ):
                             LOGGER.info(
                                 "Hot polling window reached",
                                 extra={
@@ -934,6 +1191,8 @@ class SyncService:
                         stats=stats,
                         now=started_at,
                         sync_kind=sync_kind,
+                        season=season,
+                        season_dungeons=season_dungeons,
                     )
                     if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                         break
@@ -943,21 +1202,26 @@ class SyncService:
                 )
             player_keys = [player["player_key"] for player in refreshed_players]
             runs = self._repository.get_runs_for_players(player_keys)
+            season_runs = [run for run in runs if run.get("season") == season.slug]
             summary_header = build_summary_header(season_dungeons)
             summary_rows = build_summary_rows(
                 refreshed_players,
-                runs,
+                season_runs,
                 season_dungeons,
                 weekly_periods=weekly_periods,
+                season=season.slug,
+                empty_numeric_values_as_zero=True,
             )
             metadata_rows = build_summary_metadata_rows(
                 header=summary_header,
-                runs=runs,
+                runs=season_runs,
                 now=started_at,
+                season=season.slug,
             )
             stats.sheet_rows_written = self._sheets_client.write_output_rows(
-                summary_header,
-                [row.to_sheet_row() for row in summary_rows],
+                tab_name=season.tab_name,
+                header=summary_header,
+                rows=[row.to_sheet_row() for row in summary_rows],
                 metadata_rows=metadata_rows,
             )
             if self._settings.team_activity.enabled:
@@ -967,12 +1231,13 @@ class SyncService:
                     team_activity_metadata_rows,
                 ) = build_team_activity_table(
                     players=refreshed_players,
-                    runs=runs,
+                    runs=season_runs,
                     now=started_at,
                     window_weeks=self._settings.team_activity.window_weeks,
                     start_hour=self._settings.team_activity.start_hour,
                 )
                 self._sheets_client.write_table(
+                    tab_name=season.tab_name,
                     start_cell=self._settings.google.team_activity_output_start_cell,
                     header=team_activity_header,
                     rows=team_activity_rows,
@@ -988,9 +1253,10 @@ class SyncService:
                 self._raiderio_client.api_calls - initial_raiderio_api_calls
             )
             stats.blizzard_api_calls = (
-                (self._blizzard_client.api_calls if self._blizzard_client is not None else 0)
-                - initial_blizzard_api_calls
-            )
+                self._blizzard_client.api_calls
+                if self._blizzard_client is not None
+                else 0
+            ) - initial_blizzard_api_calls
             stats.api_calls = stats.raiderio_api_calls + stats.blizzard_api_calls
             self._repository.store_sync_cycle(
                 stats.to_document(started_at=started_at, finished_at=finished_at)
@@ -999,6 +1265,8 @@ class SyncService:
                 "Finished sync cycle",
                 extra={
                     "finished_at": finished_at.isoformat(),
+                    "season": stats.season,
+                    "sheet_tab": stats.sheet_tab,
                     "api_calls": stats.api_calls,
                     "raiderio_api_calls": stats.raiderio_api_calls,
                     "blizzard_api_calls": stats.blizzard_api_calls,
@@ -1027,10 +1295,14 @@ class SyncService:
             if player["player_key"] != player_key:
                 continue
             if not player.get("is_valid", False):
-                message = str(player.get("status_message") or "Roster entry is invalid.")
+                message = str(
+                    player.get("status_message") or "Roster entry is invalid."
+                )
                 raise ValueError(f"Requested player {player_key} is invalid: {message}")
             return [player]
-        raise ValueError(f"Requested player {player_key} was not found in the active roster.")
+        raise ValueError(
+            f"Requested player {player_key} was not found in the active roster."
+        )
 
     def _sync_player(
         self,
@@ -1039,6 +1311,8 @@ class SyncService:
         stats: SyncStats,
         now: Any,
         sync_kind: str,
+        season: SeasonTabSettings,
+        season_dungeons: list[dict[str, Any]],
     ) -> None:
         player_key = player["player_key"]
         identity = PlayerIdentity(
@@ -1050,14 +1324,26 @@ class SyncService:
         self._repository.mark_sync_started(player_key, now, sync_kind=sync_kind)
 
         try:
-            raiderio_profile = self._raiderio_client.get_character_profile(identity).payload
-            blizzard_profiles = self._load_blizzard_player_profiles(identity=identity, stats=stats)
-            current_total_score, current_scores, score_source = self._load_player_scores(
-                raiderio_profile=raiderio_profile,
-                blizzard_profiles=blizzard_profiles,
+            raiderio_profile = self._raiderio_client.get_character_profile(
+                identity,
+                season=season.slug,
+            ).payload
+            blizzard_profiles = self._load_blizzard_player_profiles(
+                identity=identity,
+                stats=stats,
+                season=season,
+            )
+            current_total_score, current_scores, score_source = (
+                self._load_player_scores(
+                    raiderio_profile=raiderio_profile,
+                    blizzard_profiles=blizzard_profiles,
+                    season=season.slug,
+                    season_dungeons=season_dungeons,
+                )
             )
             self._repository.update_player_profile(
                 player_key,
+                season=season.slug,
                 current_dungeon_scores=current_scores,
                 current_total_score=current_total_score,
                 score_source=score_source,
@@ -1068,6 +1354,8 @@ class SyncService:
                 identity=identity,
                 raiderio_profile=raiderio_profile,
                 blizzard_profiles=blizzard_profiles,
+                season=season,
+                season_dungeons=season_dungeons,
             )
             new_run_completed_at: list[datetime] = []
             player_new_runs = 0
@@ -1078,11 +1366,34 @@ class SyncService:
                         extra={"player_key": player_key},
                     )
                     return
-                candidate = self._enrich_blizzard_candidate_num_keystone_upgrades(candidate)
+                if not _candidate_belongs_to_season(
+                    candidate,
+                    season=season,
+                    season_dungeons=season_dungeons,
+                ):
+                    LOGGER.info(
+                        "Ignoring run outside the active season",
+                        extra={
+                            "player_key": player_key,
+                            "active_season": season.slug,
+                            "run_season": candidate.season,
+                            "dungeon_id": candidate.dungeon_id,
+                            "completed_at": (
+                                candidate.completed_at.isoformat()
+                                if candidate.completed_at is not None
+                                else None
+                            ),
+                        },
+                    )
+                    continue
+                candidate = self._enrich_blizzard_candidate_num_keystone_upgrades(
+                    candidate,
+                    season=season.slug,
+                )
                 inserted = self._repository.upsert_normalized_run(
                     candidate,
                     player_key=player_key,
-                    season=self._resolved_storage_season(),
+                    season=season.slug,
                     synced_at=now,
                     fuzz_seconds=self._settings.blizzard.run_fingerprint_fuzz_seconds,
                 )
@@ -1097,14 +1408,24 @@ class SyncService:
                     new_run_completed_at if new_run_completed_at else [ensure_utc(now)]
                 )
                 existing_profile = {
-                    "play_profile_first_week_start_at": player.get("play_profile_first_week_start_at"),
-                    "play_profile_last_seeded_at": player.get("play_profile_last_seeded_at"),
-                    "play_profile_weeks_observed": player.get("play_profile_weeks_observed", 0),
-                    "play_profile_hour_counts": player.get("play_profile_hour_counts", []),
+                    "play_profile_first_week_start_at": player.get(
+                        "play_profile_first_week_start_at"
+                    ),
+                    "play_profile_last_seeded_at": player.get(
+                        "play_profile_last_seeded_at"
+                    ),
+                    "play_profile_weeks_observed": player.get(
+                        "play_profile_weeks_observed", 0
+                    ),
+                    "play_profile_hour_counts": player.get(
+                        "play_profile_hour_counts", []
+                    ),
                     "play_profile_hour_probabilities": player.get(
                         "play_profile_hour_probabilities", []
                     ),
-                    "play_profile_seen_week_hours": player.get("play_profile_seen_week_hours", []),
+                    "play_profile_seen_week_hours": player.get(
+                        "play_profile_seen_week_hours", []
+                    ),
                     "play_profile_last_enqueued_week_hour": player.get(
                         "play_profile_last_enqueued_week_hour", ""
                     ),
@@ -1124,7 +1445,9 @@ class SyncService:
                             player.get("play_profile_last_enqueued_week_hour", "") or ""
                         ),
                     )
-                self._repository.upsert_player_play_profile(player_key=player_key, profile=profile)
+                self._repository.upsert_player_play_profile(
+                    player_key=player_key, profile=profile
+                )
         except RaiderIONotFoundError:
             message = "Raider.IO could not find this player."
             LOGGER.warning(
@@ -1155,15 +1478,22 @@ class SyncService:
         *,
         identity: PlayerIdentity,
         stats: SyncStats,
+        season: SeasonTabSettings,
     ) -> tuple[dict[str, Any], dict[str, Any]] | None:
-        if not self._settings.blizzard.enabled:
+        client = self._blizzard_client
+        if (
+            not self._settings.blizzard.enabled
+            or season.blizzard_season_id is None
+            or client is None
+        ):
             return None
 
         try:
-            season_id = self._resolve_blizzard_season_id()
-            current_profile = self._blizzard_client.get_character_mythic_keystone_profile(identity).payload
-            season_profile = self._blizzard_client.get_character_mythic_keystone_profile_season(
-                identity, season_id
+            current_profile = client.get_character_mythic_keystone_profile(
+                identity
+            ).payload
+            season_profile = client.get_character_mythic_keystone_profile_season(
+                identity, season.blizzard_season_id
             ).payload
             return current_profile, season_profile
         except (BlizzardError, BlizzardNotFoundError) as exc:
@@ -1176,19 +1506,34 @@ class SyncService:
         *,
         raiderio_profile: dict[str, Any],
         blizzard_profiles: tuple[dict[str, Any], dict[str, Any]] | None,
+        season: str,
+        season_dungeons: list[dict[str, Any]],
     ) -> tuple[float | None, dict[str, float], str]:
+        allowed_dungeons = {
+            str(dungeon.get("name", ""))
+            for dungeon in season_dungeons
+            if dungeon.get("name")
+        }
         raider_total, raider_scores = normalize_raiderio_profile_scores(
             raiderio_profile,
-            season_slug=self._settings.sync.current_season,
+            season_slug=season,
+            allowed_dungeons=allowed_dungeons,
         )
         if blizzard_profiles is None:
             return raider_total, raider_scores, "raiderio"
 
         current_profile, season_profile = blizzard_profiles
-        total, scores = normalize_blizzard_profile_scores(current_profile, season_profile)
-        if total is not None or scores:
-            return total, scores, "blizzard"
-        return raider_total, raider_scores, "raiderio"
+        total, scores = normalize_blizzard_profile_scores(
+            current_profile,
+            season_profile,
+            allowed_dungeons=allowed_dungeons,
+        )
+        return _merge_player_scores(
+            raiderio_total=raider_total,
+            raiderio_scores=raider_scores,
+            blizzard_total=total,
+            blizzard_scores=scores,
+        )
 
     def _load_run_candidates(
         self,
@@ -1196,11 +1541,10 @@ class SyncService:
         identity: PlayerIdentity,
         raiderio_profile: dict[str, Any],
         blizzard_profiles: tuple[dict[str, Any], dict[str, Any]] | None,
+        season: SeasonTabSettings,
+        season_dungeons: list[dict[str, Any]],
     ) -> list[NormalizedRunCandidate]:
         fuzz_seconds = self._settings.blizzard.run_fingerprint_fuzz_seconds
-        season_dungeons = self._repository.list_season_dungeons(
-            season=self._resolved_storage_season()
-        )
         candidates = list(
             collect_raiderio_run_candidates(
                 raiderio_profile,
@@ -1217,6 +1561,7 @@ class SyncService:
                 season_profile,
                 region=identity.region,
                 season_dungeons=season_dungeons,
+                season=season.slug,
                 fuzz_seconds=fuzz_seconds,
             )
         )
@@ -1226,11 +1571,20 @@ class SyncService:
     def _enrich_blizzard_candidate_num_keystone_upgrades(
         self,
         candidate: NormalizedRunCandidate,
+        *,
+        season: str,
     ) -> NormalizedRunCandidate:
-        if candidate.source != "blizzard" or candidate.num_keystone_upgrades is not None:
+        if (
+            candidate.source != "blizzard"
+            or candidate.num_keystone_upgrades is not None
+        ):
+            return candidate
+        client = self._blizzard_client
+        if client is None or candidate.dungeon_id is None:
             return candidate
 
         existing = self._repository.find_run_by_fuzzy_fields(
+            season=season,
             dungeon_id=candidate.dungeon_id,
             mythic_level=candidate.mythic_level,
             completed_at=candidate.completed_at,
@@ -1239,14 +1593,16 @@ class SyncService:
         )
         if existing is not None:
             existing_upgrades = existing.get("num_keystone_upgrades")
-            existing_metrics_source = str(
-                existing.get("run_metrics_source") or ""
-            ).strip().lower()
+            existing_metrics_source = (
+                str(existing.get("run_metrics_source") or "").strip().lower()
+            )
             if existing_upgrades is not None and existing_metrics_source == "blizzard":
                 return replace(candidate, num_keystone_upgrades=int(existing_upgrades))
 
         try:
-            dungeon_payload = self._blizzard_client.get_mythic_keystone_dungeon(candidate.dungeon_id).payload
+            dungeon_payload = client.get_mythic_keystone_dungeon(
+                candidate.dungeon_id
+            ).payload
         except (BlizzardError, BlizzardNotFoundError) as exc:
             LOGGER.warning(
                 "Failed to load Blizzard dungeon timing metadata for upgrade inference",
@@ -1266,130 +1622,220 @@ class SyncService:
             return candidate
         return replace(candidate, num_keystone_upgrades=int(inferred))
 
-    def _resolved_storage_season(self) -> str:
-        if self._settings.sync.current_season:
-            return self._settings.sync.current_season
-        return f"season-{self._resolve_blizzard_season_id()}"
+    def prepare_season_tab(
+        self,
+        season_slug: str,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        """Populate a configured season tab with roster-based zero-state output."""
 
-    def _resolve_blizzard_season_id(self) -> int:
-        return int(self._get_blizzard_season_context()["season_id"])
+        season = next(
+            (
+                candidate
+                for candidate in self._settings.google.season_tabs
+                if candidate.slug == season_slug
+            ),
+            None,
+        )
+        if season is None:
+            raise ValueError(f"Season is not configured: {season_slug}")
+        if season.tab_name not in self._sheets_client.list_tab_names():
+            raise ValueError(
+                f"Google Sheets tab {season.tab_name!r} does not exist for {season.slug}"
+            )
+        current_time = ensure_utc(now or utc_now())
+        dungeons = self._ensure_season_dungeons(
+            season=season.slug,
+            now=current_time,
+        )
+        raw_roster_rows = self._sheets_client.read_roster_rows(tab_name=season.tab_name)
+        roster_entries = parse_roster_rows(
+            raw_roster_rows,
+            start_row=self._settings.google.roster_start_row,
+        )
+        existing_players = self._repository.get_players_by_keys(
+            [entry.player_key for entry in roster_entries]
+        )
+        players = _players_for_roster_entries(roster_entries, existing_players)
+        header = build_summary_header(dungeons)
+        summary_rows = build_summary_rows(
+            players,
+            [],
+            dungeons,
+            season=season.slug,
+            empty_numeric_values_as_zero=True,
+            empty_weekly_count_as_zero=True,
+        )
+        metadata_rows = build_summary_metadata_rows(
+            header=header,
+            runs=[],
+            now=current_time,
+            season=season.slug,
+        )
+        rows_written = self._sheets_client.write_output_rows(
+            tab_name=season.tab_name,
+            header=header,
+            rows=[row.to_sheet_row() for row in summary_rows],
+            metadata_rows=metadata_rows,
+        )
+        if self._settings.team_activity.enabled:
+            (
+                team_activity_header,
+                team_activity_rows,
+                team_activity_metadata_rows,
+            ) = build_team_activity_table(
+                players=players,
+                runs=[],
+                now=current_time,
+                window_weeks=self._settings.team_activity.window_weeks,
+                start_hour=self._settings.team_activity.start_hour,
+            )
+            self._sheets_client.write_table(
+                tab_name=season.tab_name,
+                start_cell=self._settings.google.team_activity_output_start_cell,
+                header=team_activity_header,
+                rows=team_activity_rows,
+                metadata_rows=team_activity_metadata_rows,
+            )
+        LOGGER.info(
+            "Prepared season zero-state output",
+            extra={
+                "season": season.slug,
+                "tab_name": season.tab_name,
+                "dungeon_count": len(dungeons),
+                "roster_rows": len(roster_entries),
+                "existing_players": len(existing_players),
+                "rows_written": rows_written,
+            },
+        )
 
-    def _get_blizzard_season_context(self, *, now: datetime | None = None) -> dict[str, Any]:
-        if not self._settings.blizzard.enabled:
+    def _prepare_future_season_headers(
+        self,
+        *,
+        now: datetime,
+        active_season: SeasonTabSettings,
+    ) -> None:
+        """Prepare existing future tabs while leaving prior season tabs untouched."""
+
+        existing_tabs = self._sheets_client.list_tab_names()
+        for season in self._settings.google.season_tabs:
+            if season.activates_at <= active_season.activates_at:
+                continue
+            if season.tab_name not in existing_tabs:
+                LOGGER.info(
+                    "Future season tab is not provisioned yet",
+                    extra={"season": season.slug, "tab_name": season.tab_name},
+                )
+                continue
+            try:
+                dungeons = self._ensure_season_dungeons(
+                    season=season.slug,
+                    now=now,
+                )
+                self._sheets_client.write_header(
+                    tab_name=season.tab_name,
+                    start_cell=self._settings.google.output_start_cell,
+                    header=build_summary_header(dungeons),
+                )
+            except Exception:
+                LOGGER.exception(
+                    "Failed to prepare future season headers",
+                    extra={"season": season.slug, "tab_name": season.tab_name},
+                )
+
+    def _get_blizzard_season_context(
+        self,
+        *,
+        season_id: int,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        client = self._blizzard_client
+        if not self._settings.blizzard.enabled or client is None:
             raise BlizzardError("Blizzard API is disabled")
         current_time = ensure_utc(now or utc_now())
-        cached = self._blizzard_season_context
+        cached = self._blizzard_season_context.get(season_id)
         if cached is not None:
             refresh_at = cached.get("refresh_at")
             if isinstance(refresh_at, datetime) and current_time < refresh_at:
                 return cached
 
-        payload = self._blizzard_client.get_current_season_index().payload
-        seasons = payload.get("seasons", []) or []
-        if not seasons:
-            raise BlizzardError("Blizzard season index did not include any seasons")
-        season_ids = [int(item["id"]) for item in seasons if item.get("id") is not None]
-        if not season_ids:
-            raise BlizzardError("Blizzard season index did not include usable season ids")
-        season_id = max(season_ids)
-        season_detail = self._blizzard_client.get_season_detail(season_id).payload
-        current_period_index = self._blizzard_client.get_current_period_index().payload
+        season_detail = client.get_season_detail(season_id).payload
+        current_period_index = client.get_current_period_index().payload
         current_period = current_period_index.get("current_period") or {}
         period_id = current_period.get("id")
         if period_id is None:
-            raise BlizzardError("Blizzard period index did not include a current period id")
-        current_period_detail = self._blizzard_client.get_period_detail(int(period_id)).payload
+            raise BlizzardError(
+                "Blizzard period index did not include a current period id"
+            )
+        current_period_detail = client.get_period_detail(int(period_id)).payload
         current_us_period = _normalize_blizzard_weekly_period(current_period_detail)
-        periods_by_region = {"us": current_us_period} if current_us_period is not None else {}
+        periods_by_region = (
+            {"us": current_us_period} if current_us_period is not None else {}
+        )
         refresh_at = min(
             (period["end"] for period in periods_by_region.values()),
             default=current_time + timedelta(hours=1),
         )
-        self._blizzard_season_context = {
+        context = {
             "season_id": season_id,
             "season_detail": season_detail,
             "periods_by_region": periods_by_region,
             "refresh_at": refresh_at,
         }
-        return self._blizzard_season_context
+        self._blizzard_season_context[season_id] = context
+        return context
 
-    def _ensure_season_dungeons(self, *, now: Any) -> list[dict[str, Any]]:
+    def _ensure_season_dungeons(
+        self,
+        *,
+        season: str,
+        now: Any,
+    ) -> list[dict[str, Any]]:
         """Load season dungeon metadata from Mongo or upstream sources."""
 
-        season = self._resolved_storage_season()
         dungeons = self._repository.list_season_dungeons(season=season)
         if dungeons and _season_dungeons_have_valid_short_names(dungeons):
             self._repository.normalize_run_short_names(season=season, dungeons=dungeons)
             return dungeons
 
-        season_dungeons: list[SeasonDungeon] = []
-        if self._settings.blizzard.enabled:
-            try:
-                season_payload = self._get_blizzard_season_context(now=ensure_utc(now))[
-                    "season_detail"
-                ]
-                season_dungeons = [
-                    SeasonDungeon(
-                        season=season,
-                        dungeon_id=dungeon.get("id"),
-                        slug=str(dungeon.get("slug", dungeon.get("id", ""))),
-                        name=_localized_name(dungeon.get("name")),
-                        short_name=str(dungeon.get("short_name", "")),
-                        challenge_mode_id=dungeon.get("challenge_mode_id"),
-                        keystone_timer_seconds=dungeon.get("keystone_timer_seconds"),
-                        icon_url=str(dungeon.get("icon_url", "")),
-                        background_image_url=str(dungeon.get("background_image_url", "")),
-                    )
-                    for dungeon in season_payload.get("dungeons", []) or []
-                    if (
-                        dungeon.get("id") is not None
-                        and _localized_name(dungeon.get("name"))
-                        and dungeon.get("short_name")
-                    )
-                ]
-            except BlizzardError:
-                season_dungeons = []
+        expansion_id = _season_slug_to_expansion_id(season)
+        payload = self._raiderio_client.get_mythic_plus_static_data(
+            expansion_id=expansion_id
+        ).payload
+        seasons = payload.get("seasons", []) or []
+        season_payload = next(
+            (item for item in seasons if item.get("slug") == season), None
+        )
+        if season_payload is None:
+            raise RaiderIOError(
+                f"Raider.IO static data did not include season {season}"
+            )
 
-        if not _season_dungeons_have_valid_short_names(
-            [
-                {
-                    "short_name": dungeon.short_name,
-                    "name": dungeon.name,
-                }
-                for dungeon in season_dungeons
-            ]
-        ):
-            expansion_id = _season_slug_to_expansion_id(season)
-            payload = self._raiderio_client.get_mythic_plus_static_data(
-                expansion_id=expansion_id
-            ).payload
-            seasons = payload.get("seasons", []) or []
-            season_payload = next((item for item in seasons if item.get("slug") == season), None)
-            if season_payload is None:
-                raise RaiderIOError(f"Raider.IO static data did not include season {season}")
-
-            season_dungeons = [
-                SeasonDungeon(
-                    season=season,
-                    dungeon_id=dungeon.get("id"),
-                    slug=str(dungeon.get("slug", "")),
-                    name=str(dungeon.get("name", "")),
-                    short_name=str(dungeon.get("short_name", "")),
-                    challenge_mode_id=dungeon.get("challenge_mode_id"),
-                    keystone_timer_seconds=dungeon.get("keystone_timer_seconds"),
-                    icon_url=str(dungeon.get("icon_url", "")),
-                    background_image_url=str(dungeon.get("background_image_url", "")),
-                )
-                for dungeon in season_payload.get("dungeons", []) or []
-                if dungeon.get("slug") and dungeon.get("short_name")
-            ]
+        season_dungeons = [
+            SeasonDungeon(
+                season=season,
+                dungeon_id=dungeon.get("id"),
+                slug=str(dungeon.get("slug", "")),
+                name=str(dungeon.get("name", "")),
+                short_name=str(dungeon.get("short_name", "")),
+                challenge_mode_id=dungeon.get("challenge_mode_id"),
+                keystone_timer_seconds=dungeon.get("keystone_timer_seconds"),
+                icon_url=str(dungeon.get("icon_url", "")),
+                background_image_url=str(dungeon.get("background_image_url", "")),
+            )
+            for dungeon in season_payload.get("dungeons", []) or []
+            if dungeon.get("slug") and dungeon.get("short_name")
+        ]
         self._repository.replace_season_dungeons(
             season=season,
             dungeons=season_dungeons,
             synced_at=now,
         )
         refreshed_dungeons = self._repository.list_season_dungeons(season=season)
-        self._repository.normalize_run_short_names(season=season, dungeons=refreshed_dungeons)
+        self._repository.normalize_run_short_names(
+            season=season, dungeons=refreshed_dungeons
+        )
         LOGGER.info(
             "Cached season dungeon metadata",
             extra={"season": season, "dungeon_count": len(season_dungeons)},
@@ -1401,6 +1847,7 @@ class SyncService:
         *,
         now: datetime,
         required_regions: set[str],
+        season: SeasonTabSettings,
     ) -> dict[str, dict[str, Any]]:
         """Load current weekly periods from cache when possible, else refresh from Blizzard."""
 
@@ -1419,7 +1866,14 @@ class SyncService:
             payload = self._raiderio_client.get_periods().payload
             periods_by_region = _normalize_weekly_periods(payload)
         else:
-            periods_by_region = self._get_blizzard_season_context(now=now)["periods_by_region"]
+            if season.blizzard_season_id is None:
+                raise BlizzardError(
+                    f"No Blizzard season ID configured for {season.slug}"
+                )
+            periods_by_region = self._get_blizzard_season_context(
+                season_id=season.blizzard_season_id,
+                now=now,
+            )["periods_by_region"]
         self._repository.replace_weekly_periods(
             periods_by_region=periods_by_region,
             synced_at=now,
@@ -1443,8 +1897,12 @@ class SyncService:
         if cooldown_remaining <= 0:
             return False
 
-        cooldown_reason = self._raiderio_client.get_cooldown_reason() or "Raider.IO cooldown active"
-        message = f"{cooldown_reason}; using cached data for {round(cooldown_remaining, 1)}s."
+        cooldown_reason = (
+            self._raiderio_client.get_cooldown_reason() or "Raider.IO cooldown active"
+        )
+        message = (
+            f"{cooldown_reason}; using cached data for {round(cooldown_remaining, 1)}s."
+        )
         if message not in stats.warnings:
             LOGGER.warning(
                 "Skipping Raider.IO sync while cooldown is active",
@@ -1463,7 +1921,9 @@ class SyncService:
         base_delay = self._settings.sync.failure_backoff_seconds
         max_delay = self._settings.sync.max_failure_backoff_seconds
         jitter = self._settings.sync.failure_backoff_jitter_seconds
-        exponential_delay = min(base_delay * (2 ** max(consecutive_failures - 1, 0)), max_delay)
+        exponential_delay = min(
+            base_delay * (2 ** max(consecutive_failures - 1, 0)), max_delay
+        )
         if jitter <= 0:
             return exponential_delay
         return min(exponential_delay + random.uniform(0, jitter), max_delay)
@@ -1499,10 +1959,15 @@ class SyncService:
                 player=player,
                 now=now,
             )
-            probabilities = refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            probabilities = (
+                refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            )
             if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
                 continue
-            if refreshed_profile.get("play_profile_last_enqueued_week_hour") == current_week_hour:
+            if (
+                refreshed_profile.get("play_profile_last_enqueued_week_hour")
+                == current_week_hour
+            ):
                 continue
             probability = float(probabilities[current_slot_index])
             if probability < self._settings.sync.predictive_hot_threshold:
@@ -1533,7 +1998,9 @@ class SyncService:
     ) -> dict[str, Any]:
         """Refresh stored profile probabilities when a new calendar week changes the denominator."""
 
-        first_week_start_at = _safe_datetime(player.get("play_profile_first_week_start_at"))
+        first_week_start_at = _safe_datetime(
+            player.get("play_profile_first_week_start_at")
+        )
         seen_week_hours = player.get("play_profile_seen_week_hours", []) or []
         if first_week_start_at is None or not seen_week_hours:
             return player
@@ -1545,7 +2012,9 @@ class SyncService:
             completed_at_values=[],
             now=ensure_utc(now),
         )
-        self._repository.upsert_player_play_profile(player_key=player["player_key"], profile=profile)
+        self._repository.upsert_player_play_profile(
+            player_key=player["player_key"], profile=profile
+        )
         refreshed_player = dict(player)
         refreshed_player.update(profile)
         return refreshed_player
@@ -1554,6 +2023,8 @@ class SyncService:
         self,
         *,
         now: datetime,
+        active_players: list[dict[str, Any]],
+        season: str,
     ) -> tuple[list[dict[str, Any]], set[str], set[str]]:
         """Select valid active players due for either base or hot polling."""
 
@@ -1575,11 +2046,18 @@ class SyncService:
             limit=limit,
         )
 
+        rollover_due_players = [
+            player
+            for player in active_players
+            if player.get("is_valid", False) and player.get("score_season") != season
+        ]
         selected_players: list[dict[str, Any]] = []
         selected_keys: set[str] = set()
-        base_due_keys = {player["player_key"] for player in base_due_players}
+        base_due_keys = {
+            player["player_key"] for player in rollover_due_players + base_due_players
+        }
         hot_due_keys: set[str] = set()
-        for player in base_due_players + hot_due_players:
+        for player in rollover_due_players + base_due_players + hot_due_players:
             player_key = player["player_key"]
             if player_key in selected_keys:
                 continue
@@ -1591,7 +2069,9 @@ class SyncService:
                 hot_due_keys.add(player_key)
         return selected_players, base_due_keys & selected_keys, hot_due_keys
 
-    def _expire_hot_windows(self, *, active_players: list[dict[str, Any]], now: datetime) -> None:
+    def _expire_hot_windows(
+        self, *, active_players: list[dict[str, Any]], now: datetime
+    ) -> None:
         """Clear any expired hot windows so they are not reconsidered indefinitely."""
 
         for player in active_players:
@@ -1617,12 +2097,23 @@ class SyncService:
         active_players = self._repository.list_active_players(
             limit=self._settings.sync.max_players_per_cycle
         )
-        valid_players = [player for player in active_players if player.get("is_valid", False)]
-        if not valid_players:
-            return float(self._settings.sync.interval_minutes * 60)
-
+        valid_players = [
+            player for player in active_players if player.get("is_valid", False)
+        ]
         now = utc_now()
         normalized_now = ensure_utc(now)
+        next_transition = next_season_transition(
+            self._settings.google.season_tabs,
+            now=normalized_now,
+        )
+        if not valid_players:
+            base_delay = float(self._settings.sync.interval_minutes * 60)
+            if next_transition is None:
+                return base_delay
+            return min(
+                base_delay,
+                max((next_transition - normalized_now).total_seconds(), 0.0),
+            )
         next_due_at = _next_hot_batch_at_or_after(
             normalized_now + timedelta(minutes=self._settings.sync.interval_minutes),
             interval_minutes=self._settings.sync.interval_minutes,
@@ -1638,7 +2129,11 @@ class SyncService:
                 next_due_at = min(next_due_at, next_base_batch_at)
             hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
             hot_until_at = _safe_datetime(player.get("hot_until_at"))
-            if hot_ready_at is None or hot_until_at is None or hot_until_at <= normalized_now:
+            if (
+                hot_ready_at is None
+                or hot_until_at is None
+                or hot_until_at <= normalized_now
+            ):
                 continue
             last_hot_batch_at = None
             if last_attempt is not None:
@@ -1655,9 +2150,13 @@ class SyncService:
             if next_hot_batch_at < hot_until_at:
                 next_due_at = min(next_due_at, next_hot_batch_at)
 
-        predictive_wake_at = self._next_predictive_wake_at(valid_players=valid_players, now=normalized_now)
+        predictive_wake_at = self._next_predictive_wake_at(
+            valid_players=valid_players, now=normalized_now
+        )
         if predictive_wake_at is not None:
             next_due_at = min(next_due_at, predictive_wake_at)
+        if next_transition is not None:
+            next_due_at = min(next_due_at, next_transition)
 
         return max((next_due_at - normalized_now).total_seconds(), 0.0)
 
@@ -1676,12 +2175,22 @@ class SyncService:
         next_slot_index = pacific_week_hour_index(next_hour_start)
         next_week_hour = current_week_hour_key(next_hour_start)
         for player in valid_players:
-            refreshed_profile = self._refresh_play_profile_for_current_week(player=player, now=now)
-            probabilities = refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            refreshed_profile = self._refresh_play_profile_for_current_week(
+                player=player, now=now
+            )
+            probabilities = (
+                refreshed_profile.get("play_profile_hour_probabilities", []) or []
+            )
             if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
                 continue
-            if refreshed_profile.get("play_profile_last_enqueued_week_hour") == next_week_hour:
+            if (
+                refreshed_profile.get("play_profile_last_enqueued_week_hour")
+                == next_week_hour
+            ):
                 continue
-            if float(probabilities[next_slot_index]) >= self._settings.sync.predictive_hot_threshold:
+            if (
+                float(probabilities[next_slot_index])
+                >= self._settings.sync.predictive_hot_threshold
+            ):
                 return next_hour_start
         return None

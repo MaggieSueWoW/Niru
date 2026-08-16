@@ -4,12 +4,36 @@ import unittest
 from unittest.mock import patch
 
 import niru.play_profile_seed as play_profile_seed_module
+from niru.config import SeasonTabSettings
 from niru.play_profile_seed import (
     PlayProfileSeedService,
     _load_all_active_players,
     _parse_players,
     parse_args,
 )
+
+
+def _settings():
+    return type(
+        "Settings",
+        (),
+        {
+            "google": type(
+                "Google",
+                (),
+                {
+                    "season_tabs": (
+                        SeasonTabSettings(
+                            slug="season-mn-1",
+                            tab_name="raw_data",
+                            activates_at=datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+                            blizzard_season_id=17,
+                        ),
+                    )
+                },
+            )()
+        },
+    )()
 
 
 class FakeRepo:
@@ -53,7 +77,8 @@ class FakeRepo:
         return [
             run
             for run in self.runs
-            if run["season"] == season and player_key in run["discovered_from_player_keys"]
+            if run["season"] == season
+            and player_key in run["discovered_from_player_keys"]
         ]
 
     def upsert_player_play_profile(self, *, player_key, profile):
@@ -62,7 +87,9 @@ class FakeRepo:
 
 class PlayProfileSeedTests(unittest.TestCase):
     def test_parse_args_accepts_player_filter(self) -> None:
-        with patch.object(sys, "argv", ["play-profile-seed", "--player", "us/proudmoore/MaggieSue"]):
+        with patch.object(
+            sys, "argv", ["play-profile-seed", "--player", "us/proudmoore/MaggieSue"]
+        ):
             args = parse_args()
 
         self.assertEqual(args.players, ["us/proudmoore/MaggieSue"])
@@ -76,14 +103,12 @@ class PlayProfileSeedTests(unittest.TestCase):
     def test_load_all_active_players_filters_invalid_rows(self) -> None:
         players = _load_all_active_players(FakeRepo())
 
-        self.assertEqual([player.player_key for player in players], ["us/proudmoore/maggiesue"])
+        self.assertEqual(
+            [player.player_key for player in players], ["us/proudmoore/maggiesue"]
+        )
 
     def test_seed_service_builds_profiles_from_current_season_runs(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {"sync": type("Sync", (), {"current_season": "season-mn-1"})()},
-        )()
+        settings = _settings()
         repo = FakeRepo()
         service = PlayProfileSeedService(settings=settings, repository=repo)
         players = _parse_players(["us/proudmoore/MaggieSue"])
@@ -101,11 +126,7 @@ class PlayProfileSeedTests(unittest.TestCase):
         self.assertEqual(sum(profile["play_profile_hour_counts"]), 2)
 
     def test_seed_service_supports_dry_run(self) -> None:
-        settings = type(
-            "Settings",
-            (),
-            {"sync": type("Sync", (), {"current_season": "season-mn-1"})()},
-        )()
+        settings = _settings()
         repo = FakeRepo()
         service = PlayProfileSeedService(settings=settings, repository=repo)
         players = _parse_players(["us/proudmoore/MaggieSue"])

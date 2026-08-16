@@ -39,13 +39,14 @@ This document is for Codex agents contributing to the project. It captures codin
 - Track **current-season Mythic+ data only** unless the user explicitly changes the product scope.
 - Treat Raider.IO public API data as **best effort**. Do not add scraping without explicit user approval.
 - The Google Sheet contract for V1 is:
-  - tab name `raw_data`
+  - one config-scheduled tab per season
   - roster entries in column `A`, starting at `A2`
   - roster format `region/realm/name`
   - summary output starts at `C1`
+- Preserve prior season tabs and switch reads/writes to the new tab at its configured activation time.
 - MongoDB is the source of truth for players, runs, and sync-cycle metadata.
 - Prefer storing raw Raider.IO payloads alongside normalized fields so future reporting can reuse the data.
-- Use `keystone_run_id` as the unique run key and avoid duplicate inserts.
+- Use `(season, keystone_run_id)` as the unique Raider.IO run key and avoid duplicate inserts.
 - Logging matters for this repo. Favor clear operational logs around cadence, retries, roster errors, new runs, and sheet writes.
 - Redis is optional and should stay out of V1 unless there is a concrete need.
 

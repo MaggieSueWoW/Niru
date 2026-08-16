@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import logging
 
-from niru.config import Settings, load_settings
+from niru.config import Settings, load_settings, resolve_active_season
 from niru.logging_utils import configure_logging
 from niru.models import PlayerIdentity, ensure_utc, utc_now
 from niru.play_profile import build_play_profile
@@ -51,16 +51,21 @@ class PlayProfileSeedService:
         """Seed predictive play profiles for the supplied players."""
 
         now = utc_now()
+        season = resolve_active_season(
+            self._settings.google.season_tabs,
+            now=now,
+        ).slug
         stats = PlayProfileSeedStats(players=len(players), dry_run=dry_run)
         for player in players:
             runs = self._repository.get_runs_for_player(
                 player_key=player.player_key,
-                season=self._settings.sync.current_season,
+                season=season,
             )
             completed_datetimes = [
                 completed_at
                 for run in runs
-                if (completed_at := _coerce_datetime(run.get("completed_at"))) is not None
+                if (completed_at := _coerce_datetime(run.get("completed_at")))
+                is not None
             ]
             profile = build_play_profile(
                 completed_at_values=completed_datetimes,
@@ -97,7 +102,9 @@ class PlayProfileSeedService:
 def parse_args() -> argparse.Namespace:
     """Parse play-profile seed command-line arguments."""
 
-    parser = argparse.ArgumentParser(description="Seed predictive play profiles from stored runs.")
+    parser = argparse.ArgumentParser(
+        description="Seed predictive play profiles from stored runs."
+    )
     parser.add_argument(
         "--config",
         default="config.yaml",
@@ -151,7 +158,11 @@ def main() -> None:
     configure_logging(settings.logging.level)
     repository = MongoRepository(settings.mongodb)
     try:
-        players = _parse_players(args.players) if args.players else _load_all_active_players(repository)
+        players = (
+            _parse_players(args.players)
+            if args.players
+            else _load_all_active_players(repository)
+        )
         service = PlayProfileSeedService(settings=settings, repository=repository)
         service.run(players=players, dry_run=args.dry_run)
     finally:

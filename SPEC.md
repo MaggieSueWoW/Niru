@@ -13,22 +13,24 @@ V1 is current-season only and best effort.
 - Google Sheets is the user-facing surface
 - MongoDB is the system of record
 - Redis is used only for ephemeral control state such as rate-limit windows and cooldowns
-- Season rollover is manual for now via config update
+- Season rollover is scheduled in config and does not require a cutoff-time redeploy
 
 ## Roster Contract
 
-- Sheet tab: `raw_data`
+- Sheet tab: the active season's configured `google.season_tabs.<slug>.tab_name`
 - Input range: column `A`, starting at `A2`
 - Cell format: `region/realm/name`
 - Region must be one of `us`, `eu`, `tw`, `kr`, `cn`
 - Realm is normalized to Raider.IO slug format
 - Duplicate roster rows are ignored after the first valid instance and surfaced as `invalid_player`
+- Each season tab owns its own roster; prior season roster membership remains stored separately
 
 ## Data Flow
 
 ### 1. Roster Sync
 
-- Read the roster column from Google Sheets
+- Resolve the active season from the configured UTC activation schedule
+- Read the roster column from that season's Google Sheets tab
 - Parse and validate each row
 - Upsert active roster rows into MongoDB
 - Mark rows missing from the latest sheet snapshot as inactive
@@ -38,7 +40,7 @@ V1 is current-season only and best effort.
 For each valid active player:
 
 - Fetch Raider.IO character profile data with:
-  - `mythic_plus_scores_by_season:current`
+  - `mythic_plus_scores_by_season:<active-season-slug>`
   - `mythic_plus_recent_runs`
   - `mythic_plus_best_runs:all`
   - `mythic_plus_alternate_runs:all`
@@ -53,13 +55,16 @@ Important limitation:
 - V1 therefore stores every run it can positively discover, but it does not guarantee a complete season history for every player from public API data alone.
 - If polling windows are missed or Raider.IO data is unavailable, the bot should continue publishing best-effort summaries while marking affected players as potentially incomplete.
 - If repeated upstream failures or `429` responses occur, the bot should open a persistent cooldown and publish from cached Mongo data until the cooldown expires.
+- At rollover, accept a run only when its explicit source season matches (when available), its completion is on or after the configured activation, and its dungeon belongs to the active season catalog. This prevents stale S1 responses from being stamped as S2.
+- Blizzard score and season-profile requests use the configured numeric season ID rather than inferring the latest season from an index response.
 
 ### 3. Sheet Publish
 
-- Query active roster players and relevant runs from MongoDB
-- Build one summary row per `player + dungeon`
-- Fully clear columns `C:O` in `raw_data`
-- Rewrite the output table starting at `C1`
+- Query active roster players and active-season runs from MongoDB
+- Build one summary row per player with active-season dungeon columns
+- Incrementally update the active season's output table starting at `C1`
+- Leave prior season tabs untouched after their cutoff
+- Allow future tabs to receive their complete header row before activation
 
 ## MongoDB Collections
 
@@ -75,18 +80,25 @@ Important limitation:
 
 ### `runs`
 
-- one document per `keystone_run_id`
-- deduplicated by unique index
+- one document per `season + keystone_run_id`
+- deduplicated by a unique `(season, keystone_run_id)` index
 - season, dungeon, score, timings, affixes, and other normalized summary fields available from the character-profile run lists
 - discovered roster player keys for summary joins
 
 ### `sync_cycles`
 
 - start and finish timestamps
+- resolved season slug and destination tab
 - API call counts
 - new run counts
 - sheet row counts
 - warnings and partial-cycle marker
+
+### `season_rosters`
+
+- one membership document per `season + player_key`
+- season-specific row order, source value, and active/valid state
+- preserves the roster associated with each season tab
 
 ## Redis Control State
 
@@ -124,14 +136,16 @@ Known recovery requirement:
 ### Google Sheets
 
 - Service account auth in V1
-- Roster read from the same tab used for summary output
+- Roster read from the same season tab used for summary output
 - Output rewrite intentionally avoids touching roster column `A`
+- Configured season tabs switch automatically at their UTC activation timestamps
 
 ## Runtime
 
 - Runs as a long-lived process in Docker
 - Executes one sync immediately on startup
 - Sleeps until the next due base bucket, hot bucket, predictive top-of-hour enqueue, or retry backoff
+- Caps sleep at the next configured season activation so the tab changes at the cutoff even when no players are otherwise due
 - Base polling uses UTC-aligned buckets defined by `sync.interval_minutes`
 - Hot polling uses UTC-aligned buckets defined by `sync.active_interval_minutes`
 - Predictive hot polling uses Pacific-time weekly hour probabilities and enqueues players into the existing hot window flow
@@ -145,6 +159,7 @@ Known recovery requirement:
 
 - A standalone play-profile seed command builds predictive profiles from stored current-season runs
 - The seed path supports all active players by default plus optional per-player filtering and dry-run mode
+- `python main.py --prepare-season <slug>` writes a configured season's complete zero-state output from that tab's roster without syncing player APIs or activating the roster
 
 ## V2 Candidates
 

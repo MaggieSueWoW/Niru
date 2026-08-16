@@ -12,9 +12,10 @@ from niru.config import MongoSettings
 from niru.models import (
     NormalizedRunCandidate,
     PlayerDataStatus,
+    PlayerIdentity,
     RosterEntry,
     SeasonDungeon,
-    ensure_utc, PlayerIdentity,
+    ensure_utc,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -152,13 +153,17 @@ def _summarize_run_differences(
         or existing_run.get("dungeon_id")
         or existing_run.get("zone_id")
     )
-    if existing_dungeon_id is not None and int(existing_dungeon_id) != int(candidate.dungeon_id):
+    if existing_dungeon_id is not None and int(existing_dungeon_id) != int(
+        candidate.dungeon_id
+    ):
         warnings.append(
             f"dungeon_id existing={int(existing_dungeon_id)} candidate={int(candidate.dungeon_id)}"
         )
 
     existing_level = existing_run.get("mythic_level")
-    if existing_level is not None and int(existing_level) != int(candidate.mythic_level):
+    if existing_level is not None and int(existing_level) != int(
+        candidate.mythic_level
+    ):
         warnings.append(
             f"mythic_level existing={int(existing_level)} candidate={int(candidate.mythic_level)}"
         )
@@ -182,7 +187,9 @@ def _summarize_run_differences(
             field_name="clear_time_ms",
             incoming_value=candidate.clear_time_ms,
         ):
-            duration_delta_ms = abs(int(existing_clear_time_ms) - int(candidate.clear_time_ms))
+            duration_delta_ms = abs(
+                int(existing_clear_time_ms) - int(candidate.clear_time_ms)
+            )
             if duration_delta_ms > max(fuzz_seconds, 0) * 1000:
                 warnings.append(
                     "clear_time_delta_ms="
@@ -318,42 +325,66 @@ class MongoRepository:
         self.players = self._db[settings.players_collection]
         self.runs = self._db[settings.runs_collection]
         self.sync_cycles = self._db[settings.sync_cycles_collection]
+        self.season_rosters = self._db[settings.season_rosters_collection]
         self.season_dungeons = self._db["season_dungeons"]
         self.weekly_periods = self._db["weekly_periods"]
         self.players.create_index([("player_key", ASCENDING)], unique=True)
-        self._ensure_sparse_keystone_run_id_index()
+        self._ensure_season_keystone_run_id_index()
         self.runs.create_index([("completed_at", ASCENDING)])
         self.runs.create_index([("participants.player_key", ASCENDING)])
         self.runs.create_index([("discovered_from_player_keys", ASCENDING)])
         self.players.create_index([("hot_ready_at", ASCENDING)])
         self.players.create_index([("hot_until_at", ASCENDING)])
-        self.season_dungeons.create_index([("season", ASCENDING), ("slug", ASCENDING)], unique=True)
-        self.season_dungeons.create_index([("season", ASCENDING), ("short_name", ASCENDING)])
+        self.season_rosters.create_index(
+            [("season", ASCENDING), ("player_key", ASCENDING)],
+            unique=True,
+        )
+        self.season_rosters.create_index(
+            [
+                ("season", ASCENDING),
+                ("is_active", ASCENDING),
+                ("sheet_row_number", ASCENDING),
+            ]
+        )
+        self.season_dungeons.create_index(
+            [("season", ASCENDING), ("slug", ASCENDING)], unique=True
+        )
+        self.season_dungeons.create_index(
+            [("season", ASCENDING), ("short_name", ASCENDING)]
+        )
         self.weekly_periods.create_index([("region", ASCENDING)], unique=True)
 
-    def _ensure_sparse_keystone_run_id_index(self) -> None:
-        """Replace the legacy keystone_run_id index with the sparse version when needed."""
+    def _ensure_season_keystone_run_id_index(self) -> None:
+        """Keep Raider.IO run IDs unique within their season."""
 
-        index_name = "keystone_run_id_1"
-        index_info = self.runs.index_information().get(index_name)
-        if index_info:
-            key = index_info.get("key")
-            if key == [("keystone_run_id", 1)] and not index_info.get("sparse", False):
-                self.runs.drop_index(index_name)
+        index_info = self.runs.index_information()
         self.runs.create_index(
-            [("keystone_run_id", ASCENDING)],
+            [("season", ASCENDING), ("keystone_run_id", ASCENDING)],
             unique=True,
-            sparse=True,
+            partialFilterExpression={"keystone_run_id": {"$exists": True}},
         )
+        if "keystone_run_id_1" in index_info:
+            self.runs.drop_index("keystone_run_id_1")
 
-    def sync_roster(self, entries: list[RosterEntry], *, seen_at: datetime) -> None:
-        """Upsert current roster entries and deactivate anything no longer listed."""
+    def sync_roster(
+        self,
+        entries: list[RosterEntry],
+        *,
+        season: str,
+        seen_at: datetime,
+    ) -> None:
+        """Upsert one season roster and make it the operational roster."""
 
         active_keys = [entry.player_key for entry in entries]
         self.players.update_many({}, {"$set": {"is_active": False}})
+        self.season_rosters.update_many(
+            {"season": season},
+            {"$set": {"is_active": False}},
+        )
         for entry in entries:
             base_doc: dict[str, Any] = {
                 "player_key": entry.player_key,
+                "roster_season": season,
                 "sheet_row_number": entry.row_number,
                 "sheet_value": entry.raw_value,
                 "is_active": True,
@@ -371,7 +402,16 @@ class MongoRepository:
                     }
                 )
             else:
-                base_doc.update({"region": "", "realm": "", "name": entry.raw_value.strip()})
+                base_doc.update(
+                    {"region": "", "realm": "", "name": entry.raw_value.strip()}
+                )
+            season_roster_doc = dict(base_doc)
+            season_roster_doc["season"] = season
+            self.season_rosters.update_one(
+                {"season": season, "player_key": entry.player_key},
+                {"$set": season_roster_doc},
+                upsert=True,
+            )
             self.players.update_one(
                 {"player_key": entry.player_key},
                 {
@@ -379,6 +419,7 @@ class MongoRepository:
                     "$setOnInsert": {
                         "current_dungeon_scores": {},
                         "current_total_score": None,
+                        "score_season": "",
                         "last_base_sync_started_at": None,
                         "hot_ready_at": None,
                         "hot_until_at": None,
@@ -408,7 +449,16 @@ class MongoRepository:
     def list_active_players(self, *, limit: int) -> list[dict[str, Any]]:
         """Return active roster documents."""
 
-        return list(self.players.find({"is_active": True}).sort("player_key").limit(limit))
+        return list(
+            self.players.find({"is_active": True}).sort("player_key").limit(limit)
+        )
+
+    def get_players_by_keys(self, player_keys: list[str]) -> list[dict[str, Any]]:
+        """Return player documents matching the requested canonical keys."""
+
+        if not player_keys:
+            return []
+        return list(self.players.find({"player_key": {"$in": player_keys}}))
 
     def list_all_active_players(self) -> list[dict[str, Any]]:
         """Return all active roster documents for manual backfill operations."""
@@ -430,7 +480,8 @@ class MongoRepository:
             if not player.get("is_valid", False):
                 continue
             last_attempt = _safe_utc_datetime(
-                player.get("last_base_sync_started_at") or player.get("last_sync_started_at")
+                player.get("last_base_sync_started_at")
+                or player.get("last_sync_started_at")
             )
             if last_attempt is None:
                 due_players.append(player)
@@ -500,7 +551,9 @@ class MongoRepository:
             {"$set": fields_to_set},
         )
 
-    def mark_invalid_player(self, player_key: str, message: str, *, when: datetime) -> None:
+    def mark_invalid_player(
+        self, player_key: str, message: str, *, when: datetime
+    ) -> None:
         """Persist an invalid player resolution failure."""
 
         self.players.update_one(
@@ -566,10 +619,13 @@ class MongoRepository:
     ) -> None:
         """Record a predictive hot enqueue while preserving stronger existing coverage."""
 
-        player = self.players.find_one(
-            {"player_key": player_key},
-            {"hot_ready_at": 1, "hot_until_at": 1},
-        ) or {}
+        player = (
+            self.players.find_one(
+                {"player_key": player_key},
+                {"hot_ready_at": 1, "hot_until_at": 1},
+            )
+            or {}
+        )
         existing_hot_ready = _safe_utc_datetime(player.get("hot_ready_at"))
         existing_hot_until = _safe_utc_datetime(player.get("hot_until_at"))
         resolved_hot_ready = hot_ready_at
@@ -594,6 +650,7 @@ class MongoRepository:
         self,
         player_key: str,
         *,
+        season: str,
         current_dungeon_scores: dict[str, float],
         current_total_score: float | None,
         score_source: str,
@@ -610,10 +667,11 @@ class MongoRepository:
                     "last_error": "",
                     "current_dungeon_scores": current_dungeon_scores,
                     "current_total_score": current_total_score,
+                    "score_season": season,
                     "score_source": score_source,
                     "score_source_fetched_at": synced_at,
                     "blizzard_last_successful_sync_at": (
-                        synced_at if score_source == "blizzard" else None
+                        synced_at if "blizzard" in score_source.split("+") else None
                     ),
                     "last_sync_completed_at": synced_at,
                     "last_successful_sync_at": synced_at,
@@ -622,24 +680,26 @@ class MongoRepository:
             },
         )
 
-    def get_known_run_ids(self, run_ids: list[int]) -> set[int]:
-        """Return the run IDs already stored."""
+    def get_known_run_ids(self, run_ids: list[int], *, season: str) -> set[int]:
+        """Return the run IDs already stored for one season."""
 
         if not run_ids:
             return set()
         return {
             doc["keystone_run_id"]
             for doc in self.runs.find(
-                {"keystone_run_id": {"$in": run_ids}},
+                {"season": season, "keystone_run_id": {"$in": run_ids}},
                 {"keystone_run_id": 1},
             )
         }
 
-    def attach_player_to_run(self, run_id: int, player_key: str) -> None:
+    def attach_player_to_run(
+        self, run_id: int, player_key: str, *, season: str
+    ) -> None:
         """Ensure a player's key is attached to a known run."""
 
         self.runs.update_one(
-            {"keystone_run_id": run_id},
+            {"season": season, "keystone_run_id": run_id},
             {"$addToSet": {"discovered_from_player_keys": player_key}},
         )
 
@@ -654,6 +714,11 @@ class MongoRepository:
     ) -> bool:
         """Store or enrich a unified run document."""
 
+        if candidate.season is not None and candidate.season != season:
+            raise ValueError(
+                f"Run season {candidate.season} does not match storage season {season}"
+            )
+
         participants = []
         for participant in candidate.participants:
             normalized = dict(participant)
@@ -666,7 +731,10 @@ class MongoRepository:
         existing = None
         if candidate.keystone_run_id is not None:
             existing = self.runs.find_one(
-                {"keystone_run_id": int(candidate.keystone_run_id)},
+                {
+                    "season": season,
+                    "keystone_run_id": int(candidate.keystone_run_id),
+                },
                 {
                     "_id": 1,
                     "keystone_run_id": 1,
@@ -690,6 +758,7 @@ class MongoRepository:
                 query = {"_id": existing["_id"]}
         if existing is None:
             existing = self.find_run_by_fuzzy_fields(
+                season=season,
                 dungeon_id=candidate.dungeon_id,
                 mythic_level=candidate.mythic_level,
                 completed_at=candidate.completed_at,
@@ -700,6 +769,7 @@ class MongoRepository:
                 query = {"_id": existing["_id"]}
         if query is None:
             query = {
+                "season": season,
                 "map_challenge_mode_id": candidate.dungeon_id,
                 "mythic_level": candidate.mythic_level,
                 "completed_at": candidate.completed_at,
@@ -718,7 +788,7 @@ class MongoRepository:
             candidate,
             str(existing.get("short_name", "") if existing else ""),
         )
-        update_doc = {
+        update_doc: dict[str, Any] = {
             "season": season,
             "dungeon": candidate.dungeon,
             "mythic_level": candidate.mythic_level,
@@ -768,6 +838,7 @@ class MongoRepository:
     def find_run_by_fuzzy_fields(
         self,
         *,
+        season: str,
         dungeon_id: int | None,
         mythic_level: int | None,
         completed_at: datetime | None,
@@ -788,6 +859,7 @@ class MongoRepository:
         matches = list(
             self.runs.find(
                 {
+                    "season": season,
                     "map_challenge_mode_id": int(dungeon_id),
                     "mythic_level": int(mythic_level),
                     "completed_at": {
@@ -847,11 +919,17 @@ class MongoRepository:
                 or character.get("region")
                 or ""
             )
-            realm = ((character.get("realm") or {}).get("slug")) or character.get("realm") or ""
+            realm = (
+                ((character.get("realm") or {}).get("slug"))
+                or character.get("realm")
+                or ""
+            )
             name = character.get("name", "")
             participant_key = ""
             if region and realm and name:
-                participant_key = f"{str(region).lower()}/{str(realm).lower()}/{str(name).lower()}"
+                participant_key = (
+                    f"{str(region).lower()}/{str(realm).lower()}/{str(name).lower()}"
+                )
             participants.append(
                 {
                     "player_key": participant_key,
@@ -873,7 +951,12 @@ class MongoRepository:
         clear_time_ms = payload.get("clear_time_ms")
         mythic_level = payload.get("mythic_level")
         dungeon_id = dungeon.get("map_challenge_mode_id") or dungeon.get("id")
-        if completed_at is None or clear_time_ms is None or mythic_level is None or dungeon_id is None:
+        if (
+            completed_at is None
+            or clear_time_ms is None
+            or mythic_level is None
+            or dungeon_id is None
+        ):
             raise ValueError(
                 f"Raider.IO run details for {run_id} missing required UID fields: "
                 f"map_challenge_mode_id/id={dungeon_id}, mythic_level={mythic_level}, "
@@ -881,7 +964,7 @@ class MongoRepository:
             )
 
         existing = self.runs.find_one(
-            {"keystone_run_id": run_id},
+            {"season": season, "keystone_run_id": run_id},
             {
                 "_id": 1,
                 "score": 1,
@@ -924,7 +1007,7 @@ class MongoRepository:
         )
 
         self.runs.update_one(
-            {"keystone_run_id": run_id},
+            {"season": season, "keystone_run_id": run_id},
             {
                 "$set": update_doc,
                 "$addToSet": {
@@ -952,7 +1035,9 @@ class MongoRepository:
             )
         )
 
-    def get_runs_for_player(self, *, player_key: str, season: str) -> list[dict[str, Any]]:
+    def get_runs_for_player(
+        self, *, player_key: str, season: str
+    ) -> list[dict[str, Any]]:
         """Fetch current-season runs relevant to one player."""
 
         return list(

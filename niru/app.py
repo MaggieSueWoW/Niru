@@ -37,8 +37,17 @@ def parse_args() -> argparse.Namespace:
         "--player",
         help="Restrict --mode once to a single roster entry (region/realm/name).",
     )
+    parser.add_argument(
+        "--prepare-season",
+        help=(
+            "Populate roster-based zero-state output for a configured season tab, "
+            "then exit."
+        ),
+    )
     args = parser.parse_args()
     if args.player:
+        if args.prepare_season:
+            parser.error("--player cannot be combined with --prepare-season.")
         if args.mode != "once":
             parser.error("--player can only be used with --mode once.")
         try:
@@ -67,7 +76,9 @@ def main() -> None:
         blizzard_client=blizzard_client,
     )
     try:
-        if args.mode == "once":
+        if args.prepare_season:
+            service.prepare_season_tab(args.prepare_season)
+        elif args.mode == "once":
             service.install_signal_handlers()
             service.run_cycle(force_sync_all=True, player_key=args.player)
         else:

@@ -1,16 +1,107 @@
 from datetime import UTC, datetime, timedelta
 import unittest
 
-from niru.clients.blizzard import BlizzardError
 import niru.service as service_module
+from niru.clients.blizzard import BlizzardError
 from niru.clients.raiderio import RaiderIONotFoundError
+from niru.config import SeasonTabSettings
 from niru.models import NormalizedRunCandidate, PlayerDataStatus
 from niru.play_profile import (
     build_play_profile,
     current_week_hour_key,
 )
-from niru.service import SyncService, build_summary_header
+from niru.service import SyncService, _candidate_belongs_to_season, build_summary_header
 from niru.storage import _build_key_run_metric_updates, _summarize_run_differences
+
+
+TEST_SEASON = SeasonTabSettings(
+    slug="season-mn-1",
+    tab_name="raw_data",
+    activates_at=datetime(2026, 3, 24, 15, 0, tzinfo=UTC),
+    blizzard_season_id=17,
+)
+TEST_SEASON_DUNGEONS = [
+    {
+        "season": "season-mn-1",
+        "dungeon_id": 101,
+        "challenge_mode_id": 101,
+        "slug": "darkflame-cleft",
+        "name": "Darkflame Cleft",
+        "short_name": "DFC",
+    }
+]
+TEST_S2_SEASON = SeasonTabSettings(
+    slug="season-mn-2",
+    tab_name="raw_data_s2",
+    activates_at=datetime(2026, 8, 18, 15, 0, tzinfo=UTC),
+    blizzard_season_id=18,
+)
+TEST_S2_DUNGEONS = [
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 16865,
+        "challenge_mode_id": 588,
+        "slug": "altar-of-fangs",
+        "name": "Altar of Fangs",
+        "short_name": "AOF",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 16359,
+        "challenge_mode_id": 584,
+        "slug": "the-blinding-vale",
+        "name": "The Blinding Vale",
+        "short_name": "BV",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 16368,
+        "challenge_mode_id": 586,
+        "slug": "den-of-nalorakk",
+        "name": "Den of Nalorakk",
+        "short_name": "DON",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 9526,
+        "challenge_mode_id": 249,
+        "slug": "kings-rest",
+        "name": "Kings' Rest",
+        "short_name": "KR",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 16091,
+        "challenge_mode_id": 587,
+        "slug": "murder-row",
+        "name": "Murder Row",
+        "short_name": "MR",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 14063,
+        "challenge_mode_id": 399,
+        "slug": "ruby-life-pools",
+        "name": "Ruby Life Pools",
+        "short_name": "RLP",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 9527,
+        "challenge_mode_id": 250,
+        "slug": "temple-of-sethraliss",
+        "name": "Temple of Sethraliss",
+        "short_name": "TOS",
+    },
+    {
+        "season": "season-mn-2",
+        "dungeon_id": 16425,
+        "challenge_mode_id": 585,
+        "slug": "voidscar-arena",
+        "name": "Voidscar Arena",
+        "short_name": "VSA",
+    },
+]
 
 
 def _current_batch_start(now, *, interval_minutes):
@@ -39,7 +130,9 @@ def make_settings():
                 (),
                 {
                     "roster_start_row": 2,
+                    "output_start_cell": "C1",
                     "team_activity_output_start_cell": "C101",
+                    "season_tabs": (TEST_SEASON,),
                 },
             )(),
             "sync": type(
@@ -52,11 +145,9 @@ def make_settings():
                     "active_idle_minutes": 40,
                     "predictive_hot_enabled": True,
                     "predictive_hot_threshold": 0.5,
-                    "current_season": "season-mn-1",
                     "failure_backoff_seconds": 30.0,
                     "max_failure_backoff_seconds": 300.0,
                     "failure_backoff_jitter_seconds": 0.0,
-                    "current_season": "season-mn-1",
                 },
             )(),
             "team_activity": type(
@@ -87,8 +178,10 @@ class FakeRepo:
         self.sync_docs = []
         self.season_dungeons = []
         self.weekly_periods = {}
+        self.season_rosters = {}
 
-    def sync_roster(self, entries, *, seen_at):
+    def sync_roster(self, entries, *, season, seen_at):
+        self.season_rosters[season] = [entry.player_key for entry in entries]
         self.players = [
             {
                 "player_key": entry.player_key,
@@ -103,6 +196,8 @@ class FakeRepo:
                 "name": entry.identity.name if entry.identity else entry.raw_value,
                 "current_dungeon_scores": {},
                 "current_total_score": None,
+                "score_season": "",
+                "roster_season": season,
                 "last_base_sync_started_at": None,
                 "hot_ready_at": None,
                 "hot_until_at": None,
@@ -122,6 +217,12 @@ class FakeRepo:
     def list_active_players(self, *, limit):
         return self.players[:limit]
 
+    def get_players_by_keys(self, player_keys):
+        requested = set(player_keys)
+        return [
+            player for player in self.players if player.get("player_key") in requested
+        ]
+
     def list_players_due_for_base_sync(self, *, now, interval_minutes, limit):
         due = []
         for player in self.players[:limit]:
@@ -136,9 +237,7 @@ class FakeRepo:
             next_due_at = _current_batch_start(
                 last_started,
                 interval_minutes=interval_minutes,
-            ) + timedelta(
-                minutes=interval_minutes
-            )
+            ) + timedelta(minutes=interval_minutes)
             if next_due_at <= now:
                 due.append(player)
         return due[:limit]
@@ -182,7 +281,14 @@ class FakeRepo:
                     player["last_base_sync_started_at"] = started_at
 
     def update_player_profile(
-        self, player_key, *, current_dungeon_scores, current_total_score, score_source, synced_at
+        self,
+        player_key,
+        *,
+        season,
+        current_dungeon_scores,
+        current_total_score,
+        score_source,
+        synced_at,
     ):
         for player in self.players:
             if player["player_key"] == player_key:
@@ -190,33 +296,44 @@ class FakeRepo:
                 player["status_message"] = ""
                 player["current_dungeon_scores"] = current_dungeon_scores
                 player["current_total_score"] = current_total_score
+                player["score_season"] = season
                 player["score_source"] = score_source
                 player["last_successful_sync_at"] = synced_at
                 player["last_sync_completed_at"] = synced_at
 
-    def get_known_run_ids(self, run_ids):
-        return {run["keystone_run_id"] for run in self.runs if run["keystone_run_id"] in run_ids}
+    def get_known_run_ids(self, run_ids, *, season):
+        return {
+            run["keystone_run_id"]
+            for run in self.runs
+            if run.get("season") == season and run["keystone_run_id"] in run_ids
+        }
 
-    def attach_player_to_run(self, run_id, player_key):
+    def attach_player_to_run(self, run_id, player_key, *, season):
         for run in self.runs:
-            if run["keystone_run_id"] == run_id:
+            if run.get("season") == season and run["keystone_run_id"] == run_id:
                 run.setdefault("discovered_from_player_keys", []).append(player_key)
 
-    def upsert_normalized_run(self, candidate, *, player_key, season, synced_at, fuzz_seconds):
+    def upsert_normalized_run(
+        self, candidate, *, player_key, season, synced_at, fuzz_seconds
+    ):
         for run in self.runs:
             if (
                 run.get("keystone_run_id") is not None
                 and candidate.keystone_run_id is not None
+                and run.get("season") == season
                 and run.get("keystone_run_id") == candidate.keystone_run_id
             ) or (
-                run.get("dungeon_id") == candidate.dungeon_id
+                run.get("season") == season
+                and run.get("dungeon_id") == candidate.dungeon_id
                 and run.get("mythic_level") == candidate.mythic_level
                 and run.get("completed_at") is not None
                 and candidate.completed_at is not None
-                and abs((run["completed_at"] - candidate.completed_at).total_seconds()) <= fuzz_seconds
+                and abs((run["completed_at"] - candidate.completed_at).total_seconds())
+                <= fuzz_seconds
                 and run.get("clear_time_ms") is not None
                 and candidate.clear_time_ms is not None
-                and abs(int(run["clear_time_ms"]) - int(candidate.clear_time_ms)) <= fuzz_seconds * 1000
+                and abs(int(run["clear_time_ms"]) - int(candidate.clear_time_ms))
+                <= fuzz_seconds * 1000
             ):
                 existing_short_name = str(run.get("short_name", "") or "")
                 candidate_short_name = str(candidate.short_name or "")
@@ -231,7 +348,6 @@ class FakeRepo:
                         "dungeon": candidate.dungeon,
                         "mythic_level": candidate.mythic_level,
                         "completed_at": candidate.completed_at,
-                        "season": season,
                     }
                 )
                 run.update(
@@ -295,6 +411,7 @@ class FakeRepo:
     def find_run_by_fuzzy_fields(
         self,
         *,
+        season,
         dungeon_id,
         mythic_level,
         completed_at,
@@ -303,17 +420,22 @@ class FakeRepo:
     ):
         for run in self.runs:
             run_dungeon_id = (
-                run.get("map_challenge_mode_id") or run.get("dungeon_id") or run.get("zone_id")
+                run.get("map_challenge_mode_id")
+                or run.get("dungeon_id")
+                or run.get("zone_id")
             )
             if (
-                run_dungeon_id == dungeon_id
+                run.get("season") == season
+                and run_dungeon_id == dungeon_id
                 and run.get("mythic_level") == mythic_level
                 and run.get("completed_at") is not None
                 and completed_at is not None
-                and abs((run["completed_at"] - completed_at).total_seconds()) <= fuzz_seconds
+                and abs((run["completed_at"] - completed_at).total_seconds())
+                <= fuzz_seconds
                 and run.get("clear_time_ms") is not None
                 and clear_time_ms is not None
-                and abs(int(run["clear_time_ms"]) - int(clear_time_ms)) <= fuzz_seconds * 1000
+                and abs(int(run["clear_time_ms"]) - int(clear_time_ms))
+                <= fuzz_seconds * 1000
             ):
                 return run
         return None
@@ -345,7 +467,9 @@ class FakeRepo:
             if player["player_key"] == player_key:
                 player.update(profile)
 
-    def mark_predictive_hot_enqueue(self, *, player_key, week_hour_key, hot_ready_at, hot_until_at):
+    def mark_predictive_hot_enqueue(
+        self, *, player_key, week_hour_key, hot_ready_at, hot_until_at
+    ):
         for player in self.players:
             if player["player_key"] != player_key:
                 continue
@@ -392,7 +516,11 @@ class FakeRepo:
         for run in self.runs:
             if run.get("season") != season:
                 continue
-            dungeon_id = run.get("dungeon_id") or run.get("zone_id") or run.get("map_challenge_mode_id")
+            dungeon_id = (
+                run.get("dungeon_id")
+                or run.get("zone_id")
+                or run.get("map_challenge_mode_id")
+            )
             if dungeon_id in short_name_by_id:
                 run["short_name"] = short_name_by_id[dungeon_id]
 
@@ -413,9 +541,11 @@ class FakeRepo:
         self.season_dungeons = [
             {
                 "season": dungeon.season,
+                "dungeon_id": dungeon.dungeon_id,
                 "slug": dungeon.slug,
                 "name": dungeon.name,
                 "short_name": dungeon.short_name,
+                "challenge_mode_id": dungeon.challenge_mode_id,
             }
             for dungeon in dungeons
         ]
@@ -427,15 +557,22 @@ class FakeRepo:
 class FakeSheets:
     def __init__(self, rows):
         self.rows = rows
+        self.tab_names = {"raw_data"}
         self.last_header = None
         self.last_rows = None
         self.last_metadata_rows = None
+        self.last_tab_name = None
         self.tables = {}
 
-    def read_roster_rows(self):
+    def list_tab_names(self):
+        return set(self.tab_names)
+
+    def read_roster_rows(self, *, tab_name):
+        self.last_tab_name = tab_name
         return self.rows
 
-    def write_output_rows(self, header, rows, metadata_rows=None):
+    def write_output_rows(self, *, tab_name, header, rows, metadata_rows=None):
+        self.last_tab_name = tab_name
         self.last_header = header
         self.last_rows = rows
         self.last_metadata_rows = metadata_rows
@@ -446,13 +583,21 @@ class FakeSheets:
         }
         return len(rows)
 
-    def write_table(self, *, start_cell, header, rows, metadata_rows=None):
+    def write_table(self, *, tab_name, start_cell, header, rows, metadata_rows=None):
+        self.last_tab_name = tab_name
         self.tables[start_cell] = {
             "header": header,
             "rows": rows,
             "metadata_rows": metadata_rows,
         }
         return len(rows)
+
+    def write_header(self, *, tab_name, start_cell, header):
+        self.tables[(tab_name, start_cell)] = {
+            "header": header,
+            "rows": [],
+            "metadata_rows": None,
+        }
 
 
 class FakeRaiderIO:
@@ -506,12 +651,18 @@ class FakeRaiderIO:
                             "slug": "season-mn-1",
                             "dungeons": [
                                 {
+                                    "id": 101,
                                     "slug": "darkflame-cleft",
                                     "name": "Darkflame Cleft",
                                     "short_name": "DFC",
+                                    "challenge_mode_id": 101,
                                 }
                             ],
-                        }
+                        },
+                        {
+                            "slug": "season-mn-2",
+                            "dungeons": TEST_S2_DUNGEONS,
+                        },
                     ]
                 }
             },
@@ -543,7 +694,7 @@ class FakeRaiderIO:
             )
         return type("Result", (), {"payload": {"periods": periods}})()
 
-    def get_character_profile(self, player):
+    def get_character_profile(self, player, *, season):
         self.api_calls += 1
         if player.name == "Missing":
             raise RaiderIONotFoundError("missing")
@@ -569,7 +720,9 @@ class FakeBlizzard:
             "current_period": {
                 "best_runs": [
                     {
-                        "completed_timestamp": int(datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000),
+                        "completed_timestamp": int(
+                            datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000
+                        ),
                         "duration": 1800000,
                         "keystone_level": 12,
                         "is_completed_within_time": True,
@@ -585,7 +738,9 @@ class FakeBlizzard:
             "mythic_rating": {"rating": 400.2},
             "best_runs": [
                 {
-                    "completed_timestamp": int(datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000),
+                    "completed_timestamp": int(
+                        datetime(2026, 3, 25, 12, 0, tzinfo=UTC).timestamp() * 1000
+                    ),
                     "duration": 1800000,
                     "keystone_level": 12,
                     "is_completed_within_time": True,
@@ -595,7 +750,9 @@ class FakeBlizzard:
                     "members": [],
                 },
                 {
-                    "completed_timestamp": int(datetime(2026, 3, 25, 12, 0, 1, tzinfo=UTC).timestamp() * 1000),
+                    "completed_timestamp": int(
+                        datetime(2026, 3, 25, 12, 0, 1, tzinfo=UTC).timestamp() * 1000
+                    ),
                     "duration": 1801000,
                     "keystone_level": 13,
                     "is_completed_within_time": True,
@@ -614,8 +771,12 @@ class FakeBlizzard:
         }
         self.period_detail_payload = {
             "id": 1058,
-            "start_timestamp": int(datetime(2026, 4, 7, 15, 0, tzinfo=UTC).timestamp() * 1000),
-            "end_timestamp": int(datetime(2026, 4, 14, 15, 0, tzinfo=UTC).timestamp() * 1000),
+            "start_timestamp": int(
+                datetime(2026, 4, 7, 15, 0, tzinfo=UTC).timestamp() * 1000
+            ),
+            "end_timestamp": int(
+                datetime(2026, 4, 14, 15, 0, tzinfo=UTC).timestamp() * 1000
+            ),
         }
         self.season_detail_payload = {
             "id": 17,
@@ -680,6 +841,172 @@ class FakeBlizzard:
 
 
 class SyncServiceTests(unittest.TestCase):
+    def test_prepare_s2_tab_writes_existing_players_with_zero_s2_data(self) -> None:
+        settings = make_settings()
+        settings.google.season_tabs = (TEST_SEASON, TEST_S2_SEASON)
+        repo = FakeRepo()
+        last_synced_at = datetime(2026, 8, 16, 12, 0, tzinfo=UTC)
+        repo.players = [
+            {
+                "player_key": "us/area-52/s2player",
+                "region": "us",
+                "realm": "area-52",
+                "name": "S2player",
+                "is_valid": True,
+                "current_total_score": 3210.5,
+                "current_dungeon_scores": {"Ara-Kara, City of Echoes": 400.0},
+                "score_season": TEST_SEASON.slug,
+                "last_successful_sync_at": last_synced_at,
+            },
+            {
+                "player_key": "eu/tarren-mill/anotherplayer",
+                "region": "eu",
+                "realm": "tarren-mill",
+                "name": "Anotherplayer",
+                "is_valid": True,
+                "current_total_score": 3000.0,
+                "current_dungeon_scores": {},
+                "score_season": TEST_SEASON.slug,
+                "last_successful_sync_at": last_synced_at,
+            },
+        ]
+        sheets = FakeSheets(["us/area-52/S2player", "eu/tarren-mill/Anotherplayer"])
+        sheets.tab_names.add(TEST_S2_SEASON.tab_name)
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        service.prepare_season_tab(
+            TEST_S2_SEASON.slug,
+            now=datetime(2026, 8, 16, 12, 0, tzinfo=UTC),
+        )
+
+        header = sheets.tables["C1"]["header"]
+        self.assertEqual(header, build_summary_header(TEST_S2_DUNGEONS))
+        self.assertEqual(
+            [
+                column.removesuffix("_current_score")
+                for column in header
+                if column.endswith("_current_score")
+            ],
+            ["AOF", "BV", "DON", "KR", "MR", "RLP", "TOS", "VSA"],
+        )
+        rows = sheets.tables["C1"]["rows"]
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0][:3], ["us", "area-52", "S2player"])
+        self.assertEqual(rows[0][3], 0)
+        self.assertEqual(rows[0][4], datetime(2026, 8, 16, 5, 0))
+        self.assertEqual(rows[0][5:], [0] * (1 + len(TEST_S2_DUNGEONS) * 4))
+        self.assertEqual(
+            sheets.tables["C1"]["metadata_rows"][:2],
+            [("season", TEST_S2_SEASON.slug), ("unique_runs", 0)],
+        )
+        self.assertEqual(len(sheets.tables["C101"]["rows"]), 24)
+        self.assertEqual(sheets.tables["C101"]["rows"][0][1:], [0.0] * 7)
+        self.assertEqual(repo.season_rosters, {})
+
+    def test_cutover_reads_and_writes_only_the_s2_tab_and_roster(self) -> None:
+        settings = make_settings()
+        settings.google.season_tabs = (TEST_SEASON, TEST_S2_SEASON)
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/area-52/S2player"])
+        sheets.tab_names.add(TEST_S2_SEASON.tab_name)
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+        original_utc_now = service_module.utc_now
+        service_module.utc_now = lambda: TEST_S2_SEASON.activates_at
+        try:
+            service.run_cycle()
+        finally:
+            service_module.utc_now = original_utc_now
+
+        self.assertEqual(sheets.last_tab_name, TEST_S2_SEASON.tab_name)
+        self.assertEqual(
+            repo.season_rosters[TEST_S2_SEASON.slug],
+            ["us/area-52/s2player"],
+        )
+        self.assertEqual(sheets.last_header, build_summary_header(TEST_S2_DUNGEONS))
+        self.assertEqual(repo.runs, [])
+        self.assertEqual(repo.sync_docs[0]["season"], TEST_S2_SEASON.slug)
+        self.assertEqual(repo.sync_docs[0]["sheet_tab"], TEST_S2_SEASON.tab_name)
+
+    def test_rollover_rejects_stale_runs_without_rejecting_new_s2_runs(self) -> None:
+        stale_tagged = NormalizedRunCandidate(
+            source="raiderio",
+            keystone_run_id=1,
+            completed_at=TEST_S2_SEASON.activates_at + timedelta(hours=1),
+            clear_time_ms=1_800_000,
+            dungeon_id=588,
+            dungeon="Altar of Fangs",
+            short_name="AOF",
+            mythic_level=10,
+            num_keystone_upgrades=1,
+            score=100.0,
+            is_completed_within_time=True,
+            participants=[],
+            raw_payload={},
+            season=TEST_SEASON.slug,
+        )
+        stale_untagged = NormalizedRunCandidate(
+            source="blizzard",
+            keystone_run_id=None,
+            completed_at=TEST_S2_SEASON.activates_at - timedelta(seconds=1),
+            clear_time_ms=1_800_000,
+            dungeon_id=588,
+            dungeon="Altar of Fangs",
+            short_name="AOF",
+            mythic_level=10,
+            num_keystone_upgrades=1,
+            score=100.0,
+            is_completed_within_time=True,
+            participants=[],
+            raw_payload={},
+        )
+        new_s2_run = NormalizedRunCandidate(
+            source="blizzard",
+            keystone_run_id=None,
+            completed_at=TEST_S2_SEASON.activates_at + timedelta(hours=1),
+            clear_time_ms=1_800_000,
+            dungeon_id=588,
+            dungeon="Altar of Fangs",
+            short_name="AOF",
+            mythic_level=10,
+            num_keystone_upgrades=1,
+            score=100.0,
+            is_completed_within_time=True,
+            participants=[],
+            raw_payload={},
+        )
+
+        self.assertFalse(
+            _candidate_belongs_to_season(
+                stale_tagged,
+                season=TEST_S2_SEASON,
+                season_dungeons=TEST_S2_DUNGEONS,
+            )
+        )
+        self.assertFalse(
+            _candidate_belongs_to_season(
+                stale_untagged,
+                season=TEST_S2_SEASON,
+                season_dungeons=TEST_S2_DUNGEONS,
+            )
+        )
+        self.assertTrue(
+            _candidate_belongs_to_season(
+                new_s2_run,
+                season=TEST_S2_SEASON,
+                season_dungeons=TEST_S2_DUNGEONS,
+            )
+        )
+
     def test_run_cycle_writes_summary_rows(self) -> None:
         settings = make_settings()
         repo = FakeRepo()
@@ -704,7 +1031,8 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(sheets.last_rows[0][6], 370.2)
         self.assertEqual(sheets.last_rows[0][7], 12)
         self.assertEqual(sheets.last_rows[0][9], 2)
-        self.assertEqual(sheets.last_metadata_rows[0], ("unique_runs", 2))
+        self.assertEqual(sheets.last_metadata_rows[0], ("season", "season-mn-1"))
+        self.assertEqual(sheets.last_metadata_rows[1], ("unique_runs", 2))
         self.assertEqual(
             sheets.tables["C101"]["header"],
             ["hour_pacific", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -905,7 +1233,14 @@ class SyncServiceTests(unittest.TestCase):
                 "detail_fetches": 0,
             },
         )()
-        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=now,
+            sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
+        )
 
         self.assertIsNone(repo.players[0].get("hot_ready_at"))
         self.assertIsNone(repo.players[0].get("hot_until_at"))
@@ -935,9 +1270,15 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(now=now)
+        players, _, hot_keys = service._select_players_for_sync(
+            now=now,
+            active_players=repo.players,
+            season=TEST_SEASON.slug,
+        )
 
-        self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
+        self.assertEqual(
+            [player["player_key"] for player in players], ["us/area-52/mythics"]
+        )
         self.assertEqual(hot_keys, set())
 
     def test_hot_player_selected_once_ready_time_is_reached(self) -> None:
@@ -953,6 +1294,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
+                "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": now - timedelta(minutes=5),
                 "hot_ready_at": now,
                 "hot_until_at": now + timedelta(minutes=40),
@@ -965,9 +1307,15 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(now=now)
+        players, _, hot_keys = service._select_players_for_sync(
+            now=now,
+            active_players=repo.players,
+            season=TEST_SEASON.slug,
+        )
 
-        self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
+        self.assertEqual(
+            [player["player_key"] for player in players], ["us/area-52/mythics"]
+        )
         self.assertEqual(hot_keys, {"us/area-52/mythics"})
 
     def test_hot_player_waits_for_next_batch_boundary(self) -> None:
@@ -983,6 +1331,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
+                "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": datetime(2026, 3, 26, 12, 24, tzinfo=UTC),
                 "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
                 "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
@@ -995,9 +1344,15 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(now=now)
+        players, _, hot_keys = service._select_players_for_sync(
+            now=now,
+            active_players=repo.players,
+            season=TEST_SEASON.slug,
+        )
 
-        self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
+        self.assertEqual(
+            [player["player_key"] for player in players], ["us/area-52/mythics"]
+        )
         self.assertEqual(hot_keys, {"us/area-52/mythics"})
 
     def test_expired_hot_window_is_cleared(self) -> None:
@@ -1062,7 +1417,9 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(delay, 300.0)
 
-    def test_next_cycle_delay_does_not_immediately_rerun_for_unsynced_player(self) -> None:
+    def test_next_cycle_delay_does_not_immediately_rerun_for_unsynced_player(
+        self,
+    ) -> None:
         now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1092,7 +1449,28 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(delay, 900.0)
 
-    def test_next_cycle_delay_uses_next_base_bucket_not_exact_last_attempt(self) -> None:
+    def test_next_cycle_delay_wakes_at_season_cutover_without_players(self) -> None:
+        now = TEST_S2_SEASON.activates_at - timedelta(seconds=30)
+        settings = make_settings()
+        settings.google.season_tabs = (TEST_SEASON, TEST_S2_SEASON)
+        service = SyncService(
+            settings=settings,
+            repository=FakeRepo(),
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        original_utc_now = service_module.utc_now
+        service_module.utc_now = lambda: now
+        try:
+            delay = service._next_cycle_delay_seconds()
+        finally:
+            service_module.utc_now = original_utc_now
+
+        self.assertEqual(delay, 30.0)
+
+    def test_next_cycle_delay_uses_next_base_bucket_not_exact_last_attempt(
+        self,
+    ) -> None:
         now = datetime(2026, 3, 26, 12, 50, 2, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1123,7 +1501,9 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(delay, 598.0)
 
-    def test_mixed_selection_combines_base_due_and_hot_due_players_once_each(self) -> None:
+    def test_mixed_selection_combines_base_due_and_hot_due_players_once_each(
+        self,
+    ) -> None:
         now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1136,6 +1516,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
+                "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": now - timedelta(minutes=25),
             },
             {
@@ -1147,6 +1528,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
+                "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": now - timedelta(minutes=5),
                 "hot_ready_at": now - timedelta(minutes=2),
                 "hot_until_at": now + timedelta(minutes=38),
@@ -1159,7 +1541,11 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, base_keys, hot_keys = service._select_players_for_sync(now=now)
+        players, base_keys, hot_keys = service._select_players_for_sync(
+            now=now,
+            active_players=repo.players,
+            season=TEST_SEASON.slug,
+        )
 
         self.assertEqual(
             [player["player_key"] for player in players],
@@ -1194,16 +1580,21 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, base_keys, hot_keys = service._select_players_for_sync(now=now)
+        players, base_keys, hot_keys = service._select_players_for_sync(
+            now=now,
+            active_players=repo.players,
+            season=TEST_SEASON.slug,
+        )
 
-        self.assertEqual([player["player_key"] for player in players], ["us/area-52/mythics"])
+        self.assertEqual(
+            [player["player_key"] for player in players], ["us/area-52/mythics"]
+        )
         self.assertEqual(base_keys, {"us/area-52/mythics"})
         self.assertEqual(hot_keys, set())
 
     def test_run_cycle_force_sync_all_ignores_due_selection(self) -> None:
         settings = make_settings()
         repo = FakeRepo()
-        now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
         sheets = FakeSheets(["us/area-52/Readyone", "us/area-52/Readytwo"])
         service = SyncService(
             settings=settings,
@@ -1264,10 +1655,15 @@ class SyncServiceTests(unittest.TestCase):
         )
         stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
 
-        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+        service._queue_predictive_hot_players(
+            active_players=repo.players, now=now, stats=stats
+        )
 
         self.assertEqual(stats.predictive_hot_players_queued, 1)
-        self.assertEqual(repo.players[0]["play_profile_last_enqueued_week_hour"], current_week_hour_key(now))
+        self.assertEqual(
+            repo.players[0]["play_profile_last_enqueued_week_hour"],
+            current_week_hour_key(now),
+        )
         self.assertIsNotNone(repo.players[0]["hot_ready_at"])
         self.assertIsNotNone(repo.players[0]["hot_until_at"])
 
@@ -1298,7 +1694,9 @@ class SyncServiceTests(unittest.TestCase):
         )
         stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
 
-        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+        service._queue_predictive_hot_players(
+            active_players=repo.players, now=now, stats=stats
+        )
 
         self.assertEqual(stats.predictive_hot_players_queued, 0)
 
@@ -1329,10 +1727,14 @@ class SyncServiceTests(unittest.TestCase):
         )
         stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
 
-        service._queue_predictive_hot_players(active_players=repo.players, now=now, stats=stats)
+        service._queue_predictive_hot_players(
+            active_players=repo.players, now=now, stats=stats
+        )
 
         self.assertEqual(repo.players[0]["hot_until_at"], now + timedelta(minutes=60))
-        self.assertEqual(repo.players[0]["hot_ready_at"], datetime(2026, 3, 26, 20, 0, tzinfo=UTC))
+        self.assertEqual(
+            repo.players[0]["hot_ready_at"], datetime(2026, 3, 26, 20, 0, tzinfo=UTC)
+        )
 
     def test_sync_player_updates_play_profile_from_new_runs(self) -> None:
         now = datetime(2026, 3, 26, 12, 30, tzinfo=UTC)
@@ -1387,7 +1789,14 @@ class SyncServiceTests(unittest.TestCase):
             },
         )()
 
-        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=now,
+            sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
+        )
 
         self.assertEqual(repo.players[0]["play_profile_weeks_observed"], 2)
         self.assertEqual(
@@ -1441,7 +1850,14 @@ class SyncServiceTests(unittest.TestCase):
             },
         )()
 
-        service._sync_player(player=repo.players[0], stats=stats, now=now, sync_kind="base")
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=now,
+            sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
+        )
 
         self.assertIsNone(repo.players[0].get("hot_ready_at"))
         self.assertIsNone(repo.players[0].get("hot_until_at"))
@@ -1464,10 +1880,114 @@ class SyncServiceTests(unittest.TestCase):
         service.run_cycle()
 
         self.assertEqual(sheets.last_rows[0][3], 400.2)
+        self.assertEqual(
+            repo.players[0]["current_dungeon_scores"],
+            {"Darkflame Cleft": 210.0},
+        )
         self.assertEqual(repo.players[0]["score_source"], "blizzard")
-        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 2)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
         self.assertEqual(repo.sync_docs[0]["api_calls"], 9)
+
+    def test_raiderio_fills_blizzard_dungeon_scores_when_map_ratings_are_absent(
+        self,
+    ) -> None:
+        settings = make_settings()
+        settings.blizzard.enabled = True
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/area-52/Mythics"])
+        raider = FakeRaiderIO()
+        blizzard = FakeBlizzard()
+        for run in blizzard.current_profile_payload["current_period"]["best_runs"]:
+            run.pop("map_rating", None)
+        for run in blizzard.season_profile_payload["best_runs"]:
+            run.pop("map_rating", None)
+        service = SyncService(
+            settings=settings,
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=raider,
+            blizzard_client=blizzard,
+        )
+
+        service.run_cycle()
+
+        self.assertEqual(repo.players[0]["current_total_score"], 400.2)
+        self.assertEqual(
+            repo.players[0]["current_dungeon_scores"],
+            {"Darkflame Cleft": 370.2},
+        )
+        self.assertEqual(repo.players[0]["score_source"], "blizzard+raiderio")
+        self.assertEqual(sheets.last_rows[0][6], 370.2)
+
+    def test_score_merge_is_per_dungeon_and_filters_outside_the_season(self) -> None:
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        raiderio_profile = {
+            "mythic_plus_scores_by_season": [
+                {"season": TEST_SEASON.slug, "scores": {"all": 500.0}}
+            ],
+            "mythic_plus_best_runs": [
+                {
+                    "keystone_run_id": 1,
+                    "dungeon": "Darkflame Cleft",
+                    "score": 100.0,
+                },
+                {
+                    "keystone_run_id": 2,
+                    "dungeon": "Second Dungeon",
+                    "score": 200.0,
+                },
+                {
+                    "keystone_run_id": 3,
+                    "dungeon": "Old Dungeon",
+                    "score": 999.0,
+                },
+            ],
+            "mythic_plus_alternate_runs": [],
+        }
+        blizzard_season_profile = {
+            "mythic_rating": {"rating": 600.0},
+            "best_runs": [
+                {
+                    "dungeon": {"name": {"en_US": "Darkflame Cleft"}},
+                    "map_rating": {"rating": 150.0},
+                },
+                {
+                    "dungeon": {"name": {"en_US": "Old Dungeon"}},
+                    "map_rating": {"rating": 999.0},
+                },
+            ],
+        }
+        season_dungeons = [
+            *TEST_SEASON_DUNGEONS,
+            {
+                "season": TEST_SEASON.slug,
+                "name": "Second Dungeon",
+                "short_name": "SD",
+            },
+        ]
+
+        total, scores, source = service._load_player_scores(
+            raiderio_profile=raiderio_profile,
+            blizzard_profiles=({}, blizzard_season_profile),
+            season=TEST_SEASON.slug,
+            season_dungeons=season_dungeons,
+        )
+
+        self.assertEqual(total, 600.0)
+        self.assertEqual(
+            scores,
+            {
+                "Darkflame Cleft": 150.0,
+                "Second Dungeon": 200.0,
+            },
+        )
+        self.assertEqual(source, "blizzard+raiderio")
 
     def test_raiderio_scores_used_when_blizzard_fails(self) -> None:
         settings = make_settings()
@@ -1535,9 +2055,18 @@ class SyncServiceTests(unittest.TestCase):
             {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
         )()
 
-        service._sync_player(player=repo.players[0], stats=stats, now=datetime(2026, 3, 26, tzinfo=UTC), sync_kind="base")
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=datetime(2026, 3, 26, tzinfo=UTC),
+            sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
+        )
 
-        matching_runs = [run for run in repo.runs if run.get("dungeon") == "Darkflame Cleft"]
+        matching_runs = [
+            run for run in repo.runs if run.get("dungeon") == "Darkflame Cleft"
+        ]
         self.assertEqual(len(matching_runs), 2)
         self.assertTrue(any(run.get("keystone_run_id") == 123 for run in matching_runs))
         self.assertTrue(all(run.get("dungeon_id") == 101 for run in matching_runs))
@@ -1565,10 +2094,10 @@ class SyncServiceTests(unittest.TestCase):
         service.run_cycle()
 
         self.assertEqual(repo.sync_docs[0]["weekly_periods"]["us"]["period"], 1058)
-        self.assertEqual(blizzard.season_index_calls, 1)
+        self.assertEqual(blizzard.season_index_calls, 0)
         self.assertEqual(blizzard.season_detail_calls, 1)
-        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 1)
-        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 8)
+        self.assertEqual(repo.sync_docs[0]["raiderio_api_calls"], 2)
+        self.assertEqual(repo.sync_docs[0]["blizzard_api_calls"], 7)
         self.assertEqual(repo.sync_docs[0]["api_calls"], 9)
 
     def test_blizzard_enrichment_does_not_clear_raiderio_upgrade_count(self) -> None:
@@ -1621,6 +2150,8 @@ class SyncServiceTests(unittest.TestCase):
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
             sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
         matching_runs = [run for run in repo.runs if run.get("keystone_run_id") == 123]
@@ -1675,6 +2206,8 @@ class SyncServiceTests(unittest.TestCase):
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
             sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
         self.assertTrue(any(run.get("short_name") == "DFC" for run in repo.runs))
@@ -1705,7 +2238,10 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        service._ensure_season_dungeons(now=datetime(2026, 3, 26, tzinfo=UTC))
+        service._ensure_season_dungeons(
+            season=TEST_SEASON.slug,
+            now=datetime(2026, 3, 26, tzinfo=UTC),
+        )
 
         self.assertEqual(repo.runs[0]["short_name"], "DFC")
 
@@ -1728,12 +2264,16 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        dungeons = service._ensure_season_dungeons(now=datetime(2026, 3, 26, tzinfo=UTC))
+        dungeons = service._ensure_season_dungeons(
+            season=TEST_SEASON.slug,
+            now=datetime(2026, 3, 26, tzinfo=UTC),
+        )
 
         self.assertEqual(dungeons[0]["short_name"], "DFC")
 
-    def test_blizzard_long_short_name_does_not_overwrite_existing_raiderio_short_name(self) -> None:
-        settings = make_settings()
+    def test_blizzard_long_short_name_does_not_overwrite_existing_raiderio_short_name(
+        self,
+    ) -> None:
         repo = FakeRepo()
         repo.runs = [
             {
@@ -2021,7 +2561,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertTrue(repo.runs[0]["is_completed_within_time"])
         self.assertEqual(repo.runs[0]["run_metrics_source"], "blizzard")
 
-    def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(self) -> None:
+    def test_blizzard_unmatched_run_infers_num_keystone_upgrades_from_dungeon_metadata(
+        self,
+    ) -> None:
         settings = make_settings()
         settings.blizzard.enabled = True
         repo = FakeRepo()
@@ -2084,12 +2626,16 @@ class SyncServiceTests(unittest.TestCase):
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
             sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
         self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 2)
         self.assertEqual(blizzard.dungeon_detail_calls, 1)
 
-    def test_blizzard_matched_raiderio_run_infers_and_replaces_upgrade_count(self) -> None:
+    def test_blizzard_matched_raiderio_run_infers_and_replaces_upgrade_count(
+        self,
+    ) -> None:
         settings = make_settings()
         settings.blizzard.enabled = True
         repo = FakeRepo()
@@ -2182,6 +2728,8 @@ class SyncServiceTests(unittest.TestCase):
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
             sync_kind="base",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
         self.assertEqual(repo.runs[0]["num_keystone_upgrades"], 2)
@@ -2232,13 +2780,16 @@ class SyncServiceTests(unittest.TestCase):
                 is_completed_within_time=True,
                 participants=[],
                 raw_payload={},
-            )
+            ),
+            season=TEST_SEASON.slug,
         )
 
         self.assertEqual(enriched.num_keystone_upgrades, 2)
         self.assertEqual(blizzard.dungeon_detail_calls, 0)
 
-    def test_surprising_run_differences_include_large_score_and_name_changes(self) -> None:
+    def test_surprising_run_differences_include_large_score_and_name_changes(
+        self,
+    ) -> None:
         differences = _summarize_run_differences(
             {
                 "_id": "abc123",
@@ -2273,7 +2824,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertTrue(any("score_delta=" in difference for difference in differences))
         self.assertTrue(any("dungeon_name" in difference for difference in differences))
         self.assertTrue(any("short_name" in difference for difference in differences))
-        self.assertTrue(any("is_completed_within_time" in difference for difference in differences))
+        self.assertTrue(
+            any("is_completed_within_time" in difference for difference in differences)
+        )
 
     def test_surprising_run_differences_ignore_blocked_key_metric_changes(self) -> None:
         differences = _summarize_run_differences(
@@ -2308,11 +2861,19 @@ class SyncServiceTests(unittest.TestCase):
             fuzz_seconds=2,
         )
 
-        self.assertFalse(any("score_delta=" in difference for difference in differences))
-        self.assertFalse(any("clear_time_delta_ms" in difference for difference in differences))
-        self.assertFalse(any("is_completed_within_time" in difference for difference in differences))
+        self.assertFalse(
+            any("score_delta=" in difference for difference in differences)
+        )
+        self.assertFalse(
+            any("clear_time_delta_ms" in difference for difference in differences)
+        )
+        self.assertFalse(
+            any("is_completed_within_time" in difference for difference in differences)
+        )
 
-    def test_blizzard_season_context_is_cached_across_cycles_until_period_changes(self) -> None:
+    def test_blizzard_season_context_is_cached_across_cycles_until_period_changes(
+        self,
+    ) -> None:
         settings = make_settings()
         settings.blizzard.enabled = True
         repo = FakeRepo()
@@ -2333,8 +2894,13 @@ class SyncServiceTests(unittest.TestCase):
             blizzard_client=blizzard,
         )
 
-        service.run_cycle()
-        service.run_cycle()
+        original_utc_now = service_module.utc_now
+        service_module.utc_now = lambda: datetime(2026, 4, 8, 12, 0, tzinfo=UTC)
+        try:
+            service.run_cycle()
+            service.run_cycle()
+        finally:
+            service_module.utc_now = original_utc_now
 
-        self.assertEqual(blizzard.season_index_calls, 1)
+        self.assertEqual(blizzard.season_index_calls, 0)
         self.assertEqual(blizzard.season_detail_calls, 1)

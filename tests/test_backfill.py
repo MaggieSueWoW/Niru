@@ -1,9 +1,13 @@
-from datetime import UTC, datetime
 import sys
 import unittest
 from unittest.mock import patch
 
-from niru.backfill import BackfillService, _load_all_active_players, _parse_players, parse_args
+from niru.backfill import (
+    BackfillService,
+    _load_all_active_players,
+    _parse_players,
+    parse_args,
+)
 from niru.clients.raiderio_internal import RaiderIOInternalClient
 from niru.config import RaiderIOSettings
 
@@ -78,15 +82,22 @@ class FakeRepo:
     def get_player_character_id(self, *, player_key):
         return self.cached_character_ids.get(player_key)
 
-    def cache_player_character_id(self, *, player_key, identity, character_id, resolved_at):
+    def cache_player_character_id(
+        self, *, player_key, identity, character_id, resolved_at
+    ):
         self.cached_character_ids[player_key] = character_id
         self.cached_resolved_at[player_key] = resolved_at
 
-    def get_known_run_ids(self, run_ids):
-        return {run_id for run_id in run_ids if run_id in self.runs}
+    def get_known_run_ids(self, run_ids, *, season):
+        return {
+            run_id
+            for run_id in run_ids
+            if run_id in self.runs and self.runs[run_id].get("season", season) == season
+        }
 
-    def attach_player_to_run(self, run_id, player_key):
+    def attach_player_to_run(self, run_id, player_key, *, season):
         document = self.runs.setdefault(run_id, {})
+        document.setdefault("season", season)
         document.setdefault("discovered_from_player_keys", [])
         if player_key not in document["discovered_from_player_keys"]:
             document["discovered_from_player_keys"].append(player_key)
@@ -276,7 +287,9 @@ class BackfillTests(unittest.TestCase):
             ["backfill", "--players", "us/proudmoore/MaggieSue", "us/proudmoore/Nyph"],
         ):
             args = parse_args()
-        self.assertEqual(args.players, ["us/proudmoore/MaggieSue", "us/proudmoore/Nyph"])
+        self.assertEqual(
+            args.players, ["us/proudmoore/MaggieSue", "us/proudmoore/Nyph"]
+        )
         self.assertFalse(args.dry_run)
         self.assertIsNone(args.limit_runs)
 

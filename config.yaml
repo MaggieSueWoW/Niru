@@ -1,8 +1,16 @@
 google:
-  raw_tab_name: "niru_raw_data"
   roster_column: "A"
   roster_start_row: 2
   output_start_cell: "C1"
+  season_tabs:
+    season-mn-1:
+      tab_name: "niru_raw_data"
+      activates_at: "2026-03-24T15:00:00Z"
+      blizzard_season_id: 17
+    season-mn-2:
+      tab_name: "niru_raw_data_s2"
+      activates_at: "2026-08-18T15:00:00Z"
+      blizzard_season_id: 18
 
 team_activity:
   enabled: true
@@ -16,7 +24,6 @@ sync:
   active_idle_minutes: 40
   predictive_hot_enabled: true
   predictive_hot_threshold: 0.33
-  current_season: "season-mn-1"
   max_players_per_cycle: 250
   failure_backoff_seconds: 30
   max_failure_backoff_seconds: 900
@@ -54,6 +61,7 @@ mongodb:
   players_collection: "players"
   runs_collection: "runs"
   sync_cycles_collection: "sync_cycles"
+  season_rosters_collection: "season_rosters"
 
 logging:
   level: "INFO"
