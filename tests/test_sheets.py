@@ -2,16 +2,51 @@ from datetime import datetime
 import unittest
 
 from niru.clients.sheets import (
+    GoogleSheetsClient,
     _build_output_updates,
     _build_metadata_rows,
     _build_sheet_values,
     _build_last_updated_formula,
+    _execute,
     _find_timestamp_column,
     _normalize_sheet_row,
 )
 
 
 class GoogleSheetsHelpersTests(unittest.TestCase):
+    def test_executes_google_request_with_transport_retries(self) -> None:
+        class FakeRequest:
+            def __init__(self) -> None:
+                self.num_retries = None
+
+            def execute(self, *, num_retries):
+                self.num_retries = num_retries
+                return {"ok": True}
+
+        request = FakeRequest()
+
+        self.assertEqual(_execute(request), {"ok": True})
+        self.assertEqual(request.num_retries, 2)
+
+    def test_reset_transport_builds_new_service_and_closes_previous_one(self) -> None:
+        class FakeService:
+            def __init__(self) -> None:
+                self.close_calls = 0
+
+            def close(self) -> None:
+                self.close_calls += 1
+
+        previous_service = FakeService()
+        new_service = FakeService()
+        client = GoogleSheetsClient.__new__(GoogleSheetsClient)
+        client._service = previous_service
+        client._build_service = lambda: new_service  # type: ignore[method-assign]
+
+        client.reset_transport()
+
+        self.assertIs(client._service, new_service)
+        self.assertEqual(previous_service.close_calls, 1)
+
     def test_finds_last_successful_sync_column(self) -> None:
         header = [
             "region",

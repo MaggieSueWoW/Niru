@@ -47,6 +47,7 @@ from niru.roster import parse_roster_rows
 from niru.storage import MongoRepository
 
 LOGGER = logging.getLogger(__name__)
+GOOGLE_TRANSPORT_RESET_AFTER_SECONDS = 5 * 60
 PACIFIC_DAY_START_HOUR = 0
 TEAM_ACTIVITY_TIMEZONE = "America/Los_Angeles"
 TEAM_ACTIVITY_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -1037,7 +1038,7 @@ class SyncService:
                         "retry_delay_seconds": round(retry_delay, 1),
                     },
                 )
-                if self._stop_requested or self._wait_for_stop(retry_delay):
+                if self._stop_requested or self._wait_between_cycles(retry_delay):
                     break
                 continue
             if self._stop_requested:
@@ -1048,7 +1049,7 @@ class SyncService:
                     "Sleeping before next cycle",
                     extra={"sleep_seconds": round(remaining, 1)},
                 )
-                if self._wait_for_stop(remaining):
+                if self._wait_between_cycles(remaining):
                     break
 
     def run_cycle(
@@ -1718,10 +1719,16 @@ class SyncService:
     ) -> None:
         """Prepare existing future tabs while leaving prior season tabs untouched."""
 
+        future_seasons = [
+            season
+            for season in self._settings.google.season_tabs
+            if season.activates_at > active_season.activates_at
+        ]
+        if not future_seasons:
+            return
+
         existing_tabs = self._sheets_client.list_tab_names()
-        for season in self._settings.google.season_tabs:
-            if season.activates_at <= active_season.activates_at:
-                continue
+        for season in future_seasons:
             if season.tab_name not in existing_tabs:
                 LOGGER.info(
                     "Future season tab is not provisioned yet",
@@ -1932,6 +1939,19 @@ class SyncService:
         """Wait for either the timeout or a stop signal."""
 
         return self._stop_event.wait(timeout=max(timeout_seconds, 0.0))
+
+    def _wait_between_cycles(self, timeout_seconds: float) -> bool:
+        """Wait between cycles and replace Google transport after a long idle."""
+
+        stopped = self._wait_for_stop(timeout_seconds)
+        if stopped or timeout_seconds <= GOOGLE_TRANSPORT_RESET_AFTER_SECONDS:
+            return stopped
+        self._sheets_client.reset_transport()
+        LOGGER.info(
+            "Recreated Google Sheets transport after idle wait",
+            extra={"idle_seconds": round(timeout_seconds, 1)},
+        )
+        return False
 
     def _queue_predictive_hot_players(
         self,

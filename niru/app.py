@@ -87,4 +87,5 @@ def main() -> None:
         LOGGER.exception("Fatal application error")
         raise
     finally:
+        sheets_client.close()
         repository.close()

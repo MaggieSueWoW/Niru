@@ -563,9 +563,15 @@ class FakeSheets:
         self.last_metadata_rows = None
         self.last_tab_name = None
         self.tables = {}
+        self.list_tab_names_calls = 0
+        self.transport_resets = 0
 
     def list_tab_names(self):
+        self.list_tab_names_calls += 1
         return set(self.tab_names)
+
+    def reset_transport(self):
+        self.transport_resets += 1
 
     def read_roster_rows(self, *, tab_name):
         self.last_tab_name = tab_name
@@ -1157,6 +1163,52 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(attempts["count"], 2)
         self.assertEqual(waits, [30.0])
+
+    def test_wait_between_cycles_resets_google_transport_after_five_minutes(
+        self,
+    ) -> None:
+        sheets = FakeSheets([])
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+        service._wait_for_stop = lambda _timeout: False  # type: ignore[method-assign]
+
+        self.assertFalse(service._wait_between_cycles(301.0))
+        self.assertEqual(sheets.transport_resets, 1)
+
+    def test_wait_between_cycles_keeps_google_transport_for_short_wait(self) -> None:
+        sheets = FakeSheets([])
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+        service._wait_for_stop = lambda _timeout: False  # type: ignore[method-assign]
+
+        self.assertFalse(service._wait_between_cycles(300.0))
+        self.assertEqual(sheets.transport_resets, 0)
+
+    def test_current_last_season_skips_tab_name_lookup(self) -> None:
+        settings = make_settings()
+        settings.google.season_tabs = (TEST_SEASON, TEST_S2_SEASON)
+        sheets = FakeSheets([])
+        service = SyncService(
+            settings=settings,
+            repository=FakeRepo(),
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        service._prepare_future_season_headers(
+            now=datetime(2026, 8, 20, tzinfo=UTC),
+            active_season=TEST_S2_SEASON,
+        )
+
+        self.assertEqual(sheets.list_tab_names_calls, 0)
 
     def test_run_cycle_skips_player_sync_when_cooldown_is_active(self) -> None:
         repo = FakeRepo()

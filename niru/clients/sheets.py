@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any
 
 from niru.config import GoogleSettings
+
+
+LOGGER = logging.getLogger(__name__)
+GOOGLE_API_NUM_RETRIES = 2
 
 
 class GoogleSheetsClient:
@@ -26,8 +31,8 @@ class GoogleSheetsClient:
             self._service.spreadsheets()
             .values()
             .get(spreadsheetId=self._settings.sheet_id, range=range_name)
-            .execute()
         )
+        response = _execute(response)
         values = response.get("values", [])
         return [row[0] if row else "" for row in values]
 
@@ -85,7 +90,7 @@ class GoogleSheetsClient:
             target_values=target_values,
         )
         if updates:
-            (
+            request = (
                 self._service.spreadsheets()
                 .values()
                 .batchUpdate(
@@ -95,21 +100,18 @@ class GoogleSheetsClient:
                         "data": updates,
                     },
                 )
-                .execute()
             )
+            _execute(request)
         return len(rows)
 
     def list_tab_names(self) -> set[str]:
         """Return the titles of all tabs in the configured workbook."""
 
-        response = (
-            self._service.spreadsheets()
-            .get(
-                spreadsheetId=self._settings.sheet_id,
-                fields="sheets(properties(title))",
-            )
-            .execute()
+        response = self._service.spreadsheets().get(
+            spreadsheetId=self._settings.sheet_id,
+            fields="sheets(properties(title))",
         )
+        response = _execute(response)
         return {
             str((sheet.get("properties") or {}).get("title"))
             for sheet in response.get("sheets", [])
@@ -137,8 +139,8 @@ class GoogleSheetsClient:
             self._service.spreadsheets()
             .values()
             .get(spreadsheetId=self._settings.sheet_id, range=range_name)
-            .execute()
         )
+        response = _execute(response)
         existing = [
             _normalize_sheet_value(value)
             for value in (response.get("values", [[]]) or [[]])[0]
@@ -146,7 +148,7 @@ class GoogleSheetsClient:
         existing.extend([""] * (len(normalized_header) - len(existing)))
         if existing[: len(normalized_header)] == normalized_header:
             return
-        (
+        request = (
             self._service.spreadsheets()
             .values()
             .update(
@@ -155,19 +157,16 @@ class GoogleSheetsClient:
                 valueInputOption="USER_ENTERED",
                 body={"values": [normalized_header]},
             )
-            .execute()
         )
+        _execute(request)
 
     def _get_sheet_size(self, *, tab_name: str) -> tuple[int, int]:
-        response = (
-            self._service.spreadsheets()
-            .get(
-                spreadsheetId=self._settings.sheet_id,
-                ranges=[tab_name],
-                fields="sheets(properties(title,gridProperties(rowCount,columnCount)))",
-            )
-            .execute()
+        response = self._service.spreadsheets().get(
+            spreadsheetId=self._settings.sheet_id,
+            ranges=[tab_name],
+            fields="sheets(properties(title,gridProperties(rowCount,columnCount)))",
         )
+        response = _execute(response)
         for sheet in response.get("sheets", []):
             properties = sheet.get("properties", {})
             if properties.get("title") != tab_name:
@@ -196,8 +195,8 @@ class GoogleSheetsClient:
             self._service.spreadsheets()
             .values()
             .get(spreadsheetId=self._settings.sheet_id, range=range_name)
-            .execute()
         )
+        response = _execute(response)
         return [
             [_normalize_sheet_value(value) for value in row]
             for row in response.get("values", [])
@@ -221,6 +220,34 @@ class GoogleSheetsClient:
                 "Provide GOOGLE_SERVICE_ACCOUNT_FILE or GOOGLE_SERVICE_ACCOUNT_JSON."
             )
         return build("sheets", "v4", credentials=credentials, cache_discovery=False)
+
+    def reset_transport(self) -> None:
+        """Replace the Google service and close its previous HTTP transport."""
+
+        previous_service = self._service
+        self._service = self._build_service()
+        self._close_service(previous_service)
+
+    def close(self) -> None:
+        """Close the current Google HTTP transport."""
+
+        self._close_service(self._service)
+
+    @staticmethod
+    def _close_service(service: Any) -> None:
+        close = getattr(service, "close", None)
+        if not callable(close):
+            return
+        try:
+            close()
+        except Exception:
+            LOGGER.warning("Failed to close Google Sheets transport", exc_info=True)
+
+
+def _execute(request: Any) -> Any:
+    """Execute one Google API request with transient transport retries."""
+
+    return request.execute(num_retries=GOOGLE_API_NUM_RETRIES)
 
 
 def _column_number(column_name: str) -> int:

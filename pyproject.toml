@@ -9,14 +9,15 @@ description = "Niru is a Mythic+ roster bot that syncs Raider.IO data into Mongo
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "certifi>=2025.1.31",
-  "google-api-python-client>=2.170.0",
-  "google-auth>=2.40.0",
-  "httplib2>=0.22.0",
-  "PyYAML>=6.0.2",
-  "pymongo>=4.11.0",
-  "python-dotenv>=1.1.0",
-  "redis>=6.0.0",
+  "certifi==2026.7.22",
+  "google-api-python-client==2.198.0",
+  "google-auth==2.56.3",
+  "google-auth-httplib2==0.4.1",
+  "httplib2==0.32.0",
+  "PyYAML==6.0.3",
+  "pymongo==4.17.0",
+  "python-dotenv==1.2.3",
+  "redis==8.1.0",
 ]
 
 [project.optional-dependencies]
