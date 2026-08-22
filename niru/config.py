@@ -43,12 +43,24 @@ class TeamActivitySettings:
 
 
 @dataclass(slots=True, frozen=True)
+class PredictedHourPollingSettings:
+    enabled: bool
+    probability_threshold: float
+
+
+@dataclass(slots=True, frozen=True)
+class CompletionFollowUpPollingSettings:
+    enabled: bool
+    start_after_completion_minutes: int
+    stop_after_completion_minutes: int
+
+
+@dataclass(slots=True, frozen=True)
 class SyncSettings:
-    interval_minutes: int
-    active_interval_minutes: int
-    active_idle_minutes: int
-    predictive_hot_enabled: bool
-    predictive_hot_threshold: float
+    baseline_poll_interval_minutes: int
+    accelerated_poll_interval_minutes: int
+    predicted_hour_polling: PredictedHourPollingSettings
+    completion_follow_up_polling: CompletionFollowUpPollingSettings
     max_players_per_cycle: int
     failure_backoff_seconds: float
     max_failure_backoff_seconds: float
@@ -307,6 +319,40 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
                 + ", ".join(missing_blizzard_ids)
             )
 
+    baseline_poll_interval_minutes = _require_int(
+        sync_raw.get("baseline_poll_interval_minutes"),
+        name="sync.baseline_poll_interval_minutes",
+    )
+    accelerated_poll_interval_minutes = _require_int(
+        sync_raw.get("accelerated_poll_interval_minutes", 5),
+        name="sync.accelerated_poll_interval_minutes",
+    )
+    if baseline_poll_interval_minutes % accelerated_poll_interval_minutes != 0:
+        raise ValueError(
+            "sync.baseline_poll_interval_minutes must be divisible by "
+            "sync.accelerated_poll_interval_minutes"
+        )
+
+    predicted_hour_raw = sync_raw.get("predicted_hour_polling", {})
+    if not isinstance(predicted_hour_raw, dict):
+        raise ValueError("sync.predicted_hour_polling must be a mapping")
+    completion_follow_up_raw = sync_raw.get("completion_follow_up_polling", {})
+    if not isinstance(completion_follow_up_raw, dict):
+        raise ValueError("sync.completion_follow_up_polling must be a mapping")
+    completion_follow_up_start = _require_int(
+        completion_follow_up_raw.get("start_after_completion_minutes", 30),
+        name="sync.completion_follow_up_polling.start_after_completion_minutes",
+    )
+    completion_follow_up_stop = _require_int(
+        completion_follow_up_raw.get("stop_after_completion_minutes", 50),
+        name="sync.completion_follow_up_polling.stop_after_completion_minutes",
+    )
+    if completion_follow_up_stop <= completion_follow_up_start:
+        raise ValueError(
+            "sync.completion_follow_up_polling.stop_after_completion_minutes "
+            "must be greater than start_after_completion_minutes"
+        )
+
     return Settings(
         google=GoogleSettings(
             sheet_id=_require_text(
@@ -325,26 +371,27 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
             service_account_json=os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"),
         ),
         sync=SyncSettings(
-            interval_minutes=_require_int(
-                sync_raw.get("interval_minutes"), name="sync.interval_minutes"
+            baseline_poll_interval_minutes=baseline_poll_interval_minutes,
+            accelerated_poll_interval_minutes=accelerated_poll_interval_minutes,
+            predicted_hour_polling=PredictedHourPollingSettings(
+                enabled=_require_bool(
+                    predicted_hour_raw.get("enabled", True),
+                    name="sync.predicted_hour_polling.enabled",
+                ),
+                probability_threshold=_require_float_range(
+                    predicted_hour_raw.get("probability_threshold", 0.5),
+                    name="sync.predicted_hour_polling.probability_threshold",
+                    minimum=0.0,
+                    maximum=1.0,
+                ),
             ),
-            active_interval_minutes=_require_int(
-                sync_raw.get("active_interval_minutes", 5),
-                name="sync.active_interval_minutes",
-            ),
-            active_idle_minutes=_require_int(
-                sync_raw.get("active_idle_minutes", 40),
-                name="sync.active_idle_minutes",
-            ),
-            predictive_hot_enabled=_require_bool(
-                sync_raw.get("predictive_hot_enabled", True),
-                name="sync.predictive_hot_enabled",
-            ),
-            predictive_hot_threshold=_require_float_range(
-                sync_raw.get("predictive_hot_threshold", 0.5),
-                name="sync.predictive_hot_threshold",
-                minimum=0.0,
-                maximum=1.0,
+            completion_follow_up_polling=CompletionFollowUpPollingSettings(
+                enabled=_require_bool(
+                    completion_follow_up_raw.get("enabled", True),
+                    name="sync.completion_follow_up_polling.enabled",
+                ),
+                start_after_completion_minutes=completion_follow_up_start,
+                stop_after_completion_minutes=completion_follow_up_stop,
             ),
             max_players_per_cycle=_require_int(
                 sync_raw.get("max_players_per_cycle"),

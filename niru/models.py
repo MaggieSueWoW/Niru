@@ -122,9 +122,11 @@ class SyncStats:
     active_players: int = 0
     valid_players: int = 0
     invalid_players: int = 0
-    base_due_players_synced: int = 0
-    hot_players_synced: int = 0
-    predictive_hot_players_queued: int = 0
+    baseline_due_players_synced: int = 0
+    accelerated_players_synced: int = 0
+    predicted_hour_plans_scheduled: int = 0
+    completion_follow_up_plans_scheduled: int = 0
+    completion_tracking_initialized: int = 0
     api_calls: int = 0
     raiderio_api_calls: int = 0
     blizzard_api_calls: int = 0
@@ -150,9 +152,13 @@ class SyncStats:
             "active_players": self.active_players,
             "valid_players": self.valid_players,
             "invalid_players": self.invalid_players,
-            "base_due_players_synced": self.base_due_players_synced,
-            "hot_players_synced": self.hot_players_synced,
-            "predictive_hot_players_queued": self.predictive_hot_players_queued,
+            "baseline_due_players_synced": self.baseline_due_players_synced,
+            "accelerated_players_synced": self.accelerated_players_synced,
+            "predicted_hour_plans_scheduled": self.predicted_hour_plans_scheduled,
+            "completion_follow_up_plans_scheduled": (
+                self.completion_follow_up_plans_scheduled
+            ),
+            "completion_tracking_initialized": self.completion_tracking_initialized,
             "api_calls": self.api_calls,
             "raiderio_api_calls": self.raiderio_api_calls,
             "blizzard_api_calls": self.blizzard_api_calls,

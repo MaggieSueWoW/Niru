@@ -51,6 +51,8 @@ GOOGLE_TRANSPORT_RESET_AFTER_SECONDS = 5 * 60
 PACIFIC_DAY_START_HOUR = 0
 TEAM_ACTIVITY_TIMEZONE = "America/Los_Angeles"
 TEAM_ACTIVITY_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+PREDICTED_HOUR_PLAN = "predicted_hour"
+COMPLETION_FOLLOW_UP_PLAN = "completion_follow_up"
 
 PLAYER_COLUMNS = [
     "region",
@@ -680,7 +682,13 @@ def _last_attempted_sync_at(player: dict[str, Any]) -> datetime | None:
     )
 
 
-def _current_hot_batch_start(now: datetime, *, interval_minutes: int) -> datetime:
+def _last_baseline_sync_at(player: dict[str, Any]) -> datetime | None:
+    """Return the last sync that advanced the baseline cadence."""
+
+    return _safe_datetime(player.get("last_baseline_sync_started_at"))
+
+
+def _current_poll_batch_start(now: datetime, *, interval_minutes: int) -> datetime:
     """Return the current batch boundary for the configured interval."""
 
     normalized_now = ensure_utc(now)
@@ -692,16 +700,64 @@ def _current_hot_batch_start(now: datetime, *, interval_minutes: int) -> datetim
     return datetime.fromtimestamp(bucket_start_timestamp, tz=UTC)
 
 
-def _next_hot_batch_at_or_after(moment: datetime, *, interval_minutes: int) -> datetime:
+def _next_poll_batch_at_or_after(
+    moment: datetime, *, interval_minutes: int
+) -> datetime:
     """Return the next batch boundary at or after a timestamp."""
 
     normalized = ensure_utc(moment)
-    batch_start = _current_hot_batch_start(
+    batch_start = _current_poll_batch_start(
         normalized, interval_minutes=interval_minutes
     )
     if batch_start == normalized:
         return batch_start
     return batch_start + timedelta(minutes=interval_minutes)
+
+
+def _accelerated_poll_plan(player: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a valid persisted accelerated polling plan, if present."""
+
+    plan = player.get("accelerated_poll_plan")
+    if not isinstance(plan, dict):
+        return None
+    kind = str(plan.get("kind", ""))
+    starts_at = _safe_datetime(plan.get("starts_at"))
+    ends_at = _safe_datetime(plan.get("ends_at"))
+    if (
+        kind not in {PREDICTED_HOUR_PLAN, COMPLETION_FOLLOW_UP_PLAN}
+        or starts_at is None
+        or ends_at is None
+        or ends_at <= starts_at
+    ):
+        return None
+    normalized = dict(plan)
+    normalized["kind"] = kind
+    normalized["starts_at"] = starts_at
+    normalized["ends_at"] = ends_at
+    return normalized
+
+
+def _completion_observation(
+    candidate: NormalizedRunCandidate, *, season: str
+) -> dict[str, Any] | None:
+    """Build a stable per-player completion observation from a run candidate."""
+
+    completed_at = _safe_datetime(candidate.completed_at)
+    if completed_at is None:
+        return None
+    if candidate.keystone_run_id is not None:
+        run_key = f"{season}|keystone_run_id|{int(candidate.keystone_run_id)}"
+    else:
+        fingerprint = "|".join(
+            (
+                str(candidate.dungeon_id or ""),
+                str(candidate.mythic_level or ""),
+                str(int(completed_at.timestamp() * 1000)),
+                str(candidate.clear_time_ms or ""),
+            )
+        )
+        run_key = f"{season}|fingerprint|{fingerprint}"
+    return {"run_key": run_key, "completed_at": completed_at}
 
 
 def build_summary_header(dungeons: list[dict[str, Any]]) -> list[str]:
@@ -922,9 +978,9 @@ def _players_for_roster_entries(
                 "sheet_row_number": entry.row_number,
                 "region": entry.identity.region if entry.identity else "",
                 "realm": entry.identity.realm if entry.identity else "",
-                "name": entry.identity.name
-                if entry.identity
-                else entry.raw_value.strip(),
+                "name": (
+                    entry.identity.name if entry.identity else entry.raw_value.strip()
+                ),
                 "is_valid": entry.is_valid,
             }
         )
@@ -1101,10 +1157,10 @@ class SyncService:
                 active_players=active_players,
                 player_key=player_key,
             )
-            self._expire_hot_windows(
+            self._expire_accelerated_poll_plans(
                 active_players=scoped_active_players, now=started_at
             )
-            self._queue_predictive_hot_players(
+            self._schedule_predicted_hour_polling(
                 active_players=scoped_active_players,
                 now=started_at,
                 stats=stats,
@@ -1126,10 +1182,12 @@ class SyncService:
                         for player in scoped_active_players
                         if player.get("is_valid")
                     ]
-                    base_due_keys = {player["player_key"] for player in players_to_sync}
-                    hot_due_keys: set[str] = set()
+                    baseline_due_keys = {
+                        player["player_key"] for player in players_to_sync
+                    }
+                    accelerated_due_keys: set[str] = set()
                 else:
-                    players_to_sync, base_due_keys, hot_due_keys = (
+                    players_to_sync, baseline_due_keys, accelerated_due_keys = (
                         self._select_players_for_sync(
                             now=started_at,
                             active_players=active_players,
@@ -1169,24 +1227,13 @@ class SyncService:
                         stats.partial = True
                         break
                     player_key = player["player_key"]
-                    sync_kind = "base"
-                    if player_key in hot_due_keys:
-                        stats.hot_players_synced += 1
-                        sync_kind = "hot"
-                        hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
-                        last_attempt = _last_attempted_sync_at(player)
-                        if hot_ready_at and (
-                            last_attempt is None or last_attempt < hot_ready_at
-                        ):
-                            LOGGER.info(
-                                "Hot polling window reached",
-                                extra={
-                                    "player_key": player_key,
-                                    "hot_ready_at": hot_ready_at.isoformat(),
-                                },
-                            )
-                    elif player_key in base_due_keys:
-                        stats.base_due_players_synced += 1
+                    sync_kind = "baseline"
+                    if player_key in accelerated_due_keys:
+                        stats.accelerated_players_synced += 1
+                        sync_kind = "accelerated"
+                        self._log_accelerated_poll(player=player)
+                    elif player_key in baseline_due_keys:
+                        stats.baseline_due_players_synced += 1
                     self._sync_player(
                         player=player,
                         stats=stats,
@@ -1271,9 +1318,17 @@ class SyncService:
                     "api_calls": stats.api_calls,
                     "raiderio_api_calls": stats.raiderio_api_calls,
                     "blizzard_api_calls": stats.blizzard_api_calls,
-                    "base_due_players_synced": stats.base_due_players_synced,
-                    "hot_players_synced": stats.hot_players_synced,
-                    "predictive_hot_players_queued": stats.predictive_hot_players_queued,
+                    "baseline_due_players_synced": stats.baseline_due_players_synced,
+                    "accelerated_players_synced": stats.accelerated_players_synced,
+                    "predicted_hour_plans_scheduled": (
+                        stats.predicted_hour_plans_scheduled
+                    ),
+                    "completion_follow_up_plans_scheduled": (
+                        stats.completion_follow_up_plans_scheduled
+                    ),
+                    "completion_tracking_initialized": (
+                        stats.completion_tracking_initialized
+                    ),
                     "new_runs": stats.new_runs,
                     "sheet_rows_written": stats.sheet_rows_written,
                     "partial": stats.partial,
@@ -1358,8 +1413,7 @@ class SyncService:
                 season=season,
                 season_dungeons=season_dungeons,
             )
-            new_run_completed_at: list[datetime] = []
-            player_new_runs = 0
+            completion_observations: list[dict[str, Any]] = []
             for candidate in run_candidates:
                 if self._stop_requested:
                     LOGGER.info(
@@ -1400,14 +1454,26 @@ class SyncService:
                 )
                 if inserted:
                     stats.new_runs += 1
-                    player_new_runs += 1
-                    completed_at = candidate.completed_at
-                    if completed_at is not None:
-                        new_run_completed_at.append(completed_at)
-            if player_new_runs > 0:
-                profile_completed_at = (
-                    new_run_completed_at if new_run_completed_at else [ensure_utc(now)]
+                observation = _completion_observation(
+                    candidate,
+                    season=season.slug,
                 )
+                if observation is not None:
+                    completion_observations.append(observation)
+
+            observed_completion_times = [
+                observation["completed_at"] for observation in completion_observations
+            ]
+            existing_seen_week_hours = {
+                str(key)
+                for key in player.get("play_profile_seen_week_hours", []) or []
+                if isinstance(key, str) and key
+            }
+            newly_observed_week_hours = {
+                current_week_hour_key(completed_at)
+                for completed_at in observed_completion_times
+            } - existing_seen_week_hours
+            if newly_observed_week_hours:
                 existing_profile = {
                     "play_profile_first_week_start_at": player.get(
                         "play_profile_first_week_start_at"
@@ -1427,28 +1493,28 @@ class SyncService:
                     "play_profile_seen_week_hours": player.get(
                         "play_profile_seen_week_hours", []
                     ),
-                    "play_profile_last_enqueued_week_hour": player.get(
-                        "play_profile_last_enqueued_week_hour", ""
-                    ),
                 }
                 if existing_profile.get("play_profile_seen_week_hours"):
                     profile = update_play_profile(
                         existing_profile=existing_profile,
-                        completed_at_values=profile_completed_at,
+                        completed_at_values=observed_completion_times,
                         now=ensure_utc(now),
                     )
                 else:
                     profile = build_play_profile(
-                        completed_at_values=profile_completed_at,
+                        completed_at_values=observed_completion_times,
                         now=ensure_utc(now),
                         last_seeded_at=player.get("play_profile_last_seeded_at"),
-                        last_enqueued_week_hour=str(
-                            player.get("play_profile_last_enqueued_week_hour", "") or ""
-                        ),
                     )
                 self._repository.upsert_player_play_profile(
                     player_key=player_key, profile=profile
                 )
+            self._record_latest_completion_observation(
+                player=player,
+                completion_observations=completion_observations,
+                now=ensure_utc(now),
+                stats=stats,
+            )
         except RaiderIONotFoundError:
             message = "Raider.IO could not find this player."
             LOGGER.warning(
@@ -1473,6 +1539,207 @@ class SyncService:
             self._repository.mark_sync_error(player_key, message, when=now)
             stats.partial = True
             stats.warnings.append(f"{player_key}: {message}")
+
+    def _record_latest_completion_observation(
+        self,
+        *,
+        player: dict[str, Any],
+        completion_observations: list[dict[str, Any]],
+        now: datetime,
+        stats: SyncStats,
+    ) -> None:
+        """Advance one player's completion watermark and polling plan."""
+
+        player_key = player["player_key"]
+        latest_completion = max(
+            completion_observations,
+            key=lambda observation: (
+                observation["completed_at"],
+                observation["run_key"],
+            ),
+            default=None,
+        )
+        tracking_started_at = _safe_datetime(
+            player.get("completion_tracking_started_at")
+        )
+        if tracking_started_at is None:
+            initialized = self._repository.initialize_completion_tracking(
+                player_key=player_key,
+                started_at=now,
+                latest_completion=latest_completion,
+            )
+            if initialized:
+                stats.completion_tracking_initialized += 1
+                LOGGER.info(
+                    "Initialized completion tracking without scheduling a follow-up",
+                    extra={
+                        "player_key": player_key,
+                        "completion_tracking_started_at": now.isoformat(),
+                        "latest_completion_at": (
+                            latest_completion["completed_at"].isoformat()
+                            if latest_completion is not None
+                            else None
+                        ),
+                        "latest_completion_run_key": (
+                            latest_completion["run_key"]
+                            if latest_completion is not None
+                            else None
+                        ),
+                    },
+                )
+            return
+        if latest_completion is None:
+            return
+
+        completed_at = latest_completion["completed_at"]
+        existing_completion = player.get("latest_observed_completion")
+        existing_completed_at = (
+            _safe_datetime(existing_completion.get("completed_at"))
+            if isinstance(existing_completion, dict)
+            else None
+        )
+        if existing_completed_at is not None and completed_at <= existing_completed_at:
+            LOGGER.debug(
+                "Ignored previously observed or older completion",
+                extra={
+                    "player_key": player_key,
+                    "completion_run_key": latest_completion["run_key"],
+                    "completion_at": completed_at.isoformat(),
+                    "latest_observed_completion_at": existing_completed_at.isoformat(),
+                },
+            )
+            return
+
+        follow_up_settings = self._settings.sync.completion_follow_up_polling
+        follow_up_starts_at = completed_at + timedelta(
+            minutes=follow_up_settings.start_after_completion_minutes
+        )
+        follow_up_ends_at = completed_at + timedelta(
+            minutes=follow_up_settings.stop_after_completion_minutes
+        )
+        if completed_at <= tracking_started_at or follow_up_ends_at <= now:
+            self._repository.record_completion_observation(
+                player_key=player_key,
+                completion=latest_completion,
+            )
+            LOGGER.info(
+                "Recorded completion without scheduling a follow-up",
+                extra={
+                    "player_key": player_key,
+                    "completion_run_key": latest_completion["run_key"],
+                    "completion_at": completed_at.isoformat(),
+                    "follow_up_ends_at": follow_up_ends_at.isoformat(),
+                    "reason": (
+                        "completion_predates_tracking"
+                        if completed_at <= tracking_started_at
+                        else "follow_up_window_already_ended"
+                    ),
+                },
+            )
+            return
+
+        current_plan = _accelerated_poll_plan(player)
+        current_hour_key = current_week_hour_key(now)
+        if not follow_up_settings.enabled:
+            self._repository.record_completion_observation(
+                player_key=player_key,
+                completion=latest_completion,
+                accelerated_poll_plan=None,
+                predicted_hour_considered_key=current_hour_key,
+                replace_accelerated_poll_plan=True,
+            )
+            LOGGER.info(
+                "Completion ended accelerated polling; follow-ups are disabled",
+                extra={
+                    "player_key": player_key,
+                    "completion_run_key": latest_completion["run_key"],
+                    "completion_at": completed_at.isoformat(),
+                    "replaced_plan_kind": (
+                        current_plan["kind"] if current_plan is not None else None
+                    ),
+                },
+            )
+            return
+
+        follow_up_plan = {
+            "kind": COMPLETION_FOLLOW_UP_PLAN,
+            "starts_at": follow_up_starts_at,
+            "ends_at": follow_up_ends_at,
+            "source_run_key": latest_completion["run_key"],
+            "source_completed_at": completed_at,
+        }
+        self._repository.record_completion_observation(
+            player_key=player_key,
+            completion=latest_completion,
+            accelerated_poll_plan=follow_up_plan,
+            predicted_hour_considered_key=current_hour_key,
+            replace_accelerated_poll_plan=True,
+        )
+        stats.completion_follow_up_plans_scheduled += 1
+        if current_plan is not None and current_plan["kind"] == PREDICTED_HOUR_PLAN:
+            LOGGER.info(
+                "Predicted-hour accelerated polling superseded by completion",
+                extra={
+                    "player_key": player_key,
+                    "completion_run_key": latest_completion["run_key"],
+                    "completion_at": completed_at.isoformat(),
+                },
+            )
+        elif (
+            current_plan is not None
+            and current_plan["kind"] == COMPLETION_FOLLOW_UP_PLAN
+        ):
+            LOGGER.info(
+                "Completion follow-up replaced by newer completion",
+                extra={
+                    "player_key": player_key,
+                    "previous_source_run_key": current_plan.get("source_run_key"),
+                    "new_source_run_key": latest_completion["run_key"],
+                    "new_completion_at": completed_at.isoformat(),
+                },
+            )
+        LOGGER.info(
+            "Scheduled completion follow-up accelerated polling",
+            extra={
+                "player_key": player_key,
+                "completion_run_key": latest_completion["run_key"],
+                "completion_at": completed_at.isoformat(),
+                "poll_starts_at": follow_up_starts_at.isoformat(),
+                "poll_ends_at": follow_up_ends_at.isoformat(),
+                "accelerated_poll_interval_minutes": (
+                    self._settings.sync.accelerated_poll_interval_minutes
+                ),
+            },
+        )
+
+    def _log_accelerated_poll(self, *, player: dict[str, Any]) -> None:
+        """Log why a player is being polled outside the baseline cadence."""
+
+        plan = _accelerated_poll_plan(player)
+        if plan is None:
+            return
+        source_completed_at = _safe_datetime(plan.get("source_completed_at"))
+        LOGGER.info(
+            "Polling player on accelerated cadence",
+            extra={
+                "player_key": player["player_key"],
+                "poll_reason": plan["kind"],
+                "poll_starts_at": plan["starts_at"].isoformat(),
+                "poll_ends_at": plan["ends_at"].isoformat(),
+                "source_run_key": plan.get("source_run_key"),
+                "source_completed_at": (
+                    source_completed_at.isoformat() if source_completed_at else None
+                ),
+                "predicted_hour_key": plan.get("predicted_hour_key"),
+                "prediction_probability": plan.get("prediction_probability"),
+                "accelerated_poll_interval_minutes": (
+                    self._settings.sync.accelerated_poll_interval_minutes
+                ),
+                "baseline_poll_interval_minutes": (
+                    self._settings.sync.baseline_poll_interval_minutes
+                ),
+            },
+        )
 
     def _load_blizzard_player_profiles(
         self,
@@ -1953,24 +2220,23 @@ class SyncService:
         )
         return False
 
-    def _queue_predictive_hot_players(
+    def _schedule_predicted_hour_polling(
         self,
         *,
         active_players: list[dict[str, Any]],
         now: datetime,
         stats: SyncStats,
     ) -> None:
-        """Queue hot polling for players predicted to play in the current Pacific hour."""
+        """Schedule accelerated polling for predicted play in the current hour."""
 
-        if not self._settings.sync.predictive_hot_enabled:
+        predicted_settings = self._settings.sync.predicted_hour_polling
+        if not predicted_settings.enabled:
             return
 
         current_slot_index = pacific_week_hour_index(now)
         current_week_hour = current_week_hour_key(now)
         current_hour_start = pacific_hour_start(now)
-        predictive_hot_until = current_hour_start + timedelta(
-            minutes=self._settings.sync.active_idle_minutes
-        )
+        current_hour_end = next_pacific_hour_start(now)
         for player in active_players:
             if not player.get("is_valid", False):
                 continue
@@ -1979,34 +2245,68 @@ class SyncService:
                 player=player,
                 now=now,
             )
+            if (
+                refreshed_profile.get("last_predicted_hour_considered_key")
+                == current_week_hour
+            ):
+                continue
+            current_plan = _accelerated_poll_plan(refreshed_profile)
+            if (
+                current_plan is not None
+                and current_plan["kind"] == COMPLETION_FOLLOW_UP_PLAN
+                and current_plan["ends_at"] > ensure_utc(now)
+            ):
+                self._repository.mark_predicted_hour_considered(
+                    player_key=player_key,
+                    week_hour_key=current_week_hour,
+                )
+                LOGGER.info(
+                    "Skipped predicted-hour polling because completion follow-up is authoritative",
+                    extra={
+                        "player_key": player_key,
+                        "predicted_hour_key": current_week_hour,
+                        "completion_follow_up_starts_at": current_plan[
+                            "starts_at"
+                        ].isoformat(),
+                        "completion_follow_up_ends_at": current_plan[
+                            "ends_at"
+                        ].isoformat(),
+                    },
+                )
+                continue
             probabilities = (
                 refreshed_profile.get("play_profile_hour_probabilities", []) or []
             )
             if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
                 continue
-            if (
-                refreshed_profile.get("play_profile_last_enqueued_week_hour")
-                == current_week_hour
-            ):
-                continue
             probability = float(probabilities[current_slot_index])
-            if probability < self._settings.sync.predictive_hot_threshold:
+            if probability < predicted_settings.probability_threshold:
                 continue
-            self._repository.mark_predictive_hot_enqueue(
+            plan = {
+                "kind": PREDICTED_HOUR_PLAN,
+                "starts_at": current_hour_start,
+                "ends_at": current_hour_end,
+                "predicted_hour_key": current_week_hour,
+                "prediction_probability": round(probability, 4),
+            }
+            self._repository.schedule_predicted_hour_polling(
                 player_key=player_key,
                 week_hour_key=current_week_hour,
-                hot_ready_at=current_hour_start,
-                hot_until_at=predictive_hot_until,
+                plan=plan,
             )
-            stats.predictive_hot_players_queued += 1
+            stats.predicted_hour_plans_scheduled += 1
             LOGGER.info(
-                "Queued predictive hot polling",
+                "Scheduled predicted-hour accelerated polling",
                 extra={
                     "player_key": player_key,
                     "week_hour_index": current_slot_index,
                     "probability": round(probability, 4),
-                    "hot_ready_at": current_hour_start.isoformat(),
-                    "hot_until_at": predictive_hot_until.isoformat(),
+                    "probability_threshold": predicted_settings.probability_threshold,
+                    "poll_starts_at": current_hour_start.isoformat(),
+                    "poll_ends_at": current_hour_end.isoformat(),
+                    "accelerated_poll_interval_minutes": (
+                        self._settings.sync.accelerated_poll_interval_minutes
+                    ),
                 },
             )
 
@@ -2046,24 +2346,30 @@ class SyncService:
         active_players: list[dict[str, Any]],
         season: str,
     ) -> tuple[list[dict[str, Any]], set[str], set[str]]:
-        """Select valid active players due for either base or hot polling."""
+        """Select valid active players due for baseline or accelerated polling."""
 
         limit = self._settings.sync.max_players_per_cycle
-        base_due_players = self._repository.list_players_due_for_base_sync(
-            now=_current_hot_batch_start(
+        baseline_due_players = self._repository.list_players_due_for_baseline_sync(
+            now=_current_poll_batch_start(
                 now,
-                interval_minutes=self._settings.sync.interval_minutes,
+                interval_minutes=self._settings.sync.baseline_poll_interval_minutes,
             ),
-            interval_minutes=self._settings.sync.interval_minutes,
+            interval_minutes=self._settings.sync.baseline_poll_interval_minutes,
             limit=limit,
         )
-        hot_due_players = self._repository.list_players_due_for_hot_sync(
-            now=_current_hot_batch_start(
-                now,
-                interval_minutes=self._settings.sync.active_interval_minutes,
-            ),
-            interval_minutes=self._settings.sync.active_interval_minutes,
-            limit=limit,
+        accelerated_due_players = (
+            self._repository.list_players_due_for_accelerated_sync(
+                now=_current_poll_batch_start(
+                    now,
+                    interval_minutes=(
+                        self._settings.sync.accelerated_poll_interval_minutes
+                    ),
+                ),
+                interval_minutes=(
+                    self._settings.sync.accelerated_poll_interval_minutes
+                ),
+                limit=limit,
+            )
         )
 
         rollover_due_players = [
@@ -2073,11 +2379,14 @@ class SyncService:
         ]
         selected_players: list[dict[str, Any]] = []
         selected_keys: set[str] = set()
-        base_due_keys = {
-            player["player_key"] for player in rollover_due_players + base_due_players
+        baseline_due_keys = {
+            player["player_key"]
+            for player in rollover_due_players + baseline_due_players
         }
-        hot_due_keys: set[str] = set()
-        for player in rollover_due_players + base_due_players + hot_due_players:
+        accelerated_due_keys: set[str] = set()
+        for player in (
+            rollover_due_players + baseline_due_players + accelerated_due_players
+        ):
             player_key = player["player_key"]
             if player_key in selected_keys:
                 continue
@@ -2085,34 +2394,41 @@ class SyncService:
                 break
             selected_players.append(player)
             selected_keys.add(player_key)
-            if player_key not in base_due_keys:
-                hot_due_keys.add(player_key)
-        return selected_players, base_due_keys & selected_keys, hot_due_keys
+            if player_key not in baseline_due_keys:
+                accelerated_due_keys.add(player_key)
+        return (
+            selected_players,
+            baseline_due_keys & selected_keys,
+            accelerated_due_keys,
+        )
 
-    def _expire_hot_windows(
+    def _expire_accelerated_poll_plans(
         self, *, active_players: list[dict[str, Any]], now: datetime
     ) -> None:
-        """Clear any expired hot windows so they are not reconsidered indefinitely."""
+        """Clear expired accelerated polling plans."""
 
         for player in active_players:
-            hot_until_at = _safe_datetime(player.get("hot_until_at"))
-            if hot_until_at is None or hot_until_at > ensure_utc(now):
+            plan = _accelerated_poll_plan(player)
+            if plan is None or plan["ends_at"] > ensure_utc(now):
                 continue
-            hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
-            if hot_ready_at is None:
-                continue
+            message = "Predicted-hour accelerated polling ended"
+            if plan["kind"] == COMPLETION_FOLLOW_UP_PLAN:
+                message = "Completion follow-up ended; returning to baseline cadence"
             LOGGER.info(
-                "Hot polling window expired",
+                message,
                 extra={
                     "player_key": player["player_key"],
-                    "hot_ready_at": hot_ready_at.isoformat(),
-                    "hot_until_at": hot_until_at.isoformat(),
+                    "poll_reason": plan["kind"],
+                    "poll_starts_at": plan["starts_at"].isoformat(),
+                    "poll_ends_at": plan["ends_at"].isoformat(),
                 },
             )
-            self._repository.clear_player_hot_window(player_key=player["player_key"])
+            self._repository.clear_accelerated_poll_plan(
+                player_key=player["player_key"]
+            )
 
     def _next_cycle_delay_seconds(self) -> float:
-        """Compute the next sleep duration from base cadence and hot windows."""
+        """Compute the next sleep from baseline and accelerated polling plans."""
 
         active_players = self._repository.list_active_players(
             limit=self._settings.sync.max_players_per_cycle
@@ -2127,68 +2443,81 @@ class SyncService:
             now=normalized_now,
         )
         if not valid_players:
-            base_delay = float(self._settings.sync.interval_minutes * 60)
+            baseline_delay = float(
+                self._settings.sync.baseline_poll_interval_minutes * 60
+            )
             if next_transition is None:
-                return base_delay
+                return baseline_delay
             return min(
-                base_delay,
+                baseline_delay,
                 max((next_transition - normalized_now).total_seconds(), 0.0),
             )
-        next_due_at = _next_hot_batch_at_or_after(
-            normalized_now + timedelta(minutes=self._settings.sync.interval_minutes),
-            interval_minutes=self._settings.sync.interval_minutes,
+        next_due_at = _next_poll_batch_at_or_after(
+            normalized_now
+            + timedelta(minutes=self._settings.sync.baseline_poll_interval_minutes),
+            interval_minutes=self._settings.sync.baseline_poll_interval_minutes,
         )
 
         for player in valid_players:
             last_attempt = _last_attempted_sync_at(player)
-            if last_attempt is not None:
-                next_base_batch_at = _current_hot_batch_start(
-                    last_attempt,
-                    interval_minutes=self._settings.sync.interval_minutes,
-                ) + timedelta(minutes=self._settings.sync.interval_minutes)
-                next_due_at = min(next_due_at, next_base_batch_at)
-            hot_ready_at = _safe_datetime(player.get("hot_ready_at"))
-            hot_until_at = _safe_datetime(player.get("hot_until_at"))
-            if (
-                hot_ready_at is None
-                or hot_until_at is None
-                or hot_until_at <= normalized_now
-            ):
+            last_baseline_sync = _last_baseline_sync_at(player)
+            if last_baseline_sync is not None:
+                next_baseline_batch_at = _current_poll_batch_start(
+                    last_baseline_sync,
+                    interval_minutes=(
+                        self._settings.sync.baseline_poll_interval_minutes
+                    ),
+                ) + timedelta(
+                    minutes=self._settings.sync.baseline_poll_interval_minutes
+                )
+                next_due_at = min(next_due_at, next_baseline_batch_at)
+            plan = _accelerated_poll_plan(player)
+            if plan is None or plan["ends_at"] <= normalized_now:
                 continue
-            last_hot_batch_at = None
+            last_accelerated_batch_at = None
             if last_attempt is not None:
-                last_hot_batch_at = _current_hot_batch_start(
+                last_accelerated_batch_at = _current_poll_batch_start(
                     last_attempt,
-                    interval_minutes=self._settings.sync.active_interval_minutes,
-                ) + timedelta(minutes=self._settings.sync.active_interval_minutes)
-            next_hot_batch_at = _next_hot_batch_at_or_after(
-                max(normalized_now, hot_ready_at),
-                interval_minutes=self._settings.sync.active_interval_minutes,
+                    interval_minutes=(
+                        self._settings.sync.accelerated_poll_interval_minutes
+                    ),
+                ) + timedelta(
+                    minutes=self._settings.sync.accelerated_poll_interval_minutes
+                )
+            next_accelerated_batch_at = _next_poll_batch_at_or_after(
+                max(normalized_now, plan["starts_at"]),
+                interval_minutes=(
+                    self._settings.sync.accelerated_poll_interval_minutes
+                ),
             )
-            if last_hot_batch_at is not None:
-                next_hot_batch_at = max(next_hot_batch_at, last_hot_batch_at)
-            if next_hot_batch_at < hot_until_at:
-                next_due_at = min(next_due_at, next_hot_batch_at)
+            if last_accelerated_batch_at is not None:
+                next_accelerated_batch_at = max(
+                    next_accelerated_batch_at,
+                    last_accelerated_batch_at,
+                )
+            if next_accelerated_batch_at < plan["ends_at"]:
+                next_due_at = min(next_due_at, next_accelerated_batch_at)
 
-        predictive_wake_at = self._next_predictive_wake_at(
+        predicted_hour_wake_at = self._next_predicted_hour_wake_at(
             valid_players=valid_players, now=normalized_now
         )
-        if predictive_wake_at is not None:
-            next_due_at = min(next_due_at, predictive_wake_at)
+        if predicted_hour_wake_at is not None:
+            next_due_at = min(next_due_at, predicted_hour_wake_at)
         if next_transition is not None:
             next_due_at = min(next_due_at, next_transition)
 
         return max((next_due_at - normalized_now).total_seconds(), 0.0)
 
-    def _next_predictive_wake_at(
+    def _next_predicted_hour_wake_at(
         self,
         *,
         valid_players: list[dict[str, Any]],
         now: datetime,
     ) -> datetime | None:
-        """Return the next top-of-hour wake-up needed for predictive hot scheduling."""
+        """Return the next top-of-hour wake-up for predicted-hour scheduling."""
 
-        if not self._settings.sync.predictive_hot_enabled:
+        predicted_settings = self._settings.sync.predicted_hour_polling
+        if not predicted_settings.enabled:
             return None
 
         next_hour_start = next_pacific_hour_start(now)
@@ -2204,13 +2533,13 @@ class SyncService:
             if len(probabilities) != PLAY_PROFILE_HOURS_PER_WEEK:
                 continue
             if (
-                refreshed_profile.get("play_profile_last_enqueued_week_hour")
+                refreshed_profile.get("last_predicted_hour_considered_key")
                 == next_week_hour
             ):
                 continue
             if (
                 float(probabilities[next_slot_index])
-                >= self._settings.sync.predictive_hot_threshold
+                >= predicted_settings.probability_threshold
             ):
                 return next_hour_start
         return None

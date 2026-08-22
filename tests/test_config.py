@@ -32,11 +32,15 @@ team_activity:
   output_start_cell: "C101"
 
 sync:
-  interval_minutes: 15
-  active_interval_minutes: 5
-  active_idle_minutes: 40
-  predictive_hot_enabled: true
-  predictive_hot_threshold: 0.5
+  baseline_poll_interval_minutes: 15
+  accelerated_poll_interval_minutes: 5
+  predicted_hour_polling:
+    enabled: true
+    probability_threshold: 0.5
+  completion_follow_up_polling:
+    enabled: true
+    start_after_completion_minutes: 30
+    stop_after_completion_minutes: 50
   max_players_per_cycle: 250
   failure_backoff_seconds: 30
   max_failure_backoff_seconds: 900
@@ -100,10 +104,22 @@ logging:
                     else:
                         os.environ[key] = value
 
-        self.assertEqual(settings.sync.active_interval_minutes, 5)
-        self.assertEqual(settings.sync.active_idle_minutes, 40)
-        self.assertTrue(settings.sync.predictive_hot_enabled)
-        self.assertEqual(settings.sync.predictive_hot_threshold, 0.5)
+        self.assertEqual(settings.sync.baseline_poll_interval_minutes, 15)
+        self.assertEqual(settings.sync.accelerated_poll_interval_minutes, 5)
+        self.assertTrue(settings.sync.predicted_hour_polling.enabled)
+        self.assertEqual(
+            settings.sync.predicted_hour_polling.probability_threshold,
+            0.5,
+        )
+        self.assertTrue(settings.sync.completion_follow_up_polling.enabled)
+        self.assertEqual(
+            settings.sync.completion_follow_up_polling.start_after_completion_minutes,
+            30,
+        )
+        self.assertEqual(
+            settings.sync.completion_follow_up_polling.stop_after_completion_minutes,
+            50,
+        )
         self.assertTrue(settings.blizzard.enabled)
         self.assertEqual(settings.blizzard.run_fingerprint_fuzz_seconds, 2)
         self.assertEqual(settings.blizzard.requests_per_hour_cap, 36000)
@@ -145,11 +161,15 @@ team_activity:
   output_start_cell: "C101"
 
 sync:
-  interval_minutes: 15
-  active_interval_minutes: 5
-  active_idle_minutes: 40
-  predictive_hot_enabled: true
-  predictive_hot_threshold: 0.5
+  baseline_poll_interval_minutes: 15
+  accelerated_poll_interval_minutes: 5
+  predicted_hour_polling:
+    enabled: true
+    probability_threshold: 0.5
+  completion_follow_up_polling:
+    enabled: true
+    start_after_completion_minutes: 30
+    stop_after_completion_minutes: 50
   max_players_per_cycle: 250
   failure_backoff_seconds: 30
   max_failure_backoff_seconds: 900

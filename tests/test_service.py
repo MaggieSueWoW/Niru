@@ -5,7 +5,7 @@ import niru.service as service_module
 from niru.clients.blizzard import BlizzardError
 from niru.clients.raiderio import RaiderIONotFoundError
 from niru.config import SeasonTabSettings
-from niru.models import NormalizedRunCandidate, PlayerDataStatus
+from niru.models import NormalizedRunCandidate, PlayerDataStatus, SyncStats
 from niru.play_profile import (
     build_play_profile,
     current_week_hour_key,
@@ -140,11 +140,22 @@ def make_settings():
                 (),
                 {
                     "max_players_per_cycle": 100,
-                    "interval_minutes": 15,
-                    "active_interval_minutes": 5,
-                    "active_idle_minutes": 40,
-                    "predictive_hot_enabled": True,
-                    "predictive_hot_threshold": 0.5,
+                    "baseline_poll_interval_minutes": 15,
+                    "accelerated_poll_interval_minutes": 5,
+                    "predicted_hour_polling": type(
+                        "PredictedHourPolling",
+                        (),
+                        {"enabled": True, "probability_threshold": 0.5},
+                    )(),
+                    "completion_follow_up_polling": type(
+                        "CompletionFollowUpPolling",
+                        (),
+                        {
+                            "enabled": True,
+                            "start_after_completion_minutes": 30,
+                            "stop_after_completion_minutes": 50,
+                        },
+                    )(),
                     "failure_backoff_seconds": 30.0,
                     "max_failure_backoff_seconds": 300.0,
                     "failure_backoff_jitter_seconds": 0.0,
@@ -198,9 +209,11 @@ class FakeRepo:
                 "current_total_score": None,
                 "score_season": "",
                 "roster_season": season,
-                "last_base_sync_started_at": None,
-                "hot_ready_at": None,
-                "hot_until_at": None,
+                "last_baseline_sync_started_at": None,
+                "completion_tracking_started_at": seen_at,
+                "latest_observed_completion": None,
+                "accelerated_poll_plan": None,
+                "last_predicted_hour_considered_key": "",
                 "play_profile_timezone": "America/Los_Angeles",
                 "play_profile_first_week_start_at": None,
                 "play_profile_last_seeded_at": None,
@@ -208,7 +221,6 @@ class FakeRepo:
                 "play_profile_hour_counts": [0] * 168,
                 "play_profile_hour_probabilities": [0.0] * 168,
                 "play_profile_seen_week_hours": [],
-                "play_profile_last_enqueued_week_hour": "",
                 "score_source": "",
             }
             for entry in entries
@@ -223,14 +235,12 @@ class FakeRepo:
             player for player in self.players if player.get("player_key") in requested
         ]
 
-    def list_players_due_for_base_sync(self, *, now, interval_minutes, limit):
+    def list_players_due_for_baseline_sync(self, *, now, interval_minutes, limit):
         due = []
         for player in self.players[:limit]:
             if not player.get("is_valid", False):
                 continue
-            last_started = player.get("last_base_sync_started_at") or player.get(
-                "last_sync_started_at"
-            )
+            last_started = player.get("last_baseline_sync_started_at")
             if last_started is None:
                 due.append(player)
                 continue
@@ -242,27 +252,30 @@ class FakeRepo:
                 due.append(player)
         return due[:limit]
 
-    def list_players_due_for_hot_sync(self, *, now, interval_minutes, limit):
+    def list_players_due_for_accelerated_sync(self, *, now, interval_minutes, limit):
         due = []
         for player in self.players[:limit]:
             if not player.get("is_valid", False):
                 continue
-            hot_ready_at = player.get("hot_ready_at")
-            hot_until_at = player.get("hot_until_at")
-            if hot_ready_at is None or hot_until_at is None:
+            plan = player.get("accelerated_poll_plan")
+            if not isinstance(plan, dict):
                 continue
-            if not hot_ready_at <= now < hot_until_at:
+            poll_starts_at = plan.get("starts_at")
+            poll_ends_at = plan.get("ends_at")
+            if poll_starts_at is None or poll_ends_at is None:
+                continue
+            if not poll_starts_at <= now < poll_ends_at:
                 continue
             last_started = player.get("last_sync_started_at")
             if last_started is None:
                 due.append(player)
                 continue
-            next_hot_ready_batch = _next_batch_at_or_after(
-                hot_ready_at,
+            next_accelerated_batch = _next_batch_at_or_after(
+                poll_starts_at,
                 interval_minutes=interval_minutes,
             )
             next_due_at = max(
-                next_hot_ready_batch,
+                next_accelerated_batch,
                 _current_batch_start(
                     last_started,
                     interval_minutes=interval_minutes,
@@ -277,8 +290,8 @@ class FakeRepo:
         for player in self.players:
             if player["player_key"] == player_key:
                 player["last_sync_started_at"] = started_at
-                if sync_kind == "base":
-                    player["last_base_sync_started_at"] = started_at
+                if sync_kind == "baseline":
+                    player["last_baseline_sync_started_at"] = started_at
 
     def update_player_profile(
         self,
@@ -456,36 +469,60 @@ class FakeRepo:
                 player["status_message"] = message
                 player["last_sync_completed_at"] = when
 
-    def clear_player_hot_window(self, *, player_key):
+    def clear_accelerated_poll_plan(self, *, player_key):
         for player in self.players:
             if player["player_key"] == player_key:
-                player["hot_ready_at"] = None
-                player["hot_until_at"] = None
+                player["accelerated_poll_plan"] = None
 
     def upsert_player_play_profile(self, *, player_key, profile):
         for player in self.players:
             if player["player_key"] == player_key:
                 player.update(profile)
 
-    def mark_predictive_hot_enqueue(
-        self, *, player_key, week_hour_key, hot_ready_at, hot_until_at
+    def schedule_predicted_hour_polling(self, *, player_key, week_hour_key, plan):
+        for player in self.players:
+            if player["player_key"] != player_key:
+                continue
+            player["accelerated_poll_plan"] = plan
+            player["last_predicted_hour_considered_key"] = week_hour_key
+
+    def mark_predicted_hour_considered(self, *, player_key, week_hour_key):
+        for player in self.players:
+            if player["player_key"] == player_key:
+                player["last_predicted_hour_considered_key"] = week_hour_key
+
+    def initialize_completion_tracking(
+        self, *, player_key, started_at, latest_completion
     ):
         for player in self.players:
             if player["player_key"] != player_key:
                 continue
-            existing_hot_ready = player.get("hot_ready_at")
-            existing_hot_until = player.get("hot_until_at")
-            player["hot_ready_at"] = (
-                hot_ready_at
-                if existing_hot_ready is None
-                else min(existing_hot_ready, hot_ready_at)
-            )
-            player["hot_until_at"] = (
-                hot_until_at
-                if existing_hot_until is None
-                else max(existing_hot_until, hot_until_at)
-            )
-            player["play_profile_last_enqueued_week_hour"] = week_hour_key
+            if "completion_tracking_started_at" in player:
+                return False
+            player["completion_tracking_started_at"] = started_at
+            player["latest_observed_completion"] = latest_completion
+            return True
+        return False
+
+    def record_completion_observation(
+        self,
+        *,
+        player_key,
+        completion,
+        accelerated_poll_plan=None,
+        predicted_hour_considered_key=None,
+        replace_accelerated_poll_plan=False,
+    ):
+        for player in self.players:
+            if player["player_key"] != player_key:
+                continue
+            player["latest_observed_completion"] = completion
+            if replace_accelerated_poll_plan:
+                player["accelerated_poll_plan"] = accelerated_poll_plan
+            if predicted_hour_considered_key is not None:
+                player["last_predicted_hour_considered_key"] = (
+                    predicted_hour_considered_key
+                )
 
     def get_runs_for_players(self, player_keys):
         return self.runs
@@ -1236,7 +1273,7 @@ class SyncServiceTests(unittest.TestCase):
         self.assertTrue(repo.sync_docs[0]["partial"])
         self.assertIn("Raider.IO rate limit hit", repo.sync_docs[0]["warnings"][0])
 
-    def test_new_run_does_not_schedule_hot_window(self) -> None:
+    def test_first_deployment_observation_initializes_without_follow_up(self) -> None:
         now = datetime(2026, 3, 26, 12, 30, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1275,29 +1312,197 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
         )
 
-        stats = type(
-            "Stats",
-            (),
-            {
-                "partial": False,
-                "warnings": [],
-                "new_runs": 0,
-                "detail_fetches": 0,
-            },
-        )()
+        stats = SyncStats()
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=now,
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
-        self.assertIsNone(repo.players[0].get("hot_ready_at"))
-        self.assertIsNone(repo.players[0].get("hot_until_at"))
+        self.assertEqual(stats.completion_tracking_initialized, 1)
+        self.assertEqual(
+            repo.players[0]["latest_observed_completion"]["run_key"],
+            f"{TEST_SEASON.slug}|keystone_run_id|777",
+        )
+        self.assertIsNone(repo.players[0].get("accelerated_poll_plan"))
 
-    def test_hot_player_not_selected_before_ready_time(self) -> None:
+    def test_new_completion_supersedes_prediction_and_schedules_follow_up(
+        self,
+    ) -> None:
+        now = datetime(2026, 3, 26, 12, 8, tzinfo=UTC)
+        completed_at = datetime(2026, 3, 26, 12, 7, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "completion_tracking_started_at": now - timedelta(hours=1),
+                "latest_observed_completion": {
+                    "run_key": f"{TEST_SEASON.slug}|keystone_run_id|1",
+                    "completed_at": now - timedelta(minutes=30),
+                },
+                "accelerated_poll_plan": {
+                    "kind": "predicted_hour",
+                    "starts_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                    "ends_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                },
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        stats = SyncStats()
+
+        with self.assertLogs("niru.service", level="INFO") as captured:
+            service._record_latest_completion_observation(
+                player=repo.players[0],
+                completion_observations=[
+                    {
+                        "run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+                        "completed_at": completed_at,
+                    }
+                ],
+                now=now,
+                stats=stats,
+            )
+
+        plan = repo.players[0]["accelerated_poll_plan"]
+        self.assertEqual(plan["kind"], "completion_follow_up")
+        self.assertEqual(plan["starts_at"], completed_at + timedelta(minutes=30))
+        self.assertEqual(plan["ends_at"], completed_at + timedelta(minutes=50))
+        self.assertEqual(stats.completion_follow_up_plans_scheduled, 1)
+        self.assertTrue(
+            any(
+                "superseded by completion" in record.getMessage()
+                for record in captured.records
+            )
+        )
+
+    def test_repeated_completion_does_not_reset_follow_up(self) -> None:
+        now = datetime(2026, 3, 26, 12, 8, tzinfo=UTC)
+        completed_at = datetime(2026, 3, 26, 12, 7, tzinfo=UTC)
+        original_plan = {
+            "kind": "completion_follow_up",
+            "starts_at": completed_at + timedelta(minutes=30),
+            "ends_at": completed_at + timedelta(minutes=50),
+            "source_run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+            "source_completed_at": completed_at,
+        }
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "completion_tracking_started_at": now - timedelta(hours=1),
+                "latest_observed_completion": {
+                    "run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+                    "completed_at": completed_at,
+                },
+                "accelerated_poll_plan": dict(original_plan),
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        stats = SyncStats()
+
+        service._record_latest_completion_observation(
+            player=repo.players[0],
+            completion_observations=[
+                {
+                    "run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+                    "completed_at": completed_at,
+                }
+            ],
+            now=now + timedelta(minutes=5),
+            stats=stats,
+        )
+
+        self.assertEqual(repo.players[0]["accelerated_poll_plan"], original_plan)
+        self.assertEqual(stats.completion_follow_up_plans_scheduled, 0)
+
+    def test_newer_completion_replaces_existing_follow_up(self) -> None:
+        now = datetime(2026, 3, 26, 12, 43, tzinfo=UTC)
+        prior_completed_at = datetime(2026, 3, 26, 12, 7, tzinfo=UTC)
+        new_completed_at = datetime(2026, 3, 26, 12, 42, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "completion_tracking_started_at": now - timedelta(hours=2),
+                "latest_observed_completion": {
+                    "run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+                    "completed_at": prior_completed_at,
+                },
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": prior_completed_at + timedelta(minutes=30),
+                    "ends_at": prior_completed_at + timedelta(minutes=50),
+                    "source_run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+                },
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+
+        service._record_latest_completion_observation(
+            player=repo.players[0],
+            completion_observations=[
+                {
+                    "run_key": f"{TEST_SEASON.slug}|keystone_run_id|3",
+                    "completed_at": new_completed_at,
+                }
+            ],
+            now=now,
+            stats=SyncStats(),
+        )
+
+        plan = repo.players[0]["accelerated_poll_plan"]
+        self.assertEqual(
+            plan["source_run_key"],
+            f"{TEST_SEASON.slug}|keystone_run_id|3",
+        )
+        self.assertEqual(plan["starts_at"], new_completed_at + timedelta(minutes=30))
+
+    def test_accelerated_poll_log_includes_poll_reason(self) -> None:
+        now = datetime(2026, 3, 26, 12, 40, tzinfo=UTC)
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        player = {
+            "player_key": "us/area-52/mythics",
+            "accelerated_poll_plan": {
+                "kind": "completion_follow_up",
+                "starts_at": now - timedelta(minutes=3),
+                "ends_at": now + timedelta(minutes=17),
+                "source_run_key": f"{TEST_SEASON.slug}|keystone_run_id|2",
+            },
+        }
+
+        with self.assertLogs("niru.service", level="INFO") as captured:
+            service._log_accelerated_poll(player=player)
+
+        self.assertEqual(captured.records[0].poll_reason, "completion_follow_up")
+        self.assertEqual(
+            captured.records[0].source_run_key,
+            f"{TEST_SEASON.slug}|keystone_run_id|2",
+        )
+
+    def test_accelerated_player_not_selected_before_plan_start(self) -> None:
         now = datetime(2026, 3, 26, 12, 15, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1311,8 +1516,11 @@ class SyncServiceTests(unittest.TestCase):
                 "status_message": "",
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now - timedelta(minutes=4),
-                "hot_ready_at": now + timedelta(minutes=5),
-                "hot_until_at": now + timedelta(minutes=45),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": now + timedelta(minutes=5),
+                    "ends_at": now + timedelta(minutes=45),
+                },
             }
         ]
         service = SyncService(
@@ -1322,7 +1530,7 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(
+        players, _, accelerated_keys = service._select_players_for_sync(
             now=now,
             active_players=repo.players,
             season=TEST_SEASON.slug,
@@ -1331,9 +1539,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(
             [player["player_key"] for player in players], ["us/area-52/mythics"]
         )
-        self.assertEqual(hot_keys, set())
+        self.assertEqual(accelerated_keys, set())
 
-    def test_hot_player_selected_once_ready_time_is_reached(self) -> None:
+    def test_accelerated_player_selected_once_plan_starts(self) -> None:
         now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1348,8 +1556,12 @@ class SyncServiceTests(unittest.TestCase):
                 "current_dungeon_scores": {},
                 "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": now - timedelta(minutes=5),
-                "hot_ready_at": now,
-                "hot_until_at": now + timedelta(minutes=40),
+                "last_baseline_sync_started_at": now - timedelta(minutes=5),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": now,
+                    "ends_at": now + timedelta(minutes=40),
+                },
             }
         ]
         service = SyncService(
@@ -1359,7 +1571,7 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(
+        players, _, accelerated_keys = service._select_players_for_sync(
             now=now,
             active_players=repo.players,
             season=TEST_SEASON.slug,
@@ -1368,9 +1580,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(
             [player["player_key"] for player in players], ["us/area-52/mythics"]
         )
-        self.assertEqual(hot_keys, {"us/area-52/mythics"})
+        self.assertEqual(accelerated_keys, {"us/area-52/mythics"})
 
-    def test_hot_player_waits_for_next_batch_boundary(self) -> None:
+    def test_accelerated_player_uses_globally_aligned_batch_boundary(self) -> None:
         now = datetime(2026, 3, 26, 12, 29, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1385,8 +1597,14 @@ class SyncServiceTests(unittest.TestCase):
                 "current_dungeon_scores": {},
                 "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": datetime(2026, 3, 26, 12, 24, tzinfo=UTC),
-                "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
-                "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                "last_baseline_sync_started_at": datetime(
+                    2026, 3, 26, 12, 15, tzinfo=UTC
+                ),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                    "ends_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                },
             }
         ]
         service = SyncService(
@@ -1396,7 +1614,7 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, _, hot_keys = service._select_players_for_sync(
+        players, _, accelerated_keys = service._select_players_for_sync(
             now=now,
             active_players=repo.players,
             season=TEST_SEASON.slug,
@@ -1405,9 +1623,9 @@ class SyncServiceTests(unittest.TestCase):
         self.assertEqual(
             [player["player_key"] for player in players], ["us/area-52/mythics"]
         )
-        self.assertEqual(hot_keys, {"us/area-52/mythics"})
+        self.assertEqual(accelerated_keys, {"us/area-52/mythics"})
 
-    def test_expired_hot_window_is_cleared(self) -> None:
+    def test_expired_accelerated_plan_is_cleared(self) -> None:
         now = datetime(2026, 3, 26, 13, 5, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1420,8 +1638,11 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
-                "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                    "ends_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                },
             }
         ]
         service = SyncService(
@@ -1431,12 +1652,14 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        service._expire_hot_windows(active_players=repo.players, now=now)
+        service._expire_accelerated_poll_plans(
+            active_players=repo.players,
+            now=now,
+        )
 
-        self.assertIsNone(repo.players[0]["hot_ready_at"])
-        self.assertIsNone(repo.players[0]["hot_until_at"])
+        self.assertIsNone(repo.players[0]["accelerated_poll_plan"])
 
-    def test_next_cycle_delay_uses_future_hot_ready_time(self) -> None:
+    def test_next_cycle_delay_uses_future_accelerated_plan_start(self) -> None:
         now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1450,8 +1673,11 @@ class SyncServiceTests(unittest.TestCase):
                 "status_message": "",
                 "current_dungeon_scores": {},
                 "last_sync_started_at": now,
-                "hot_ready_at": now + timedelta(minutes=4),
-                "hot_until_at": now + timedelta(minutes=44),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": now + timedelta(minutes=4),
+                    "ends_at": now + timedelta(minutes=44),
+                },
             }
         ]
         service = SyncService(
@@ -1536,6 +1762,9 @@ class SyncServiceTests(unittest.TestCase):
                 "status_message": "",
                 "current_dungeon_scores": {},
                 "last_sync_started_at": datetime(2026, 3, 26, 12, 46, 40, tzinfo=UTC),
+                "last_baseline_sync_started_at": datetime(
+                    2026, 3, 26, 12, 46, 40, tzinfo=UTC
+                ),
             }
         ]
         service = SyncService(
@@ -1553,7 +1782,7 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(delay, 598.0)
 
-    def test_mixed_selection_combines_base_due_and_hot_due_players_once_each(
+    def test_mixed_selection_combines_baseline_and_accelerated_players_once_each(
         self,
     ) -> None:
         now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
@@ -1572,18 +1801,22 @@ class SyncServiceTests(unittest.TestCase):
                 "last_sync_started_at": now - timedelta(minutes=25),
             },
             {
-                "player_key": "us/area-52/hotplayer",
+                "player_key": "us/area-52/acceleratedplayer",
                 "region": "us",
                 "realm": "area-52",
-                "name": "Hotplayer",
+                "name": "Acceleratedplayer",
                 "is_valid": True,
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
                 "score_season": TEST_SEASON.slug,
                 "last_sync_started_at": now - timedelta(minutes=5),
-                "hot_ready_at": now - timedelta(minutes=2),
-                "hot_until_at": now + timedelta(minutes=38),
+                "last_baseline_sync_started_at": now - timedelta(minutes=5),
+                "accelerated_poll_plan": {
+                    "kind": "predicted_hour",
+                    "starts_at": now - timedelta(minutes=2),
+                    "ends_at": now + timedelta(minutes=38),
+                },
             },
         ]
         service = SyncService(
@@ -1593,7 +1826,7 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, base_keys, hot_keys = service._select_players_for_sync(
+        players, base_keys, accelerated_keys = service._select_players_for_sync(
             now=now,
             active_players=repo.players,
             season=TEST_SEASON.slug,
@@ -1601,12 +1834,15 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(
             [player["player_key"] for player in players],
-            ["us/area-52/baseplayer", "us/area-52/hotplayer"],
+            ["us/area-52/baseplayer", "us/area-52/acceleratedplayer"],
         )
         self.assertEqual(base_keys, {"us/area-52/baseplayer"})
-        self.assertEqual(hot_keys, {"us/area-52/hotplayer"})
+        self.assertEqual(
+            accelerated_keys,
+            {"us/area-52/acceleratedplayer"},
+        )
 
-    def test_hot_sync_does_not_delay_next_base_bucket(self) -> None:
+    def test_accelerated_sync_does_not_delay_next_baseline_bucket(self) -> None:
         now = datetime(2026, 3, 26, 12, 25, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1619,10 +1855,15 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "last_base_sync_started_at": datetime(2026, 3, 26, 12, 0, tzinfo=UTC),
+                "last_baseline_sync_started_at": datetime(
+                    2026, 3, 26, 12, 0, tzinfo=UTC
+                ),
                 "last_sync_started_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
-                "hot_ready_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
-                "hot_until_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                "accelerated_poll_plan": {
+                    "kind": "predicted_hour",
+                    "starts_at": datetime(2026, 3, 26, 12, 20, tzinfo=UTC),
+                    "ends_at": datetime(2026, 3, 26, 13, 0, tzinfo=UTC),
+                },
             }
         ]
         service = SyncService(
@@ -1632,7 +1873,7 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=FakeRaiderIO(),
         )
 
-        players, base_keys, hot_keys = service._select_players_for_sync(
+        players, base_keys, accelerated_keys = service._select_players_for_sync(
             now=now,
             active_players=repo.players,
             season=TEST_SEASON.slug,
@@ -1642,7 +1883,7 @@ class SyncServiceTests(unittest.TestCase):
             [player["player_key"] for player in players], ["us/area-52/mythics"]
         )
         self.assertEqual(base_keys, {"us/area-52/mythics"})
-        self.assertEqual(hot_keys, set())
+        self.assertEqual(accelerated_keys, set())
 
     def test_run_cycle_force_sync_all_ignores_due_selection(self) -> None:
         settings = make_settings()
@@ -1657,7 +1898,7 @@ class SyncServiceTests(unittest.TestCase):
 
         service.run_cycle(force_sync_all=True)
 
-        self.assertEqual(repo.sync_docs[0]["base_due_players_synced"], 2)
+        self.assertEqual(repo.sync_docs[0]["baseline_due_players_synced"], 2)
 
     def test_run_cycle_force_sync_all_can_target_single_player(self) -> None:
         settings = make_settings()
@@ -1673,7 +1914,7 @@ class SyncServiceTests(unittest.TestCase):
 
         service.run_cycle(force_sync_all=True, player_key="us/area-52/readytwo")
 
-        self.assertEqual(repo.sync_docs[0]["base_due_players_synced"], 1)
+        self.assertEqual(repo.sync_docs[0]["baseline_due_players_synced"], 1)
         self.assertEqual(raiderio.api_calls, 3)
         synced_players = [
             player["player_key"]
@@ -1682,7 +1923,7 @@ class SyncServiceTests(unittest.TestCase):
         ]
         self.assertEqual(synced_players, ["us/area-52/readytwo"])
 
-    def test_predictive_hot_queue_enqueues_player_for_current_hour(self) -> None:
+    def test_predicted_hour_schedules_accelerated_polling_for_full_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
         profile = build_play_profile(completed_at_values=[now], now=now)
         repo = FakeRepo()
@@ -1705,21 +1946,29 @@ class SyncServiceTests(unittest.TestCase):
             sheets_client=FakeSheets([]),
             raiderio_client=FakeRaiderIO(),
         )
-        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+        stats = SyncStats()
 
-        service._queue_predictive_hot_players(
+        service._schedule_predicted_hour_polling(
             active_players=repo.players, now=now, stats=stats
         )
 
-        self.assertEqual(stats.predictive_hot_players_queued, 1)
+        self.assertEqual(stats.predicted_hour_plans_scheduled, 1)
         self.assertEqual(
-            repo.players[0]["play_profile_last_enqueued_week_hour"],
+            repo.players[0]["last_predicted_hour_considered_key"],
             current_week_hour_key(now),
         )
-        self.assertIsNotNone(repo.players[0]["hot_ready_at"])
-        self.assertIsNotNone(repo.players[0]["hot_until_at"])
+        plan = repo.players[0]["accelerated_poll_plan"]
+        self.assertEqual(plan["kind"], "predicted_hour")
+        self.assertEqual(
+            plan["starts_at"],
+            datetime(2026, 3, 26, 20, 0, tzinfo=UTC),
+        )
+        self.assertEqual(
+            plan["ends_at"],
+            datetime(2026, 3, 26, 21, 0, tzinfo=UTC),
+        )
 
-    def test_predictive_hot_queue_does_not_repeat_same_week_hour(self) -> None:
+    def test_predicted_hour_does_not_repeat_same_week_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
         current_key = current_week_hour_key(now)
         profile = build_play_profile(completed_at_values=[now], now=now)
@@ -1735,7 +1984,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status_message": "",
                 "current_dungeon_scores": {},
                 **profile,
-                "play_profile_last_enqueued_week_hour": current_key,
+                "last_predicted_hour_considered_key": current_key,
             }
         ]
         service = SyncService(
@@ -1744,15 +1993,15 @@ class SyncServiceTests(unittest.TestCase):
             sheets_client=FakeSheets([]),
             raiderio_client=FakeRaiderIO(),
         )
-        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+        stats = SyncStats()
 
-        service._queue_predictive_hot_players(
+        service._schedule_predicted_hour_polling(
             active_players=repo.players, now=now, stats=stats
         )
 
-        self.assertEqual(stats.predictive_hot_players_queued, 0)
+        self.assertEqual(stats.predicted_hour_plans_scheduled, 0)
 
-    def test_predictive_queue_preserves_later_run_triggered_hot_window(self) -> None:
+    def test_completion_follow_up_suppresses_predicted_hour(self) -> None:
         now = datetime(2026, 3, 26, 20, 10, tzinfo=UTC)
         profile = build_play_profile(completed_at_values=[now], now=now)
         repo = FakeRepo()
@@ -1766,8 +2015,12 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
-                "hot_ready_at": now + timedelta(minutes=20),
-                "hot_until_at": now + timedelta(minutes=60),
+                "accelerated_poll_plan": {
+                    "kind": "completion_follow_up",
+                    "starts_at": now + timedelta(minutes=20),
+                    "ends_at": now + timedelta(minutes=60),
+                    "source_run_key": "season-mn-1|keystone_run_id|77",
+                },
                 **profile,
             }
         ]
@@ -1777,15 +2030,20 @@ class SyncServiceTests(unittest.TestCase):
             sheets_client=FakeSheets([]),
             raiderio_client=FakeRaiderIO(),
         )
-        stats = type("Stats", (), {"predictive_hot_players_queued": 0})()
+        stats = SyncStats()
 
-        service._queue_predictive_hot_players(
+        service._schedule_predicted_hour_polling(
             active_players=repo.players, now=now, stats=stats
         )
 
-        self.assertEqual(repo.players[0]["hot_until_at"], now + timedelta(minutes=60))
+        self.assertEqual(stats.predicted_hour_plans_scheduled, 0)
         self.assertEqual(
-            repo.players[0]["hot_ready_at"], datetime(2026, 3, 26, 20, 0, tzinfo=UTC)
+            repo.players[0]["accelerated_poll_plan"]["kind"],
+            "completion_follow_up",
+        )
+        self.assertEqual(
+            repo.players[0]["last_predicted_hour_considered_key"],
+            current_week_hour_key(now),
         )
 
     def test_sync_player_updates_play_profile_from_new_runs(self) -> None:
@@ -1830,22 +2088,13 @@ class SyncServiceTests(unittest.TestCase):
             sheets_client=FakeSheets([]),
             raiderio_client=raider,
         )
-        stats = type(
-            "Stats",
-            (),
-            {
-                "partial": False,
-                "warnings": [],
-                "new_runs": 0,
-                "detail_fetches": 0,
-            },
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=now,
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
@@ -1856,7 +2105,83 @@ class SyncServiceTests(unittest.TestCase):
             2,
         )
 
-    def test_old_new_run_does_not_create_hot_window(self) -> None:
+    def test_player_completion_tracking_does_not_depend_on_global_run_insert(
+        self,
+    ) -> None:
+        now = datetime(2026, 3, 26, 12, 30, tzinfo=UTC)
+        completed_at = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
+        repo = FakeRepo()
+        repo.players = [
+            {
+                "player_key": "us/area-52/mythics",
+                "region": "us",
+                "realm": "area-52",
+                "name": "Mythics",
+                "is_valid": True,
+                "status": PlayerDataStatus.OK.value,
+                "status_message": "",
+                "current_dungeon_scores": {},
+                "completion_tracking_started_at": now - timedelta(hours=1),
+            }
+        ]
+        repo.runs = [
+            {
+                "keystone_run_id": 777,
+                "season": TEST_SEASON.slug,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "dungeon_id": 101,
+                "mythic_level": 13,
+                "completed_at": completed_at,
+                "clear_time_ms": 1800000,
+                "discovered_from_player_keys": ["us/area-52/teammate"],
+                "sources": ["raiderio"],
+            }
+        ]
+        raider = FakeRaiderIO()
+        raider.profile_payload["mythic_plus_best_runs"] = []
+        raider.profile_payload["mythic_plus_alternate_runs"] = []
+        raider.profile_payload["mythic_plus_recent_runs"] = [
+            {
+                "keystone_run_id": 777,
+                "dungeon": "Darkflame Cleft",
+                "short_name": "DFC",
+                "score": 200.0,
+                "mythic_level": 13,
+                "num_keystone_upgrades": 1,
+                "completed_at": completed_at.isoformat(),
+                "clear_time_ms": 1800000,
+                "map_challenge_mode_id": 101,
+            }
+        ]
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=FakeSheets([]),
+            raiderio_client=raider,
+        )
+        stats = SyncStats()
+
+        service._sync_player(
+            player=repo.players[0],
+            stats=stats,
+            now=now,
+            sync_kind="baseline",
+            season=TEST_SEASON,
+            season_dungeons=TEST_SEASON_DUNGEONS,
+        )
+
+        self.assertEqual(stats.new_runs, 0)
+        self.assertEqual(
+            repo.players[0]["accelerated_poll_plan"]["kind"],
+            "completion_follow_up",
+        )
+        self.assertIn(
+            "us/area-52/mythics",
+            repo.runs[0]["discovered_from_player_keys"],
+        )
+
+    def test_old_completion_does_not_create_follow_up(self) -> None:
         now = datetime(2026, 4, 5, 8, 15, tzinfo=UTC)
         repo = FakeRepo()
         repo.players = [
@@ -1869,6 +2194,7 @@ class SyncServiceTests(unittest.TestCase):
                 "status": PlayerDataStatus.OK.value,
                 "status_message": "",
                 "current_dungeon_scores": {},
+                "completion_tracking_started_at": now - timedelta(hours=1),
             }
         ]
         raider = FakeRaiderIO()
@@ -1891,28 +2217,22 @@ class SyncServiceTests(unittest.TestCase):
             sheets_client=FakeSheets([]),
             raiderio_client=raider,
         )
-        stats = type(
-            "Stats",
-            (),
-            {
-                "partial": False,
-                "warnings": [],
-                "new_runs": 0,
-                "detail_fetches": 0,
-            },
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=now,
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
 
-        self.assertIsNone(repo.players[0].get("hot_ready_at"))
-        self.assertIsNone(repo.players[0].get("hot_until_at"))
+        self.assertIsNone(repo.players[0].get("accelerated_poll_plan"))
+        self.assertEqual(
+            repo.players[0]["latest_observed_completion"]["run_key"],
+            f"{TEST_SEASON.slug}|keystone_run_id|888",
+        )
 
     def test_blizzard_scores_override_raiderio_when_enabled(self) -> None:
         settings = make_settings()
@@ -2101,17 +2421,13 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
             blizzard_client=blizzard,
         )
-        stats = type(
-            "Stats",
-            (),
-            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
@@ -2191,17 +2507,13 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
             blizzard_client=blizzard,
         )
-        stats = type(
-            "Stats",
-            (),
-            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
@@ -2247,17 +2559,13 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
             blizzard_client=blizzard,
         )
-        stats = type(
-            "Stats",
-            (),
-            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
@@ -2667,17 +2975,13 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
             blizzard_client=blizzard,
         )
-        stats = type(
-            "Stats",
-            (),
-            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )
@@ -2769,17 +3073,13 @@ class SyncServiceTests(unittest.TestCase):
             raiderio_client=raider,
             blizzard_client=blizzard,
         )
-        stats = type(
-            "Stats",
-            (),
-            {"partial": False, "warnings": [], "new_runs": 0, "detail_fetches": 0},
-        )()
+        stats = SyncStats()
 
         service._sync_player(
             player=repo.players[0],
             stats=stats,
             now=datetime(2026, 3, 26, tzinfo=UTC),
-            sync_kind="base",
+            sync_kind="baseline",
             season=TEST_SEASON,
             season_dungeons=TEST_SEASON_DUNGEONS,
         )

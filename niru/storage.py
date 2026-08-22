@@ -333,8 +333,6 @@ class MongoRepository:
         self.runs.create_index([("completed_at", ASCENDING)])
         self.runs.create_index([("participants.player_key", ASCENDING)])
         self.runs.create_index([("discovered_from_player_keys", ASCENDING)])
-        self.players.create_index([("hot_ready_at", ASCENDING)])
-        self.players.create_index([("hot_until_at", ASCENDING)])
         self.season_rosters.create_index(
             [("season", ASCENDING), ("player_key", ASCENDING)],
             unique=True,
@@ -420,9 +418,11 @@ class MongoRepository:
                         "current_dungeon_scores": {},
                         "current_total_score": None,
                         "score_season": "",
-                        "last_base_sync_started_at": None,
-                        "hot_ready_at": None,
-                        "hot_until_at": None,
+                        "last_baseline_sync_started_at": None,
+                        "completion_tracking_started_at": seen_at,
+                        "latest_observed_completion": None,
+                        "accelerated_poll_plan": None,
+                        "last_predicted_hour_considered_key": "",
                         "play_profile_timezone": "America/Los_Angeles",
                         "play_profile_first_week_start_at": None,
                         "play_profile_last_seeded_at": None,
@@ -430,7 +430,6 @@ class MongoRepository:
                         "play_profile_hour_counts": [0] * 168,
                         "play_profile_hour_probabilities": [0.0] * 168,
                         "play_profile_seen_week_hours": [],
-                        "play_profile_last_enqueued_week_hour": "",
                         "requires_backfill": entry.is_valid,
                         "score_source": "",
                         "score_source_fetched_at": None,
@@ -465,14 +464,14 @@ class MongoRepository:
 
         return list(self.players.find({"is_active": True}).sort("player_key"))
 
-    def list_players_due_for_base_sync(
+    def list_players_due_for_baseline_sync(
         self,
         *,
         now: datetime,
         interval_minutes: int,
         limit: int,
     ) -> list[dict[str, Any]]:
-        """Return valid active players due for the base sync cadence."""
+        """Return valid active players due for the baseline sync cadence."""
 
         cutoff = ensure_utc(now)
         due_players: list[dict[str, Any]] = []
@@ -480,8 +479,7 @@ class MongoRepository:
             if not player.get("is_valid", False):
                 continue
             last_attempt = _safe_utc_datetime(
-                player.get("last_base_sync_started_at")
-                or player.get("last_sync_started_at")
+                player.get("last_baseline_sync_started_at")
             )
             if last_attempt is None:
                 due_players.append(player)
@@ -494,36 +492,39 @@ class MongoRepository:
                 due_players.append(player)
         return due_players[:limit]
 
-    def list_players_due_for_hot_sync(
+    def list_players_due_for_accelerated_sync(
         self,
         *,
         now: datetime,
         interval_minutes: int,
         limit: int,
     ) -> list[dict[str, Any]]:
-        """Return valid active players due for hot polling."""
+        """Return valid active players due for accelerated polling."""
 
         cutoff = ensure_utc(now)
         due_players: list[dict[str, Any]] = []
         for player in self.list_active_players(limit=limit):
             if not player.get("is_valid", False):
                 continue
-            hot_ready_at = _safe_utc_datetime(player.get("hot_ready_at"))
-            hot_until_at = _safe_utc_datetime(player.get("hot_until_at"))
-            if hot_ready_at is None or hot_until_at is None:
+            plan = player.get("accelerated_poll_plan")
+            if not isinstance(plan, dict):
                 continue
-            if not hot_ready_at <= cutoff < hot_until_at:
+            poll_starts_at = _safe_utc_datetime(plan.get("starts_at"))
+            poll_ends_at = _safe_utc_datetime(plan.get("ends_at"))
+            if poll_starts_at is None or poll_ends_at is None:
+                continue
+            if not poll_starts_at <= cutoff < poll_ends_at:
                 continue
             last_attempt = _safe_utc_datetime(player.get("last_sync_started_at"))
             if last_attempt is None:
                 due_players.append(player)
                 continue
-            next_hot_ready_batch = _next_batch_at_or_after(
-                hot_ready_at,
+            next_accelerated_batch = _next_batch_at_or_after(
+                poll_starts_at,
                 interval_minutes=interval_minutes,
             )
             next_due_at = max(
-                next_hot_ready_batch,
+                next_accelerated_batch,
                 _current_batch_start(
                     last_attempt,
                     interval_minutes=interval_minutes,
@@ -544,8 +545,8 @@ class MongoRepository:
         """Record sync start time."""
 
         fields_to_set: dict[str, Any] = {"last_sync_started_at": started_at}
-        if sync_kind == "base":
-            fields_to_set["last_base_sync_started_at"] = started_at
+        if sync_kind == "baseline":
+            fields_to_set["last_baseline_sync_started_at"] = started_at
         self.players.update_one(
             {"player_key": player_key},
             {"$set": fields_to_set},
@@ -583,17 +584,12 @@ class MongoRepository:
             },
         )
 
-    def clear_player_hot_window(self, *, player_key: str) -> None:
-        """Clear expired hot-polling timestamps for a player."""
+    def clear_accelerated_poll_plan(self, *, player_key: str) -> None:
+        """Clear a player's expired accelerated polling plan."""
 
         self.players.update_one(
             {"player_key": player_key},
-            {
-                "$set": {
-                    "hot_ready_at": None,
-                    "hot_until_at": None,
-                }
-            },
+            {"$set": {"accelerated_poll_plan": None}},
         )
 
     def upsert_player_play_profile(
@@ -609,41 +605,81 @@ class MongoRepository:
             {"$set": profile},
         )
 
-    def mark_predictive_hot_enqueue(
+    def schedule_predicted_hour_polling(
         self,
         *,
         player_key: str,
         week_hour_key: str,
-        hot_ready_at: datetime,
-        hot_until_at: datetime,
+        plan: dict[str, Any],
     ) -> None:
-        """Record a predictive hot enqueue while preserving stronger existing coverage."""
-
-        player = (
-            self.players.find_one(
-                {"player_key": player_key},
-                {"hot_ready_at": 1, "hot_until_at": 1},
-            )
-            or {}
-        )
-        existing_hot_ready = _safe_utc_datetime(player.get("hot_ready_at"))
-        existing_hot_until = _safe_utc_datetime(player.get("hot_until_at"))
-        resolved_hot_ready = hot_ready_at
-        if existing_hot_ready is not None:
-            resolved_hot_ready = min(existing_hot_ready, ensure_utc(hot_ready_at))
-        resolved_hot_until = hot_until_at
-        if existing_hot_until is not None:
-            resolved_hot_until = max(existing_hot_until, ensure_utc(hot_until_at))
+        """Persist one predicted-hour accelerated polling plan."""
 
         self.players.update_one(
             {"player_key": player_key},
             {
                 "$set": {
-                    "hot_ready_at": resolved_hot_ready,
-                    "hot_until_at": resolved_hot_until,
-                    "play_profile_last_enqueued_week_hour": week_hour_key,
+                    "accelerated_poll_plan": plan,
+                    "last_predicted_hour_considered_key": week_hour_key,
                 }
             },
+        )
+
+    def mark_predicted_hour_considered(
+        self, *, player_key: str, week_hour_key: str
+    ) -> None:
+        """Prevent a predicted hour from reopening after a stronger plan."""
+
+        self.players.update_one(
+            {"player_key": player_key},
+            {"$set": {"last_predicted_hour_considered_key": week_hour_key}},
+        )
+
+    def initialize_completion_tracking(
+        self,
+        *,
+        player_key: str,
+        started_at: datetime,
+        latest_completion: dict[str, Any] | None,
+    ) -> bool:
+        """Lazily establish an observation watermark for a deployed player."""
+
+        result = self.players.update_one(
+            {
+                "player_key": player_key,
+                "completion_tracking_started_at": {"$exists": False},
+            },
+            {
+                "$set": {
+                    "completion_tracking_started_at": ensure_utc(started_at),
+                    "latest_observed_completion": latest_completion,
+                }
+            },
+        )
+        return result.modified_count > 0
+
+    def record_completion_observation(
+        self,
+        *,
+        player_key: str,
+        completion: dict[str, Any],
+        accelerated_poll_plan: dict[str, Any] | None = None,
+        predicted_hour_considered_key: str | None = None,
+        replace_accelerated_poll_plan: bool = False,
+    ) -> None:
+        """Persist a new completion and optionally replace the polling plan."""
+
+        fields_to_set: dict[str, Any] = {
+            "latest_observed_completion": completion,
+        }
+        if replace_accelerated_poll_plan:
+            fields_to_set["accelerated_poll_plan"] = accelerated_poll_plan
+        if predicted_hour_considered_key is not None:
+            fields_to_set["last_predicted_hour_considered_key"] = (
+                predicted_hour_considered_key
+            )
+        self.players.update_one(
+            {"player_key": player_key},
+            {"$set": fields_to_set},
         )
 
     def update_player_profile(

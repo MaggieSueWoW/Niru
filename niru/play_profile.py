@@ -1,4 +1,4 @@
-"""Play-time profile helpers for predictive hot polling."""
+"""Play-time profile helpers for predicted-hour polling."""
 
 from __future__ import annotations
 
@@ -20,10 +20,9 @@ def pacific_week_start(value: datetime) -> datetime:
     """Return the start of the Pacific calendar week as a UTC timestamp."""
 
     pacific_value = _to_pacific(value)
-    week_start_pacific = (
-        pacific_value.replace(hour=0, minute=0, second=0, microsecond=0)
-        - timedelta(days=pacific_value.weekday())
-    )
+    week_start_pacific = pacific_value.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=pacific_value.weekday())
     return week_start_pacific.astimezone(UTC)
 
 
@@ -54,7 +53,9 @@ def next_pacific_hour_start(value: datetime) -> datetime:
     return pacific_hour_start(value) + timedelta(hours=1)
 
 
-def expected_weeks_observed(first_week_start_at: datetime | None, *, now: datetime) -> int:
+def expected_weeks_observed(
+    first_week_start_at: datetime | None, *, now: datetime
+) -> int:
     """Return how many Pacific calendar weeks are covered through now."""
 
     if first_week_start_at is None:
@@ -74,7 +75,6 @@ def _normalize_profile(
     seen_week_hours: set[str],
     now: datetime,
     last_seeded_at: datetime | None,
-    last_enqueued_week_hour: str,
 ) -> dict[str, Any]:
     counts = [0] * PLAY_PROFILE_HOURS_PER_WEEK
     first_week_start_at: datetime | None = None
@@ -86,17 +86,19 @@ def _normalize_profile(
 
     weeks_observed = expected_weeks_observed(first_week_start_at, now=now)
     probabilities = [
-        round(count / weeks_observed, 4) if weeks_observed > 0 else 0.0 for count in counts
+        round(count / weeks_observed, 4) if weeks_observed > 0 else 0.0
+        for count in counts
     ]
     return {
         "play_profile_timezone": PLAY_PROFILE_TIMEZONE,
         "play_profile_first_week_start_at": first_week_start_at,
-        "play_profile_last_seeded_at": ensure_utc(last_seeded_at) if last_seeded_at else None,
+        "play_profile_last_seeded_at": (
+            ensure_utc(last_seeded_at) if last_seeded_at else None
+        ),
         "play_profile_weeks_observed": weeks_observed,
         "play_profile_hour_counts": counts,
         "play_profile_hour_probabilities": probabilities,
         "play_profile_seen_week_hours": sorted(seen_week_hours),
-        "play_profile_last_enqueued_week_hour": last_enqueued_week_hour,
     }
 
 
@@ -105,16 +107,16 @@ def build_play_profile(
     completed_at_values: list[datetime],
     now: datetime,
     last_seeded_at: datetime | None = None,
-    last_enqueued_week_hour: str = "",
 ) -> dict[str, Any]:
     """Build a play profile from raw run completion times."""
 
-    seen_week_hours = {current_week_hour_key(completed_at) for completed_at in completed_at_values}
+    seen_week_hours = {
+        current_week_hour_key(completed_at) for completed_at in completed_at_values
+    }
     return _normalize_profile(
         seen_week_hours=seen_week_hours,
         now=now,
         last_seeded_at=last_seeded_at,
-        last_enqueued_week_hour=last_enqueued_week_hour,
     )
 
 
@@ -137,7 +139,4 @@ def update_play_profile(
         seen_week_hours=seen_week_hours,
         now=now,
         last_seeded_at=existing_profile.get("play_profile_last_seeded_at"),
-        last_enqueued_week_hour=str(
-            existing_profile.get("play_profile_last_enqueued_week_hour", "") or ""
-        ),
     )

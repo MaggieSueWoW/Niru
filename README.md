@@ -17,7 +17,7 @@ The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Data
 1. Resolve the active season and its Google Sheets tab from `google.season_tabs`.
 2. Read that tab's roster from column `A`, beginning at `A2`.
 3. Fetch player profiles from Blizzard and Raider.IO using the configured season
-   identifiers for players whose base or hot polling window is due.
+   identifiers for players whose baseline or accelerated polling is due.
 4. Merge summary scores field by field, normalize newly discovered runs, and persist
    the results in MongoDB.
 5. Rebuild the active-season player summary from MongoDB and incrementally update the
@@ -25,9 +25,9 @@ The project is named for [Niru Datagear](https://warcraft.wiki.gg/wiki/Niru_Data
 6. Publish the configured-window team-activity heatmap beginning at `C101` when
    enabled.
 
-Niru runs continuously by default. Ordinary roster players use the configured base
-cadence. Players who recently completed runs, or whose stored play profile predicts
-activity, can be polled on the faster hot cadence. Redis preserves Raider.IO request
+Niru runs continuously by default. Ordinary roster players use the configured
+baseline cadence. Predicted-hour and completion-follow-up plans can temporarily poll
+one player on the faster accelerated cadence. Redis preserves Raider.IO request
 windows and cooldown state across restarts.
 
 ## Data-Source Rules
@@ -104,8 +104,9 @@ as best-effort views of the runs it has observed.
 
 MongoDB is the source of truth for published data:
 
-- `players` holds canonical identities, current score state, sync status, and polling
-  metadata.
+- `players` holds canonical identities, current score state, sync status, learned
+  weekly play profiles, the latest per-player completion observation, and at most one
+  accelerated polling plan.
 - `season_rosters` preserves membership and row order separately for each season.
 - `runs` stores normalized observations and source payloads, with Raider.IO run IDs
   unique within a season rather than globally.
@@ -117,6 +118,29 @@ MongoDB is the source of truth for published data:
 
 Redis contains only ephemeral Raider.IO throttling and cooldown state. It is not a
 business-data store and can be rebuilt.
+
+## Accelerated Polling
+
+All polling uses globally aligned UTC buckets. The normal baseline interval is 15
+minutes and the accelerated interval is 5 minutes in the default configuration.
+
+- A player whose learned weekly profile reaches the configured probability threshold
+  is polled every 5 minutes for that Pacific-time hour.
+- A newly observed completion immediately supersedes predicted-hour polling. Niru
+  returns to baseline polling until 30 minutes after the completion, then polls every
+  5 minutes until 50 minutes after the completion. The end is exclusive.
+- A newer completion cancels and replaces the prior accelerated plan. Repeated or
+  older observations do not move the window, and an already-ended window is not
+  scheduled when an older completion is discovered late.
+- When a completion-follow-up plan covers a predicted hour, the completion plan is
+  authoritative and that predicted hour is considered consumed.
+- Existing players establish a completion watermark on their first successful sync
+  after this feature is deployed. That bootstrap observation does not schedule a
+  follow-up, so no run-history migration is required.
+
+Every accelerated player sync logs `poll_reason=predicted_hour` or
+`poll_reason=completion_follow_up`, together with the plan boundaries and its
+prediction or source-run metadata.
 
 ## Configuration
 
@@ -150,11 +174,13 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `team_activity.window_weeks`
 - `team_activity.start_hour`
 - `team_activity.output_start_cell`
-- `sync.interval_minutes`
-- `sync.active_interval_minutes`
-- `sync.active_idle_minutes`
-- `sync.predictive_hot_enabled`
-- `sync.predictive_hot_threshold`
+- `sync.baseline_poll_interval_minutes`
+- `sync.accelerated_poll_interval_minutes`
+- `sync.predicted_hour_polling.enabled`
+- `sync.predicted_hour_polling.probability_threshold`
+- `sync.completion_follow_up_polling.enabled`
+- `sync.completion_follow_up_polling.start_after_completion_minutes`
+- `sync.completion_follow_up_polling.stop_after_completion_minutes`
 - `sync.max_players_per_cycle`
 - `sync.failure_backoff_seconds`
 - `sync.max_failure_backoff_seconds`
@@ -336,8 +362,9 @@ Logs are written to stdout and include:
 
 - sync cycle start and finish
 - new run discovery
-- bucketed base and hot polling outcomes
-- predictive hot-poll queueing
+- bucketed baseline and accelerated polling outcomes
+- predicted-hour and completion-follow-up plan changes
+- the reason and source metadata for every accelerated player poll
 - active season and destination sheet tab
 - invalid roster rows
 - Blizzard and Raider.IO API call counts

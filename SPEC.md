@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build Niru, a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets using a bucketed sync loop with config-driven base polling plus targeted hot polling.
+Build Niru, a small service that tracks a roster of WoW Mythic+ characters, stores Raider.IO run data in MongoDB, and publishes summary output to Google Sheets using a bucketed sync loop with config-driven baseline polling plus targeted accelerated polling.
 
 ## Scope
 
@@ -47,7 +47,10 @@ For each valid active player:
 - Derive current per-dungeon score from the best and alternate scoring runs returned by Raider.IO
 - Collect run IDs from recent, best, and alternate sets
 - Insert unseen run stubs into MongoDB
-- Maintain a per-player Pacific-time weekly play profile and use it to predictively queue hot polling at the top of high-probability hours
+- Maintain a per-player Pacific-time weekly play profile and use it to schedule accelerated polling during high-probability hours
+- Track the latest completion observed for each player independently from whether the run was newly inserted globally
+- When a newer completion is observed, replace any accelerated plan with a completion follow-up starting 30 minutes after completion and ending, exclusively, 50 minutes after completion
+- Do not reset a follow-up for the same run or an older run discovered later
 
 Important limitation:
 
@@ -74,7 +77,9 @@ Important limitation:
 - validity and sync status
 - last successful sync timestamp
 - current per-dungeon score map
-- predictive hot-poll window timestamps
+- completion-tracking start and latest-observed-completion watermark
+- one accelerated polling plan with its reason, boundaries, and source metadata
+- last predicted hour considered
 - predictive play-profile metadata and probabilities
 - last error
 
@@ -144,11 +149,13 @@ Known recovery requirement:
 
 - Runs as a long-lived process in Docker
 - Executes one sync immediately on startup
-- Sleeps until the next due base bucket, hot bucket, predictive top-of-hour enqueue, or retry backoff
+- Sleeps until the next due baseline bucket, accelerated bucket, predicted-hour boundary, or retry backoff
 - Caps sleep at the next configured season activation so the tab changes at the cutoff even when no players are otherwise due
-- Base polling uses UTC-aligned buckets defined by `sync.interval_minutes`
-- Hot polling uses UTC-aligned buckets defined by `sync.active_interval_minutes`
-- Predictive hot polling uses Pacific-time weekly hour probabilities and enqueues players into the existing hot window flow
+- Baseline polling uses UTC-aligned buckets defined by `sync.baseline_poll_interval_minutes`
+- Accelerated polling uses UTC-aligned buckets defined by `sync.accelerated_poll_interval_minutes`
+- Predicted-hour polling covers the full Pacific-time hour when its weekly profile probability reaches the configured threshold
+- A completion supersedes predicted-hour polling, leaves only baseline polling until 30 minutes after completion, then accelerates through 50 minutes after completion
+- A completion-follow-up plan remains authoritative over any predicted hour it covers
 - Keeps ordinary sync failures inside the process and retries cycles with exponential backoff plus jitter
 - Supports CLI modes for one-shot and looping execution
 - Handles `SIGINT` and `SIGTERM` gracefully
