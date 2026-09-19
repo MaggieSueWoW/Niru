@@ -1173,6 +1173,9 @@ class SyncService:
                 [player for player in active_players if player.get("is_valid")]
             )
             weekly_periods: dict[str, dict[str, Any]] = {}
+            failed_player_keys = {
+                entry.player_key for entry in roster_entries if not entry.is_valid
+            }
             if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                 refreshed_players = active_players
             else:
@@ -1234,14 +1237,15 @@ class SyncService:
                         self._log_accelerated_poll(player=player)
                     elif player_key in baseline_due_keys:
                         stats.baseline_due_players_synced += 1
-                    self._sync_player(
+                    if not self._sync_player(
                         player=player,
                         stats=stats,
                         now=started_at,
                         sync_kind=sync_kind,
                         season=season,
                         season_dungeons=season_dungeons,
-                    )
+                    ):
+                        failed_player_keys.add(player_key)
                     if self._skip_raiderio_sync_due_to_cooldown(stats=stats):
                         break
 
@@ -1260,6 +1264,24 @@ class SyncService:
                 season=season.slug,
                 empty_numeric_values_as_zero=True,
             )
+            players_in_output_order = sorted(
+                enumerate(refreshed_players),
+                key=lambda item: (
+                    item[1].get("sheet_row_number") is None,
+                    item[1].get("sheet_row_number", 0),
+                    item[0],
+                ),
+            )
+            preserve_row_indices = {
+                index
+                for index, (_, player) in enumerate(players_in_output_order)
+                if player["player_key"] in failed_player_keys
+                or player.get("status")
+                in {
+                    PlayerDataStatus.SYNC_ERROR.value,
+                    PlayerDataStatus.INVALID_PLAYER.value,
+                }
+            }
             metadata_rows = build_summary_metadata_rows(
                 header=summary_header,
                 runs=season_runs,
@@ -1271,6 +1293,7 @@ class SyncService:
                 header=summary_header,
                 rows=[row.to_sheet_row() for row in summary_rows],
                 metadata_rows=metadata_rows,
+                preserve_row_indices=preserve_row_indices,
             )
             if self._settings.team_activity.enabled:
                 (
@@ -1369,7 +1392,7 @@ class SyncService:
         sync_kind: str,
         season: SeasonTabSettings,
         season_dungeons: list[dict[str, Any]],
-    ) -> None:
+    ) -> bool:
         player_key = player["player_key"]
         identity = PlayerIdentity(
             region=player["region"],
@@ -1420,7 +1443,7 @@ class SyncService:
                         "Stop requested during run discovery; ending player sync early",
                         extra={"player_key": player_key},
                     )
-                    return
+                    return False
                 if not _candidate_belongs_to_season(
                     candidate,
                     season=season,
@@ -1515,6 +1538,7 @@ class SyncService:
                 now=ensure_utc(now),
                 stats=stats,
             )
+            return True
         except RaiderIONotFoundError:
             message = "Raider.IO could not find this player."
             LOGGER.warning(
@@ -1525,6 +1549,9 @@ class SyncService:
                 identity.name,
             )
             self._repository.mark_invalid_player(player_key, message, when=now)
+            stats.partial = True
+            stats.warnings.append(f"{player_key}: {message}")
+            return False
         except RaiderIOError as exc:
             message = str(exc)
             LOGGER.error(
@@ -1539,6 +1566,7 @@ class SyncService:
             self._repository.mark_sync_error(player_key, message, when=now)
             stats.partial = True
             stats.warnings.append(f"{player_key}: {message}")
+            return False
 
     def _record_latest_completion_observation(
         self,

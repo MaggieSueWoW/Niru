@@ -3,7 +3,7 @@ import unittest
 
 import niru.service as service_module
 from niru.clients.blizzard import BlizzardError
-from niru.clients.raiderio import RaiderIONotFoundError
+from niru.clients.raiderio import RaiderIOError, RaiderIONotFoundError
 from niru.config import SeasonTabSettings
 from niru.models import NormalizedRunCandidate, PlayerDataStatus, SyncStats
 from niru.play_profile import (
@@ -614,7 +614,14 @@ class FakeSheets:
         self.last_tab_name = tab_name
         return self.rows
 
-    def write_output_rows(self, *, tab_name, header, rows, metadata_rows=None):
+    def write_output_rows(
+        self, *, tab_name, header, rows, metadata_rows=None, preserve_row_indices=None
+    ):
+        previous_rows = self.last_rows or []
+        rows = [list(row) for row in rows]
+        for index in preserve_row_indices or ():
+            if index < len(previous_rows):
+                rows[index] = list(previous_rows[index])
         self.last_tab_name = tab_name
         self.last_header = header
         self.last_rows = rows
@@ -1113,6 +1120,38 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(len(sheets.last_rows), 1)
         self.assertEqual(sheets.last_rows[0][0:4], ["us", "area-52", "Missing", None])
+
+    def test_bad_realm_preserves_only_its_previous_output_row(self) -> None:
+        class RealmFailingRaider(FakeRaiderIO):
+            def get_character_profile(self, player, *, season):
+                if player.realm == "sargeas":
+                    self.api_calls += 1
+                    raise RaiderIOError("Failed to find realm sargeas in region us")
+                return super().get_character_profile(player, season=season)
+
+        repo = FakeRepo()
+        sheets = FakeSheets(["us/sargeras/Dukés", "us/area-52/Mythics"])
+        raider = RealmFailingRaider()
+        service = SyncService(
+            settings=make_settings(),
+            repository=repo,
+            sheets_client=sheets,
+            raiderio_client=raider,
+        )
+        service.run_cycle(force_sync_all=True)
+        original_row = list(sheets.last_rows[0])
+        previous_healthy_score = sheets.last_rows[1][3]
+
+        sheets.rows[0] = "us/sargeas/Dukés"
+        raider.profile_payload["mythic_plus_scores_by_season"][0]["scores"][
+            "all"
+        ] = 425.0
+        service.run_cycle(force_sync_all=True)
+
+        self.assertEqual(sheets.last_rows[0], original_row)
+        self.assertEqual(sheets.last_rows[1][0:3], ["us", "area-52", "Mythics"])
+        self.assertNotEqual(sheets.last_rows[1][3], previous_healthy_score)
+        self.assertTrue(repo.sync_docs[-1]["partial"])
 
     def test_missing_weekly_period_leaves_value_blank_and_warns(self) -> None:
         settings = make_settings()

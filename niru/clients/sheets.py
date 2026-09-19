@@ -43,6 +43,7 @@ class GoogleSheetsClient:
         header: list[str],
         rows: list[list[object]],
         metadata_rows: list[tuple[object, object]] | None = None,
+        preserve_row_indices: set[int] | None = None,
     ) -> int:
         """Update only changed output cells in the configured tab."""
 
@@ -52,6 +53,7 @@ class GoogleSheetsClient:
             header=header,
             rows=rows,
             metadata_rows=metadata_rows,
+            preserve_row_indices=preserve_row_indices,
         )
 
     def write_table(
@@ -62,6 +64,7 @@ class GoogleSheetsClient:
         header: list[str],
         rows: list[list[object]],
         metadata_rows: list[tuple[object, object]] | None = None,
+        preserve_row_indices: set[int] | None = None,
     ) -> int:
         """Update only changed cells for one output block."""
 
@@ -82,6 +85,12 @@ class GoogleSheetsClient:
             start_cell=start_cell,
             max_rows=sheet_size[0],
             max_columns=sheet_size[1],
+        )
+        _preserve_output_rows(
+            target_values=target_values,
+            existing_values=existing_values,
+            data_column_count=len(header),
+            row_indices=preserve_row_indices or set(),
         )
         updates = _build_output_updates(
             tab_name=tab_name,
@@ -344,6 +353,26 @@ def _build_sheet_values(
             _normalize_sheet_value(value),
         ]
     return values
+
+
+def _preserve_output_rows(
+    *,
+    target_values: list[list[object]],
+    existing_values: list[list[object]],
+    data_column_count: int,
+    row_indices: set[int],
+) -> None:
+    """Keep published data cells for failed roster rows in this write."""
+
+    for index in row_indices:
+        sheet_index = index + 1  # The header occupies the first output row.
+        if sheet_index >= len(existing_values) or sheet_index >= len(target_values):
+            continue
+        # Metadata columns on the right must still receive their current values.
+        preserved = existing_values[sheet_index][:data_column_count]
+        target_values[sheet_index][:data_column_count] = preserved + [""] * (
+            data_column_count - len(preserved)
+        )
 
 
 def _build_output_updates(

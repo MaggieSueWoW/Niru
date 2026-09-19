@@ -387,10 +387,11 @@ class MongoRepository:
                 "sheet_value": entry.raw_value,
                 "is_active": True,
                 "is_valid": entry.is_valid,
-                "status": entry.status.value,
-                "status_message": entry.status_message,
                 "last_seen_in_sheet_at": seen_at,
             }
+            if not entry.is_valid:
+                base_doc["status"] = entry.status.value
+                base_doc["status_message"] = entry.status_message
             if entry.identity:
                 base_doc.update(
                     {
@@ -404,6 +405,8 @@ class MongoRepository:
                     {"region": "", "realm": "", "name": entry.raw_value.strip()}
                 )
             season_roster_doc = dict(base_doc)
+            season_roster_doc["status"] = entry.status.value
+            season_roster_doc["status_message"] = entry.status_message
             season_roster_doc["season"] = season
             self.season_rosters.update_one(
                 {"season": season, "player_key": entry.player_key},
@@ -415,6 +418,14 @@ class MongoRepository:
                 {
                     "$set": base_doc,
                     "$setOnInsert": {
+                        **(
+                            {
+                                "status": entry.status.value,
+                                "status_message": entry.status_message,
+                            }
+                            if entry.is_valid
+                            else {}
+                        ),
                         "current_dungeon_scores": {},
                         "current_total_score": None,
                         "score_season": "",

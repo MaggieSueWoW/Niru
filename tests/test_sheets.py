@@ -10,10 +10,32 @@ from niru.clients.sheets import (
     _execute,
     _find_timestamp_column,
     _normalize_sheet_row,
+    _preserve_output_rows,
 )
 
 
 class GoogleSheetsHelpersTests(unittest.TestCase):
+    def test_preserves_failed_row_without_blocking_other_rows_or_metadata(self) -> None:
+        target = [
+            ["name", "score", "metadata", "new"],
+            ["bad realm", "", "", ""],
+            ["healthy", 250, "", ""],
+        ]
+        _preserve_output_rows(
+            target_values=target,
+            existing_values=[
+                ["name", "score", "metadata", "old"],
+                ["correct realm", 120, "", ""],
+                ["healthy", 200, "", ""],
+            ],
+            data_column_count=2,
+            row_indices={0},
+        )
+
+        self.assertEqual(target[0][-1], "new")
+        self.assertEqual(target[1][:2], ["correct realm", 120])
+        self.assertEqual(target[2][:2], ["healthy", 250])
+
     def test_executes_google_request_with_transport_retries(self) -> None:
         class FakeRequest:
             def __init__(self) -> None:
