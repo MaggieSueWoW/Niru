@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
 import logging
 import random
 import signal
 import threading
+from collections import defaultdict
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from niru.clients.blizzard import BlizzardClient, BlizzardError, BlizzardNotFoundError
@@ -20,6 +20,7 @@ from niru.config import (
     next_season_transition,
     resolve_active_season,
 )
+from niru.healthchecks import report_sync_success
 from niru.models import (
     PACIFIC_TZ,
     NormalizedRunCandidate,
@@ -1082,7 +1083,7 @@ class SyncService:
         consecutive_failures = 0
         while not self._stop_requested:
             try:
-                self.run_cycle()
+                cycle_document = self.run_cycle()
                 consecutive_failures = 0
             except Exception:
                 consecutive_failures += 1
@@ -1099,6 +1100,7 @@ class SyncService:
                 continue
             if self._stop_requested:
                 break
+            report_sync_success(self._settings.healthchecks_ping_url, cycle_document)
             remaining = self._next_cycle_delay_seconds()
             if remaining > 0 and not self._stop_requested:
                 LOGGER.info(
@@ -1110,8 +1112,8 @@ class SyncService:
 
     def run_cycle(
         self, *, force_sync_all: bool = False, player_key: str | None = None
-    ) -> None:
-        """Run one full sync cycle."""
+    ) -> dict[str, Any]:
+        """Run one sync cycle and return its persisted operational summary."""
 
         started_at = utc_now()
         stats = SyncStats()
@@ -1329,9 +1331,10 @@ class SyncService:
                 else 0
             ) - initial_blizzard_api_calls
             stats.api_calls = stats.raiderio_api_calls + stats.blizzard_api_calls
-            self._repository.store_sync_cycle(
-                stats.to_document(started_at=started_at, finished_at=finished_at)
+            cycle_document = stats.to_document(
+                started_at=started_at, finished_at=finished_at
             )
+            self._repository.store_sync_cycle(cycle_document)
             LOGGER.info(
                 "Finished sync cycle",
                 extra={
@@ -1358,6 +1361,7 @@ class SyncService:
                     "player_key": player_key,
                 },
             )
+        return cycle_document
 
     def _scope_active_players(
         self,

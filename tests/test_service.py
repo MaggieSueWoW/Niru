@@ -1,5 +1,6 @@
-from datetime import UTC, datetime, timedelta
 import unittest
+from datetime import UTC, datetime, timedelta
+from unittest.mock import Mock, patch
 
 import niru.service as service_module
 from niru.clients.blizzard import BlizzardError
@@ -12,7 +13,6 @@ from niru.play_profile import (
 )
 from niru.service import SyncService, _candidate_belongs_to_season, build_summary_header
 from niru.storage import _build_key_run_metric_updates, _summarize_run_differences
-
 
 TEST_SEASON = SeasonTabSettings(
     slug="season-mn-1",
@@ -125,6 +125,7 @@ def make_settings():
         "Settings",
         (),
         {
+            "healthchecks_ping_url": None,
             "google": type(
                 "Google",
                 (),
@@ -1239,6 +1240,132 @@ class SyncServiceTests(unittest.TestCase):
 
         self.assertEqual(attempts["count"], 2)
         self.assertEqual(waits, [30.0])
+
+    def test_health_ping_follows_all_cycle_writes_even_when_degraded(self) -> None:
+        for outcome in (
+            "normal",
+            "empty",
+            "invalid",
+            "player_failure",
+            "cooldown",
+            "unchanged",
+        ):
+            with self.subTest(outcome=outcome):
+                repo = FakeRepo()
+                repo.season_dungeons = TEST_SEASON_DUNGEONS
+                sheets = FakeSheets(
+                    [] if outcome == "empty" else ["us/area-52/Mythics"]
+                )
+                raider = FakeRaiderIO()
+                if outcome == "invalid":
+                    sheets.rows = ["invalid roster entry"]
+                elif outcome == "player_failure":
+                    raider.get_character_profile = Mock(
+                        side_effect=RaiderIOError("unavailable")
+                    )
+                elif outcome == "cooldown":
+                    raider.cooldown_remaining = 120
+                elif outcome == "unchanged":
+                    sheets.write_output_rows = Mock(return_value=0)
+                settings = make_settings()
+                settings.healthchecks_ping_url = "https://hc-ping.com/test-secret"
+                service = SyncService(
+                    settings=settings,
+                    repository=repo,
+                    sheets_client=sheets,
+                    raiderio_client=raider,
+                )
+
+                def check_completed(url, document):
+                    self.assertEqual(url, settings.healthchecks_ping_url)
+                    self.assertIs(document, repo.sync_docs[-1])
+                    self.assertIn("C101", sheets.tables)
+                    if outcome in {"player_failure", "cooldown"}:
+                        self.assertTrue(document["partial"])
+
+                with (
+                    patch.object(service, "install_signal_handlers"),
+                    patch.object(
+                        service, "_next_cycle_delay_seconds", return_value=900
+                    ),
+                    patch.object(service, "_wait_between_cycles", return_value=True),
+                    patch(
+                        "niru.service.report_sync_success", side_effect=check_completed
+                    ) as ping,
+                ):
+                    service.run_forever()
+                ping.assert_called_once()
+
+    def test_health_ping_is_withheld_on_failed_or_interrupted_cycles(self) -> None:
+        for stage in (
+            "read_roster_rows",
+            "write_output_rows",
+            "write_table",
+            "store_sync_cycle",
+            "interrupt",
+        ):
+            with self.subTest(stage=stage):
+                repo = FakeRepo()
+                sheets = FakeSheets(["us/area-52/Mythics"])
+                service = SyncService(
+                    settings=make_settings(),
+                    repository=repo,
+                    sheets_client=sheets,
+                    raiderio_client=FakeRaiderIO(),
+                )
+                if stage == "interrupt":
+
+                    def interrupt(*args, **kwargs):
+                        service._stop_requested = True
+                        return False
+
+                    target = service
+                    method = "_sync_player"
+                    effect = interrupt
+                else:
+                    target = repo if stage == "store_sync_cycle" else sheets
+                    method = stage
+                    effect = RuntimeError("dependency failure")
+                with (
+                    patch.object(target, method, side_effect=effect),
+                    patch.object(service, "install_signal_handlers"),
+                    patch.object(service, "_wait_between_cycles", return_value=True),
+                    patch("niru.service.report_sync_success") as ping,
+                ):
+                    service.run_forever()
+                ping.assert_not_called()
+
+    def test_health_ping_resumes_after_cycle_recovery(self) -> None:
+        sheets = FakeSheets([])
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=sheets,
+            raiderio_client=FakeRaiderIO(),
+        )
+        with (
+            patch.object(
+                sheets, "read_roster_rows", side_effect=[RuntimeError("offline"), []]
+            ),
+            patch.object(service, "install_signal_handlers"),
+            patch.object(service, "_next_cycle_delay_seconds", return_value=900),
+            patch.object(service, "_wait_between_cycles", side_effect=[False, True]),
+            patch("niru.service.report_sync_success") as ping,
+        ):
+            service.run_forever()
+        ping.assert_called_once()
+
+    def test_one_shot_and_season_preparation_never_ping(self) -> None:
+        service = SyncService(
+            settings=make_settings(),
+            repository=FakeRepo(),
+            sheets_client=FakeSheets([]),
+            raiderio_client=FakeRaiderIO(),
+        )
+        with patch("niru.service.report_sync_success") as ping:
+            service.run_cycle(force_sync_all=True)
+            service.prepare_season_tab(TEST_SEASON.slug)
+        ping.assert_not_called()
 
     def test_wait_between_cycles_resets_google_transport_after_five_minutes(
         self,

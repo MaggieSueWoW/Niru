@@ -161,6 +161,8 @@ Edit [config.yaml](config.yaml) for non-secret settings.
 - `RAIDERIO_ACCESS_KEY` optional
 - `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET` when `blizzard.enabled` is
   true
+- `NIRU_HEALTHCHECKS_PING_URL` optional; enables completed-cycle monitoring in
+  continuous mode
 
 ### `config.yaml`
 
@@ -344,6 +346,33 @@ Notes:
 - If MongoDB is running on your laptop, `localhost` from inside the container will not reach it. Use a host that the container can resolve, such as `host.docker.internal` on Docker Desktop.
 - If Redis is running on your laptop, the same networking rule applies to `REDIS_URL`.
 - If you switch Docker context to a remote daemon such as Synology, bind mounts refer to paths on that remote host, not your laptop. The helper script avoids that by default, but config changes now require a rebuild because the remote container uses the config baked into the image.
+
+## Worker Health Monitoring
+
+Set `NIRU_HEALTHCHECKS_PING_URL` in `.env` to the success URL for the **Niru worker**
+check in Healthchecks.io. Configure a Simple schedule with a **15-minute period**
+and **45-minute grace** to alert approximately 60 minutes after the last successful
+ping. Enable email notifications for failures and recovery.
+
+The continuous worker sends a success ping only after a non-interrupted sync cycle
+finishes its roster read, MongoDB operations, summary and enabled activity-table
+publication, and final MongoDB cycle record. Unchanged output, empty rosters, and
+cycles with no new runs qualify. Expected player/provider failures and Raider.IO
+cooldown qualify as degraded when cached-data publication still succeeds. This
+monitors worker operation, not upstream data freshness.
+
+Exceptions and interrupted cycles withhold success. The worker sends no start or
+failure signals; missing successes trigger the configured alert. Monitoring requests
+have a five-second socket timeout, and failures are logged without failing or
+retrying the completed sync. The next eligible cycle tries again. Ping bodies
+contain only operational counts, season, duration, and degraded status.
+
+`--mode once` and `--prepare-season` never ping. Any continuous worker loading the
+configured `.env` will ping, so clear `NIRU_HEALTHCHECKS_PING_URL` when running a
+development loop alongside production. The existing Docker helper passes `.env`
+through; a running container needs its usual rebuild/recreation to pick up the code
+and environment. A new check waits for its first real worker ping before monitoring
+begins.
 
 ## Testing
 

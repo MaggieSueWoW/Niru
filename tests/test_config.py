@@ -1,14 +1,32 @@
 import os
-from pathlib import Path
 import tempfile
 import unittest
-
 from datetime import UTC, datetime
+from pathlib import Path
+from unittest.mock import patch
 
 from niru.config import load_settings, resolve_active_season
 
 
 class ConfigTests(unittest.TestCase):
+    def test_healthchecks_url_is_optional_and_omitted_from_settings_repr(self) -> None:
+        for value in ("", "  ", "https://hc-ping.com/test-secret"):
+            with self.subTest(configured=bool(value.strip())):
+                with (
+                    patch.dict(
+                        os.environ,
+                        {
+                            "NIRU_HEALTHCHECKS_PING_URL": value,
+                            "GOOGLE_SHEET_ID": "sheet-id",
+                            "MONGODB_URI": "mongodb://localhost:27017",
+                        },
+                    ),
+                    patch("dotenv.load_dotenv"),
+                ):
+                    settings = load_settings()
+                self.assertEqual(settings.healthchecks_ping_url, value.strip() or None)
+                self.assertNotIn("test-secret", repr(settings))
+
     def test_load_settings_reads_active_polling_config(self) -> None:
         config_text = """
 google:

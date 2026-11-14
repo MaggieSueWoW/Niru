@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from pathlib import Path
 import os
 import re
-
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
 
 CELL_RE = re.compile(r"^[A-Z]+[1-9][0-9]*$")
 SEASON_SLUG_RE = re.compile(r"^season-[a-z0-9-]+$")
@@ -129,6 +128,7 @@ class Settings:
     redis: RedisSettings
     mongodb: MongoSettings
     logging: LoggingSettings
+    healthchecks_ping_url: str | None = field(default=None, repr=False)
 
 
 def _require_text(value: object, *, name: str) -> str:
@@ -269,8 +269,8 @@ def next_season_transition(
 def load_settings(config_path: str = "config.yaml") -> Settings:
     """Load YAML config plus environment overrides."""
 
-    from dotenv import load_dotenv
     import yaml
+    from dotenv import load_dotenv
 
     load_dotenv()
     path = Path(config_path)
@@ -537,4 +537,6 @@ def load_settings(config_path: str = "config.yaml") -> Settings:
         logging=LoggingSettings(
             level=_require_text(logging_raw.get("level", "INFO"), name="logging.level")
         ),
+        healthchecks_ping_url=os.getenv("NIRU_HEALTHCHECKS_PING_URL", "").strip()
+        or None,
     )
